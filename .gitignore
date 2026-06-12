@@ -1,0 +1,24 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+service-account.json
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+*.tsbuildinfo
+
+# Source datasets (938 MB dump + frequency list) — obtain separately, see CLAUDE.md
+data/
+
+# Tooling / OS
+coverage/
+*.log
+.DS_Store
+
+# pnpm local store
+.pnpm-store/

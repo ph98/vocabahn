@@ -1,0 +1,34 @@
+{
+  "name": "@vocabahn/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev",
+    "prisma:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.0",
+    "@nestjs/config": "^4.0.2",
+    "@nestjs/core": "^11.1.0",
+    "@nestjs/platform-express": "^11.1.0",
+    "@nestjs/throttler": "^6.4.0",
+    "@prisma/client": "^6.8.0",
+    "@vocabahn/shared": "workspace:*",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.6.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.7",
+    "@types/express": "^5.0.1",
+    "dotenv-cli": "^8.0.0",
+    "@types/node": "^20.17.0",
+    "prisma": "^6.8.0",
+    "typescript": "^5.8.3"
+  }
+}
