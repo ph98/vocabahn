@@ -142,8 +142,13 @@ export class DictionaryService implements OnModuleInit {
     }
 
     // On-demand enrichment (PRD §4.2): fire only when the word is actually viewed
-    // and still needs work. ENRICHING/ENRICHED entries are left alone.
-    if (entry.enrichmentStatus === 'PENDING' || entry.enrichmentStatus === 'FAILED') {
+    // and still needs work. Also re-enrich entries that predate the AI learner
+    // aids (collocations/false friends/register/mnemonic) so they backfill on view.
+    if (
+      entry.enrichmentStatus === 'PENDING' ||
+      entry.enrichmentStatus === 'FAILED' ||
+      (entry.enrichmentStatus === 'ENRICHED' && entry.register === null)
+    ) {
       await this.enrichment.requestEnrichment(entry.id, userId);
     }
 
