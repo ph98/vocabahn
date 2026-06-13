@@ -80,6 +80,52 @@ export type PersonForms = z.infer<typeof personFormsSchema>;
 export type ConjugationMood = z.infer<typeof conjugationMoodSchema>;
 export type VerbConjugation = z.infer<typeof verbConjugationSchema>;
 
+const caseFormsSchema = z.object({
+  nominative: z.string().optional(),
+  genitive: z.string().optional(),
+  dative: z.string().optional(),
+  accusative: z.string().optional(),
+});
+
+export const nounDeclensionSchema = z.object({
+  singular: caseFormsSchema,
+  plural: caseFormsSchema,
+});
+
+// One declension table cell per case, with masculine/feminine/neuter/plural slots.
+export const adjectiveCaseFormsSchema = z.object({
+  masculine: z.string().optional(),
+  feminine: z.string().optional(),
+  neuter: z.string().optional(),
+  plural: z.string().optional(),
+});
+
+export const adjectiveDeclensionTableSchema = z.object({
+  nominative: adjectiveCaseFormsSchema.optional(),
+  genitive: adjectiveCaseFormsSchema.optional(),
+  dative: adjectiveCaseFormsSchema.optional(),
+  accusative: adjectiveCaseFormsSchema.optional(),
+});
+
+export const adjectiveDegreeSchema = z.object({
+  strong: adjectiveDeclensionTableSchema,
+  weak: adjectiveDeclensionTableSchema,
+  mixed: adjectiveDeclensionTableSchema,
+  predicative: z.string().nullable(),
+});
+
+export const adjectiveDeclensionSchema = z.object({
+  positive: adjectiveDegreeSchema,
+  comparative: adjectiveDegreeSchema.nullable(),
+  superlative: adjectiveDegreeSchema.nullable(),
+});
+
+export type NounDeclension = z.infer<typeof nounDeclensionSchema>;
+export type AdjectiveCaseForms = z.infer<typeof adjectiveCaseFormsSchema>;
+export type AdjectiveDeclensionTable = z.infer<typeof adjectiveDeclensionTableSchema>;
+export type AdjectiveDegree = z.infer<typeof adjectiveDegreeSchema>;
+export type AdjectiveDeclension = z.infer<typeof adjectiveDeclensionSchema>;
+
 export const dictionaryEntryDetailSchema = z.object({
   id: z.string(),
   word: z.string(),
@@ -106,6 +152,8 @@ export const dictionaryEntryDetailSchema = z.object({
   senses: z.array(wordSenseSchema),
   forms: z.array(wordFormSchema),
   conjugation: verbConjugationSchema.nullable(),
+  nounDeclension: nounDeclensionSchema.nullable(),
+  adjectiveDeclension: adjectiveDeclensionSchema.nullable(),
   imageCredit: z
     .object({ authorName: z.string(), authorUrl: z.string().nullable() })
     .nullable(),

@@ -1,5 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import type { ConjugationMood, DictionaryEntryDetail, PersonForms, VerbConjugation } from '@vocabahn/shared';
+import type {
+  AdjectiveDeclension,
+  AdjectiveDeclensionTable,
+  ConjugationMood,
+  DictionaryEntryDetail,
+  NounDeclension,
+  PersonForms,
+  VerbConjugation,
+} from '@vocabahn/shared';
 import { useEffect, useRef, useState } from 'react';
 import { fetchDictionaryEntry, searchDictionary } from '../api';
 
@@ -197,6 +205,163 @@ function ConjugationSection({ conjugation }: { conjugation: VerbConjugation }) {
   );
 }
 
+const CASE_LABELS = {
+  nominative: 'Nominative',
+  genitive: 'Genitive',
+  dative: 'Dative',
+  accusative: 'Accusative',
+} as const;
+
+const CASE_ORDER = Object.keys(CASE_LABELS) as (keyof typeof CASE_LABELS)[];
+
+/** 4-case × singular/plural table for a noun. */
+function NounDeclensionSection({ declension }: { declension: NounDeclension }) {
+  return (
+    <section className="mb-4">
+      <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">Declension</h4>
+      <table className="w-full text-left text-sm">
+        <thead>
+          <tr className="text-neutral-500">
+            <th className="py-1 pr-3 font-normal" />
+            <th className="py-1 pr-3 font-normal">Singular</th>
+            <th className="py-1 font-normal">Plural</th>
+          </tr>
+        </thead>
+        <tbody>
+          {CASE_ORDER.map((c) => (
+            <tr key={c} className="border-b border-neutral-900">
+              <td className="py-1 pr-3 text-neutral-500">{CASE_LABELS[c]}</td>
+              <td lang="de" className="py-1 pr-3">
+                {declension.singular[c] ?? '—'}
+              </td>
+              <td lang="de" className="py-1">
+                {declension.plural[c] ?? '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+/** 4-case × masculine/feminine/neuter/plural table for one declension strength. */
+function AdjectiveCaseTable({ table }: { table: AdjectiveDeclensionTable }) {
+  const rows = CASE_ORDER.filter((c) => table[c]);
+  if (rows.length === 0) {
+    return <p className="text-sm text-neutral-500">No forms available.</p>;
+  }
+  return (
+    <table className="w-full text-left text-sm">
+      <thead>
+        <tr className="text-neutral-500">
+          <th className="py-1 pr-3 font-normal" />
+          <th className="py-1 pr-2 font-normal">m</th>
+          <th className="py-1 pr-2 font-normal">f</th>
+          <th className="py-1 pr-2 font-normal">n</th>
+          <th className="py-1 font-normal">pl</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((c) => {
+          const cell = table[c]!;
+          return (
+            <tr key={c} className="border-b border-neutral-900">
+              <td className="py-1 pr-3 text-neutral-500">{CASE_LABELS[c]}</td>
+              <td lang="de" className="py-1 pr-2">
+                {cell.masculine ?? '—'}
+              </td>
+              <td lang="de" className="py-1 pr-2">
+                {cell.feminine ?? '—'}
+              </td>
+              <td lang="de" className="py-1 pr-2">
+                {cell.neuter ?? '—'}
+              </td>
+              <td lang="de" className="py-1">
+                {cell.plural ?? '—'}
+              </td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+const DEGREE_LABELS = { positive: 'Positive', comparative: 'Comparative', superlative: 'Superlative' } as const;
+const STRENGTH_LABELS = {
+  strong: 'Strong (no article)',
+  weak: 'Weak (der/die/das)',
+  mixed: 'Mixed (ein/eine)',
+} as const;
+
+/** Tabbed adjective declension: degree (positive/comparative/superlative) × strength × case. */
+function AdjectiveDeclensionSection({ declension }: { declension: AdjectiveDeclension }) {
+  const degrees = (['positive', 'comparative', 'superlative'] as const).filter((d) => declension[d]);
+  const [activeDegree, setActiveDegree] = useState<'positive' | 'comparative' | 'superlative'>(
+    () => degrees[0] ?? 'positive',
+  );
+  const degree = declension[activeDegree] ?? declension.positive;
+
+  const strengths = (['strong', 'weak', 'mixed'] as const).filter(
+    (s) => Object.keys(degree[s]).length > 0,
+  );
+  const [activeStrength, setActiveStrength] = useState<(typeof strengths)[number] | undefined>(strengths[0]);
+  const strength = strengths.includes(activeStrength as never) ? activeStrength : strengths[0];
+
+  return (
+    <section className="mb-4">
+      <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">Declension</h4>
+
+      {degrees.length > 1 && (
+        <div role="tablist" aria-label="Degree" className="mb-2 flex gap-1 overflow-x-auto">
+          {degrees.map((d) => (
+            <button
+              key={d}
+              type="button"
+              role="tab"
+              aria-selected={activeDegree === d}
+              onClick={() => setActiveDegree(d)}
+              className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                activeDegree === d ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:bg-neutral-800'
+              }`}
+            >
+              {DEGREE_LABELS[d]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {degree.predicative && (
+        <p className="mb-2 text-sm text-neutral-400">
+          Predicative: <span lang="de">{degree.predicative}</span>
+        </p>
+      )}
+
+      {strengths.length > 0 && (
+        <div role="tablist" aria-label="Declension type" className="mb-3 flex gap-1 overflow-x-auto">
+          {strengths.map((s) => (
+            <button
+              key={s}
+              type="button"
+              role="tab"
+              aria-selected={strength === s}
+              onClick={() => setActiveStrength(s)}
+              className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                strength === s ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:bg-neutral-800'
+              }`}
+            >
+              {STRENGTH_LABELS[s]}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div role="tabpanel">{strength && <AdjectiveCaseTable table={degree[strength]} />}</div>
+    </section>
+  );
+}
+
 function EntryBody({ entry }: { entry: DictionaryEntryDetail }) {
   const article = articleFor(entry.gender);
   const glosses = [...new Set(entry.senses.flatMap((s) => s.glosses))];
@@ -302,6 +467,8 @@ function EntryBody({ entry }: { entry: DictionaryEntryDetail }) {
       )}
 
       {entry.conjugation && <ConjugationSection conjugation={entry.conjugation} />}
+      {entry.nounDeclension && <NounDeclensionSection declension={entry.nounDeclension} />}
+      {entry.adjectiveDeclension && <AdjectiveDeclensionSection declension={entry.adjectiveDeclension} />}
 
       {hasDetails && (
         <details className="mt-2 border-t border-neutral-800 pt-2 text-sm">

@@ -6,6 +6,7 @@ import type {
 import Fuse from 'fuse.js';
 import { EnrichmentService } from '../enrichment/enrichment.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { buildAdjectiveDeclension, buildNounDeclension } from './declension';
 import { buildVerbConjugation } from './verb-conjugation';
 
 // When a word has several lexicon records, layer the dictionary entry on the
@@ -158,6 +159,8 @@ export class DictionaryService implements OnModuleInit {
       })),
       forms: lex.forms.map((f) => ({ form: f.form, tags: f.tags })),
       conjugation: lex.pos === 'verb' ? buildVerbConjugation(entry.word, lex.forms) : null,
+      nounDeclension: lex.pos === 'noun' ? buildNounDeclension(entry.word, lex.forms) : null,
+      adjectiveDeclension: lex.pos === 'adj' ? buildAdjectiveDeclension(entry.word, lex.forms) : null,
       imageCredit: entry.imageCredit && {
         authorName: entry.imageCredit.authorName,
         authorUrl: entry.imageCredit.authorUrl,
