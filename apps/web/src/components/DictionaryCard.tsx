@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { DictionaryEntryDetail } from '@vocabahn/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fetchDictionaryEntry, searchDictionary } from '../api';
 
 const ARTICLES: Record<string, string> = { m: 'der', f: 'die', n: 'das' };
@@ -28,8 +28,10 @@ function EntryDetail({ word, onBack }: { word: string; onBack: () => void }) {
     queryKey: ['dictionary-entry', word],
     queryFn: () => fetchDictionaryEntry(word),
     // Poll while the background pipeline enriches the entry (PRD §4.2)
-    refetchInterval: (q) =>
-      q.state.data && q.state.data.enrichmentStatus === 'PENDING' ? 4000 : false,
+    refetchInterval: (q) => {
+      const status = q.state.data?.enrichmentStatus;
+      return status === 'PENDING' || status === 'ENRICHING' ? 4000 : false;
+    },
   });
 
   return (
@@ -52,81 +54,186 @@ function EntryDetail({ word, onBack }: { word: string; onBack: () => void }) {
   );
 }
 
+/** Compact, keyboard-accessible "play audio" button backed by a hidden <audio>. */
+function AudioButton({ src, label }: { src: string; label: string }) {
+  const ref = useRef<HTMLAudioElement>(null);
+  return (
+    <span className="inline-flex items-center align-middle">
+      <button
+        type="button"
+        onClick={() => void ref.current?.play()}
+        aria-label={label}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-700 text-sm transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+      >
+        <span aria-hidden="true">🔊</span>
+      </button>
+      {/* eslint-disable-next-line jsx-a11y/media-has-caption -- short German audio, transcript shown alongside */}
+      <audio ref={ref} src={src} preload="none" />
+    </span>
+  );
+}
+
 function EntryBody({ entry }: { entry: DictionaryEntryDetail }) {
   const article = articleFor(entry.gender);
-  const glosses = entry.senses.flatMap((s) => s.glosses).slice(0, 6);
-  const synonyms = [...new Set(entry.senses.flatMap((s) => s.synonyms))].slice(0, 8);
+  const glosses = [...new Set(entry.senses.flatMap((s) => s.glosses))];
+  const synonyms = [...new Set(entry.senses.flatMap((s) => s.synonyms))];
+  const hasDetails =
+    glosses.length > 0 || synonyms.length > 0 || Boolean(entry.etymology) || entry.forms.length > 0;
 
   return (
     <article aria-live="polite">
       <header className="mb-3">
-        <h3 className="text-2xl font-bold">
-          {article && <span className="font-normal text-neutral-400">{article} </span>}
-          <span lang="de">{entry.word}</span>
-          {entry.emoji && <span aria-hidden="true"> {entry.emoji}</span>}
-        </h3>
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-2xl font-bold">
+            {article && <span className="font-normal text-neutral-400">{article} </span>}
+            <span lang="de">{entry.word}</span>
+            {entry.emoji && <span aria-hidden="true"> {entry.emoji}</span>}
+          </h3>
+          {entry.audioUrl && (
+            <AudioButton src={entry.audioUrl} label={`Pronounce ${entry.word}`} />
+          )}
+        </div>
         <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-neutral-400">
           <span>{entry.pos}</span>
           {entry.ipa && <span>{entry.ipa}</span>}
           {entry.hyphenation && <span lang="de">{entry.hyphenation}</span>}
-          {entry.cefrLevel && <span>{entry.cefrLevel}</span>}
+          {entry.cefrLevel && (
+            <span className="rounded bg-neutral-800 px-1.5 text-neutral-300">{entry.cefrLevel}</span>
+          )}
           {entry.frequencyRank && <span>#{entry.frequencyRank} by frequency</span>}
         </p>
       </header>
 
-      {entry.enrichmentStatus === 'PENDING' && (
+      {(entry.enrichmentStatus === 'PENDING' || entry.enrichmentStatus === 'ENRICHING') && (
         <p className="mb-3 rounded-lg bg-amber-950/60 px-3 py-2 text-sm text-amber-300">
           Enriching this entry in the background…
         </p>
       )}
 
+      {entry.enrichmentStatus === 'FAILED' && (
+        <p className="mb-3 rounded-lg bg-red-950/60 px-3 py-2 text-sm text-red-300">
+          Enrichment failed — showing dictionary data only.
+        </p>
+      )}
+
+      {entry.imageUrl && (
+        <figure className="mb-3">
+          <img
+            src={entry.imageUrl}
+            alt={`Illustration for ${entry.word}`}
+            loading="lazy"
+            className="aspect-square w-full rounded-xl object-cover"
+          />
+          {entry.imageCredit && (
+            <figcaption className="mt-1 text-xs text-neutral-500">
+              Photo by{' '}
+              {entry.imageCredit.authorUrl ? (
+                <a
+                  href={entry.imageCredit.authorUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  {entry.imageCredit.authorName}
+                </a>
+              ) : (
+                entry.imageCredit.authorName
+              )}{' '}
+              on Unsplash
+            </figcaption>
+          )}
+        </figure>
+      )}
+
       {entry.translation && <p className="mb-3 text-lg">{entry.translation}</p>}
 
-      {glosses.length > 0 && (
-        <section className="mb-3">
-          <h4 className="mb-1 text-sm font-medium uppercase tracking-wide text-neutral-400">
-            Meanings
+      {entry.usageNote && (
+        <section className="mb-4 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2">
+          <h4 className="mb-0.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            How to use
           </h4>
-          <ol className="list-decimal space-y-1 pl-5">
-            {glosses.map((g) => (
-              <li key={g}>{g}</li>
-            ))}
-          </ol>
+          <p className="text-sm text-neutral-200">{entry.usageNote}</p>
         </section>
       )}
 
       {entry.examples.length > 0 && (
-        <section className="mb-3">
-          <h4 className="mb-1 text-sm font-medium uppercase tracking-wide text-neutral-400">
+        <section className="mb-4">
+          <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">
             Examples
           </h4>
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {entry.examples.map((ex) => (
-              <li key={ex.de}>
-                <p lang="de">{ex.de}</p>
-                <p className="text-sm text-neutral-400">{ex.en}</p>
+              <li key={ex.de} className="flex items-start gap-2">
+                {ex.audioUrl && <AudioButton src={ex.audioUrl} label={`Play: ${ex.de}`} />}
+                <span className="min-w-0">
+                  <span lang="de" className="block">
+                    {ex.de}
+                  </span>
+                  <span className="block text-sm text-neutral-400">{ex.en}</span>
+                </span>
               </li>
             ))}
           </ul>
         </section>
       )}
 
-      {synonyms.length > 0 && (
-        <p className="mb-3 text-sm">
-          <span className="text-neutral-400">Synonyms: </span>
-          <span lang="de">{synonyms.join(', ')}</span>
-        </p>
-      )}
+      {hasDetails && (
+        <details className="mt-2 border-t border-neutral-800 pt-2 text-sm">
+          <summary className="cursor-pointer text-neutral-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            Dictionary details
+          </summary>
 
-      {entry.etymology && (
-        <details className="mb-1 text-sm text-neutral-300">
-          <summary className="cursor-pointer text-neutral-400">Etymology</summary>
-          <p className="mt-1">{entry.etymology}</p>
+          {glosses.length > 0 && (
+            <div className="mt-3">
+              <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                Meanings
+              </h5>
+              <ol className="list-decimal space-y-1 pl-5">
+                {glosses.map((g) => (
+                  <li key={g}>{g}</li>
+                ))}
+              </ol>
+            </div>
+          )}
+
+          {synonyms.length > 0 && (
+            <p className="mt-3">
+              <span className="text-neutral-500">Synonyms: </span>
+              <span lang="de">{synonyms.join(', ')}</span>
+            </p>
+          )}
+
+          {entry.etymology && (
+            <div className="mt-3">
+              <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                Etymology
+              </h5>
+              <p className="text-neutral-300">{entry.etymology}</p>
+            </div>
+          )}
+
+          {entry.forms.length > 0 && (
+            <div className="mt-3">
+              <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                Forms
+              </h5>
+              <div className="max-h-64 overflow-y-auto">
+                <table className="w-full text-left">
+                  <tbody>
+                    {entry.forms.map((f, i) => (
+                      <tr key={`${f.form}-${i}`} className="border-b border-neutral-900">
+                        <td lang="de" className="py-1 pr-3 align-top">
+                          {f.form}
+                        </td>
+                        <td className="py-1 text-neutral-500">{f.tags.join(', ')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </details>
-      )}
-
-      {entry.forms.length > 0 && (
-        <p className="text-sm text-neutral-500">{entry.forms.length} inflected forms ingested</p>
       )}
     </article>
   );

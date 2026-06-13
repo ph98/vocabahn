@@ -102,7 +102,9 @@ model DictionaryEntry {
   word             String // denormalized headword for search
   translation      String?
   emoji            String?
-  cefrLevel        String?
+  cefrLevel        String? // half sub-level, e.g. "A1.1" … "C2.2"
+  // One concise learner-facing usage note (when/how to use + key grammar pitfall)
+  usageNote        String?
   imageUrl         String?
   imageSource      ImageSource?
   audioUrl         String?
@@ -122,11 +124,12 @@ model DictionaryEntry {
 }
 
 model DictionaryExample {
-  id      String @id @default(cuid())
-  entryId String
-  order   Int    @default(0)
-  de      String
-  en      String
+  id       String  @id @default(cuid())
+  entryId  String
+  order    Int     @default(0)
+  de       String
+  en       String
+  audioUrl String? // TTS of the German sentence, cached as a static .mp3
 
   entry DictionaryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
 

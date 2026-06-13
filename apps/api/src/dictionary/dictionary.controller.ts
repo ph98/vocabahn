@@ -4,7 +4,7 @@ import {
   type DictionaryEntryDetail,
   type DictionarySearchResponse,
 } from '@vocabahn/shared';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { CurrentUserId, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { DictionaryService } from './dictionary.service';
 
@@ -22,7 +22,10 @@ export class DictionaryController {
   }
 
   @Get(':word')
-  getEntry(@Param('word') word: string): Promise<DictionaryEntryDetail> {
-    return this.dictionary.getEntry(word);
+  getEntry(
+    @Param('word') word: string,
+    @CurrentUserId() userId: string,
+  ): Promise<DictionaryEntryDetail> {
+    return this.dictionary.getEntry(word, userId);
   }
 }

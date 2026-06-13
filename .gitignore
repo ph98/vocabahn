@@ -15,6 +15,9 @@ build/
 # Source datasets (938 MB dump + frequency list) — obtain separately, see CLAUDE.md
 data/
 
+# Generated TTS audio cache (regenerated on demand by the enrichment worker)
+apps/api/static/
+
 # Tooling / OS
 coverage/
 *.log

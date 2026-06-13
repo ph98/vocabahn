@@ -56,10 +56,17 @@ export const dictionaryEntryDetailSchema = z.object({
   translation: z.string().nullable(),
   emoji: z.string().nullable(),
   cefrLevel: z.string().nullable(),
+  usageNote: z.string().nullable(),
   imageUrl: z.string().nullable(),
   audioUrl: z.string().nullable(),
   enrichmentStatus: enrichmentStatusSchema,
-  examples: z.array(z.object({ de: z.string(), en: z.string() })),
+  examples: z.array(
+    z.object({
+      de: z.string(),
+      en: z.string(),
+      audioUrl: z.string().nullable(),
+    }),
+  ),
   senses: z.array(wordSenseSchema),
   forms: z.array(wordFormSchema),
   imageCredit: z
