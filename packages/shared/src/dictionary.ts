@@ -44,6 +44,42 @@ export const wordFormSchema = z.object({
   tags: z.array(z.string()),
 });
 
+// One slot per finite-verb person/number combination.
+export const personFormsSchema = z.object({
+  ich: z.string().optional(),
+  du: z.string().optional(),
+  erSieEs: z.string().optional(),
+  wir: z.string().optional(),
+  ihr: z.string().optional(),
+  sieSie: z.string().optional(),
+});
+
+export const conjugationMoodSchema = z.object({
+  present: personFormsSchema.optional(),
+  preterite: personFormsSchema.optional(),
+  perfect: personFormsSchema.optional(),
+  pluperfect: personFormsSchema.optional(),
+  futureI: personFormsSchema.optional(),
+  futureII: personFormsSchema.optional(),
+});
+
+export const verbConjugationSchema = z.object({
+  infinitive: z.string(),
+  auxiliary: z.string().nullable(),
+  class: z.string().nullable(),
+  participlePresent: z.string().nullable(),
+  participlePast: z.string().nullable(),
+  indicative: conjugationMoodSchema,
+  subjunctiveI: conjugationMoodSchema,
+  subjunctiveII: conjugationMoodSchema,
+  imperative: personFormsSchema,
+  alternativeForms: z.array(z.string()),
+});
+
+export type PersonForms = z.infer<typeof personFormsSchema>;
+export type ConjugationMood = z.infer<typeof conjugationMoodSchema>;
+export type VerbConjugation = z.infer<typeof verbConjugationSchema>;
+
 export const dictionaryEntryDetailSchema = z.object({
   id: z.string(),
   word: z.string(),
@@ -69,6 +105,7 @@ export const dictionaryEntryDetailSchema = z.object({
   ),
   senses: z.array(wordSenseSchema),
   forms: z.array(wordFormSchema),
+  conjugation: verbConjugationSchema.nullable(),
   imageCredit: z
     .object({ authorName: z.string(), authorUrl: z.string().nullable() })
     .nullable(),

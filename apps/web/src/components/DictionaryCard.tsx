@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import type { DictionaryEntryDetail } from '@vocabahn/shared';
+import type { ConjugationMood, DictionaryEntryDetail, PersonForms, VerbConjugation } from '@vocabahn/shared';
 import { useEffect, useRef, useState } from 'react';
 import { fetchDictionaryEntry, searchDictionary } from '../api';
 
@@ -70,6 +70,130 @@ function AudioButton({ src, label }: { src: string; label: string }) {
       {/* eslint-disable-next-line jsx-a11y/media-has-caption -- short German audio, transcript shown alongside */}
       <audio ref={ref} src={src} preload="none" />
     </span>
+  );
+}
+
+const PERSON_LABELS: Record<keyof PersonForms, string> = {
+  ich: 'ich',
+  du: 'du',
+  erSieEs: 'er/sie/es',
+  wir: 'wir',
+  ihr: 'ihr',
+  sieSie: 'sie/Sie',
+};
+
+const PERSON_ORDER = Object.keys(PERSON_LABELS) as (keyof PersonForms)[];
+
+const TENSE_LABELS: Record<keyof ConjugationMood, string> = {
+  present: 'Präsens',
+  preterite: 'Präteritum',
+  perfect: 'Perfekt',
+  pluperfect: 'Plusquamperfekt',
+  futureI: 'Futur I',
+  futureII: 'Futur II',
+};
+
+const MOOD_LABELS = {
+  indicative: 'Indikativ',
+  subjunctiveI: 'Konjunktiv I',
+  subjunctiveII: 'Konjunktiv II',
+  imperative: 'Imperativ',
+} as const;
+
+/** Person × form table shared by every mood/tense panel. */
+function PersonFormsTable({ forms }: { forms: PersonForms }) {
+  const rows = PERSON_ORDER.filter((p) => forms[p]);
+  if (rows.length === 0) return null;
+  return (
+    <table className="w-full text-left text-sm">
+      <tbody>
+        {rows.map((p) => (
+          <tr key={p} className="border-b border-neutral-900">
+            <td className="w-24 py-1 pr-3 text-neutral-500">{PERSON_LABELS[p]}</td>
+            <td lang="de" className="py-1">
+              {forms[p]}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+function MoodPanel({ mood }: { mood: ConjugationMood }) {
+  const tenses = (Object.keys(TENSE_LABELS) as (keyof ConjugationMood)[]).filter((t) => mood[t]);
+  if (tenses.length === 0) {
+    return <p className="text-sm text-neutral-500">No forms available.</p>;
+  }
+  return (
+    <div className="space-y-4">
+      {tenses.map((tense) => (
+        <div key={tense}>
+          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            {TENSE_LABELS[tense]}
+          </h5>
+          <PersonFormsTable forms={mood[tense]!} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Tabbed verb conjugation (Indikativ/Konjunktiv I/Konjunktiv II/Imperativ × tense × person). */
+function ConjugationSection({ conjugation }: { conjugation: VerbConjugation }) {
+  const moods = (['indicative', 'subjunctiveI', 'subjunctiveII'] as const).filter(
+    (m) => Object.keys(conjugation[m]).length > 0,
+  );
+  const hasImperative = Object.keys(conjugation.imperative).length > 0;
+  const tabs = hasImperative ? [...moods, 'imperative' as const] : moods;
+  const [active, setActive] = useState<(typeof tabs)[number] | undefined>(tabs[0]);
+
+  if (!active) return null;
+
+  return (
+    <section className="mb-4">
+      <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">
+        Conjugation
+      </h4>
+      {(conjugation.auxiliary || conjugation.participlePast) && (
+        <p className="mb-2 text-sm text-neutral-400">
+          {conjugation.auxiliary && (
+            <>
+              Aux: <span lang="de">{conjugation.auxiliary}</span>
+              {conjugation.participlePast && ' · '}
+            </>
+          )}
+          {conjugation.participlePast && (
+            <>
+              Partizip II: <span lang="de">{conjugation.participlePast}</span>
+            </>
+          )}
+        </p>
+      )}
+      <div role="tablist" aria-label="Conjugation mood" className="mb-3 flex gap-1 overflow-x-auto">
+        {tabs.map((tab) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            aria-selected={active === tab}
+            onClick={() => setActive(tab)}
+            className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+              active === tab ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:bg-neutral-800'
+            }`}
+          >
+            {MOOD_LABELS[tab]}
+          </button>
+        ))}
+      </div>
+      <div role="tabpanel">
+        {active === 'imperative' ? (
+          <PersonFormsTable forms={conjugation.imperative} />
+        ) : (
+          <MoodPanel mood={conjugation[active]} />
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -176,6 +300,8 @@ function EntryBody({ entry }: { entry: DictionaryEntryDetail }) {
           </ul>
         </section>
       )}
+
+      {entry.conjugation && <ConjugationSection conjugation={entry.conjugation} />}
 
       {hasDetails && (
         <details className="mt-2 border-t border-neutral-800 pt-2 text-sm">
