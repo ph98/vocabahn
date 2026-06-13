@@ -170,6 +170,14 @@ export const dictionaryEntryDetailSchema = z.object({
   wordFamily: z.array(wordFamilyEntrySchema),
   pronunciation: z.array(pronunciationVariantSchema),
   topics: z.array(z.string()),
+  // Set when the looked-up word is an inflected/alternative form: the entry
+  // itself is the lemma's, but `word` is the form the user searched for.
+  formOf: z
+    .object({
+      lemma: z.string(),
+      descriptions: z.array(z.string()),
+    })
+    .nullable(),
   imageCredit: z
     .object({ authorName: z.string(), authorUrl: z.string().nullable() })
     .nullable(),

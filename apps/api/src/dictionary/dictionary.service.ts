@@ -98,7 +98,7 @@ export class DictionaryService implements OnModuleInit {
           id: true,
           word: true,
           pos: true,
-          senses: { select: { tags: true } },
+          senses: { select: { tags: true, glosses: true } },
           _count: { select: { senses: true } },
         },
       });
@@ -116,10 +116,24 @@ export class DictionaryService implements OnModuleInit {
         this.fuse.add(this.toSearchResult(entry));
         this.logger.log(`promoted "${best.word}" to active dictionary (pending enrichment)`);
       } else if (candidates.length > 0 && depth < 2) {
-        // The word exists only as an inflected/alternative form → show its lemma.
+        // The word exists only as an inflected/alternative form: show the
+        // lemma's entry with a banner describing this form (e.g. "plural of Hund").
         const lemmaWord = await this.resolveLemmaWord(candidates.map((c) => c.id));
         if (lemmaWord && lemmaWord.toLowerCase() !== word.toLowerCase()) {
-          return this.getEntry(lemmaWord, userId, depth + 1);
+          const lemmaEntry = await this.getEntry(lemmaWord, userId, depth + 1);
+          // Drop Wiktextract's "inflection of X:" boilerplate gloss, keeping
+          // only the descriptive part (e.g. "first/third-person plural preterite").
+          const descriptions = [
+            ...new Set(
+              candidates.flatMap((c) =>
+                c.senses
+                  .filter((s) => s.tags.some((t) => FORM_TAGS.includes(t)))
+                  .flatMap((s) => s.glosses)
+                  .filter((g) => !/^inflection of .+:$/.test(g)),
+              ),
+            ),
+          ];
+          return { ...lemmaEntry, word, formOf: { lemma: lemmaWord, descriptions } };
         }
         throw new NotFoundException(`No entry for "${word}"`);
       } else {
@@ -165,6 +179,7 @@ export class DictionaryService implements OnModuleInit {
       wordFamily: buildWordFamily(lex.raw),
       pronunciation: buildPronunciation(lex.raw),
       topics: buildTopics(lex.raw),
+      formOf: null,
       imageCredit: entry.imageCredit && {
         authorName: entry.imageCredit.authorName,
         authorUrl: entry.imageCredit.authorUrl,

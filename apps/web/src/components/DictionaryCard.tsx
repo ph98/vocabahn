@@ -385,6 +385,20 @@ function EntryBody({
 
   return (
     <article aria-live="polite">
+      {entry.formOf && (
+        <p className="mb-3 rounded-lg bg-neutral-800 px-3 py-2 text-sm text-neutral-300">
+          {entry.formOf.descriptions.length > 0 ? entry.formOf.descriptions.join('; ') : 'Form of'}
+          {' — '}
+          <button
+            type="button"
+            lang="de"
+            onClick={() => onSelectWord(entry.formOf!.lemma)}
+            className="underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            {entry.formOf.lemma}
+          </button>
+        </p>
+      )}
       <header className="mb-3">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-2xl font-bold">
