@@ -1,7 +1,3 @@
-// Phase 0 schema: User only, to prove migrations work end-to-end.
-// The full data model (Card, ReviewLog, Lexicon*, Dictionary*, Course*) lands
-// with Phase 1 — see PRD §5 "Data model".
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,6 +6,8 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// ── Users ────────────────────────────────────────────────────────────────────
 
 model User {
   id        String   @id @default(cuid())
@@ -21,4 +19,277 @@ model User {
   cefrLevel String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  cards           Card[]
+  reviewLogs      ReviewLog[]
+  knowledgeScores KnowledgeScore[]
+  courses         UserCourse[]
+}
+
+// ── Lexicon layer (complete Wiktextract ingest, PRD §7) ─────────────────────
+
+model LexiconEntry {
+  id              String  @id @default(cuid())
+  word            String
+  pos             String
+  // m / f / n, comma-joined when a word has several (e.g. "m,n")
+  gender          String?
+  ipa             String?
+  hyphenation     String? // syllables joined with "·"
+  etymology       String?
+  etymologyNumber Int?
+  frequencyRank   Int? // min rank over headword + all inflected forms (de_full.txt)
+  // Full original Wiktextract record — escape hatch for fields not yet structured
+  raw             Json
+  createdAt       DateTime @default(now())
+
+  senses          WordSense[]
+  forms           WordForm[]
+  dictionaryEntry DictionaryEntry?
+
+  @@index([word])
+  @@index([frequencyRank])
+  @@index([pos])
+}
+
+model WordForm {
+  id      String   @id @default(cuid())
+  entryId String
+  form    String
+  // Grammatical tags, e.g. ["genitive","singular","strong"]
+  tags    String[]
+  source  String? // e.g. "declension", "conjugation"
+
+  entry LexiconEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId])
+  @@index([form]) // inflected-form → lemma lookup
+}
+
+model WordSense {
+  id       String   @id @default(cuid())
+  entryId  String
+  order    Int      @default(0)
+  glosses  String[]
+  tags     String[]
+  topics   String[]
+  synonyms String[]
+  antonyms String[]
+
+  entry LexiconEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId])
+}
+
+// ── Active learner-facing dictionary (PRD §4.2) ─────────────────────────────
+
+enum EnrichmentStatus {
+  PENDING
+  ENRICHING
+  ENRICHED
+  FAILED
+}
+
+enum ImageSource {
+  UNSPLASH
+  AI
+  MANUAL
+}
+
+model DictionaryEntry {
+  id               String           @id @default(cuid())
+  lexiconEntryId   String           @unique
+  word             String // denormalized headword for search
+  translation      String?
+  emoji            String?
+  cefrLevel        String?
+  imageUrl         String?
+  imageSource      ImageSource?
+  audioUrl         String?
+  enrichmentStatus EnrichmentStatus @default(PENDING)
+  enrichmentError  String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  lexiconEntry LexiconEntry        @relation(fields: [lexiconEntryId], references: [id])
+  examples     DictionaryExample[]
+  imageCredit  ImageCredit?
+  cards        Card[]
+  courseWords  CourseWord[]
+
+  @@index([word])
+  @@index([enrichmentStatus])
+}
+
+model DictionaryExample {
+  id      String @id @default(cuid())
+  entryId String
+  order   Int    @default(0)
+  de      String
+  en      String
+
+  entry DictionaryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+
+  @@index([entryId])
+}
+
+model ImageCredit {
+  id         String  @id @default(cuid())
+  entryId    String  @unique
+  authorName String
+  authorUrl  String?
+  sourceUrl  String?
+
+  entry DictionaryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+}
+
+// ── Study loop: FSRS cards + review log (PRD §4.4) ──────────────────────────
+
+enum KnownState {
+  ACTIVE
+  AUTO_KNOWN
+  USER_KNOWN
+  SUSPENDED
+}
+
+enum FsrsState {
+  NEW
+  LEARNING
+  REVIEW
+  RELEARNING
+}
+
+enum ReviewRating {
+  AGAIN
+  HARD
+  GOOD
+  EASY
+}
+
+enum ReviewMode {
+  STANDARD
+  LISTENING
+}
+
+model Card {
+  id                String     @id @default(cuid())
+  userId            String
+  dictionaryEntryId String
+  knownState        KnownState @default(ACTIVE)
+
+  // FSRS state — recomputable by replaying ReviewLog (the log is the source of truth)
+  due           DateTime  @default(now())
+  stability     Float     @default(0)
+  difficulty    Float     @default(0)
+  elapsedDays   Float     @default(0)
+  scheduledDays Float     @default(0)
+  reps          Int       @default(0)
+  lapses        Int       @default(0)
+  state         FsrsState @default(NEW)
+  lastReview    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dictionaryEntry DictionaryEntry @relation(fields: [dictionaryEntryId], references: [id])
+  reviewLogs      ReviewLog[]
+
+  @@unique([userId, dictionaryEntryId])
+  @@index([userId, due])
+  @@index([userId, knownState])
+}
+
+model ReviewLog {
+  id     String       @id @default(cuid())
+  cardId String
+  userId String
+  rating ReviewRating
+  mode   ReviewMode   @default(STANDARD)
+  // Answer latency feeds the knowledge model's performance signal (PRD §4.5)
+  latencyMs Int?
+
+  // FSRS snapshot at review time (ts-fsrs ReviewLog shape, enables replay)
+  state         FsrsState
+  due           DateTime
+  stability     Float
+  difficulty    Float
+  elapsedDays   Float
+  scheduledDays Float
+  reviewedAt    DateTime
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, reviewedAt])
+  @@index([userId, reviewedAt])
+}
+
+// ── Knowledge model (derived & recomputable, PRD §4.5) ──────────────────────
+
+model KnowledgeScore {
+  id                String   @id @default(cuid())
+  userId            String
+  dictionaryEntryId String
+  score             Float
+  // Component breakdown (performance / level / frequency priors) for transparency
+  components        Json?
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dictionaryEntryId])
+  @@index([userId, score])
+}
+
+// ── Courses (PRD §4.3) ──────────────────────────────────────────────────────
+
+model Course {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  description String?
+  cefrLevel   String?
+  order       Int      @default(0)
+  published   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  words       CourseWord[]
+  enrollments UserCourse[]
+}
+
+model CourseWord {
+  id                String @id @default(cuid())
+  courseId          String
+  dictionaryEntryId String
+  order             Int
+
+  course          Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  dictionaryEntry DictionaryEntry @relation(fields: [dictionaryEntryId], references: [id])
+
+  @@unique([courseId, dictionaryEntryId])
+  @@index([courseId, order])
+}
+
+model UserCourse {
+  id         String   @id @default(cuid())
+  userId     String
+  courseId   String
+  enrolledAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+}
+
+// ── Misc ────────────────────────────────────────────────────────────────────
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  message   String
+  createdAt DateTime @default(now())
 }

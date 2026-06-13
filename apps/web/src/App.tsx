@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { User } from '@vocabahn/shared';
 import { fetchHealth, fetchMe, logout } from './api';
+import { DictionaryCard } from './components/DictionaryCard';
 
 function StatusDot({ up }: { up: boolean }) {
   return (
@@ -11,9 +13,8 @@ function StatusDot({ up }: { up: boolean }) {
   );
 }
 
-function AccountCard() {
+function AccountCard({ user, isPending }: { user: User | null | undefined; isPending: boolean }) {
   const queryClient = useQueryClient();
-  const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const signOut = useMutation({
     mutationFn: logout,
     onSuccess: () => queryClient.setQueryData(['me'], null),
@@ -106,6 +107,8 @@ function SystemStatusCard() {
 }
 
 export default function App() {
+  const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
+
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-neutral-950 px-6 py-10 text-neutral-100">
       <header className="text-center">
@@ -115,10 +118,11 @@ export default function App() {
         </p>
       </header>
 
-      <AccountCard />
+      <AccountCard user={user} isPending={isPending} />
+      {user && <DictionaryCard />}
       <SystemStatusCard />
 
-      <p className="text-sm text-neutral-500">Phase 0 — foundation</p>
+      <p className="text-sm text-neutral-500">Phase 1 — data & dictionary</p>
     </main>
   );
 }
