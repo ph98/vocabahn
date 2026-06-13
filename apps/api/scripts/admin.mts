@@ -11,8 +11,9 @@
 import AdminJSExpress from '@adminjs/express';
 import * as AdminJSPrisma from '@adminjs/prisma';
 import { PrismaClient } from '@prisma/client';
-import AdminJS from 'adminjs';
+import AdminJS, { Router as AdminRouter } from 'adminjs';
 import express from 'express';
+import path from 'node:path';
 
 AdminJS.registerAdapter({
   Resource: AdminJSPrisma.Resource,
@@ -113,6 +114,20 @@ const router = AdminJSExpress.buildAuthenticatedRouter(
 );
 
 const app = express();
+
+// pnpm stores packages under node_modules/.pnpm/, and @adminjs/express serves its
+// frontend bundles/fonts via res.sendFile() with the default dotfiles:'ignore' —
+// which 404s every asset path containing the ".pnpm" dot-directory, leaving the UI
+// blank. Serve AdminJS's static assets ourselves with dotfiles allowed, before the
+// admin router so these handlers win (the dynamic components.bundle.js falls through).
+const assetRouter = express.Router();
+for (const asset of AdminRouter.assets) {
+  assetRouter.get(asset.path, (_req, res) => {
+    res.sendFile(path.resolve(asset.src), { dotfiles: 'allow' });
+  });
+}
+app.use(admin.options.rootPath, assetRouter);
+
 app.use(admin.options.rootPath, router);
 app.listen(port, () => {
   console.log(`AdminJS running on http://localhost:${port}${admin.options.rootPath}`);
