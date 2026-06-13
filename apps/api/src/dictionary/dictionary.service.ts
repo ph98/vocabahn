@@ -42,7 +42,9 @@ export class DictionaryService implements OnModuleInit {
       },
     });
     this.fuse.setCollection(entries.map((e) => this.toSearchResult(e)));
-    this.logger.log(`search index built: ${entries.length} entries`);
+    this.logger.log(
+      `search index built: ${entries.length} entries (index size ${this.fuse.getIndex().size()})`,
+    );
   }
 
   search(q: string): DictionarySearchResult[] {
