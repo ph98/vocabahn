@@ -8,9 +8,25 @@ export interface GeminiEnrichment {
   cefrLevel: string | null;
   usageNote: string | null;
   examples: { de: string; en: string }[];
+  collocations: { phrase: string; translation: string }[];
+  falseFriends: { word: string; explanation: string }[];
+  register: string | null;
+  mnemonic: string | null;
 }
 
 const MODEL = 'gemini-flash-lite-latest';
+
+const REGISTERS = [
+  'neutral',
+  'formal',
+  'informal',
+  'colloquial',
+  'vulgar',
+  'regional',
+  'dated',
+  'literary',
+  'technical',
+] as const;
 
 // Half sub-levels (Goethe / Profile Deutsch) — precise but reliably estimable.
 const CEFR_LEVELS = [
@@ -78,6 +94,19 @@ export class GeminiProvider {
       '  Give fewer (even just 2) for words with limited everyday usage rather than',
       '  padding with contrived sentences. Each item: the German sentence using this',
       '  word + its natural English translation.',
+      '- collocations: 0 to 4 common collocations, fixed phrases, or idioms that use',
+      '  this word (e.g. for "Hund": "auf den Hund kommen" → "to go to the dogs").',
+      '  Only include genuinely common ones; an empty list is fine if none stand out.',
+      '- falseFriends: 0 to 2 false friends for English speakers — words that look or',
+      '  sound similar but mean something different (e.g. "Rente" looks like "rent"',
+      '  but means "pension"). Each item: the misleading word + a one-sentence',
+      '  explanation. Empty list if none apply — do not force it.',
+      `- register: this word's typical register/domain, one of: ${REGISTERS.join(', ')}.`,
+      '  Use "neutral" for everyday words with no special register.',
+      '- mnemonic: ONE short, genuinely helpful memory hook (max ~20 words) connecting',
+      '  the word\'s sound or spelling to its meaning — e.g. via a cognate, a vivid',
+      '  image, or wordplay. Use "" if you cannot think of a good one; a weak mnemonic',
+      '  is worse than none.',
     ].join('\n');
 
     const res = await this.client.models.generateContent({
@@ -106,8 +135,45 @@ export class GeminiProvider {
                 required: ['de', 'en'],
               },
             },
+            collocations: {
+              type: Type.ARRAY,
+              minItems: 0,
+              maxItems: 4,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  phrase: { type: Type.STRING },
+                  translation: { type: Type.STRING },
+                },
+                required: ['phrase', 'translation'],
+              },
+            },
+            falseFriends: {
+              type: Type.ARRAY,
+              minItems: 0,
+              maxItems: 2,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  word: { type: Type.STRING },
+                  explanation: { type: Type.STRING },
+                },
+                required: ['word', 'explanation'],
+              },
+            },
+            register: { type: Type.STRING, enum: REGISTERS },
+            mnemonic: { type: Type.STRING },
           },
-          required: ['translation', 'cefrLevel', 'usageNote', 'examples'],
+          required: [
+            'translation',
+            'cefrLevel',
+            'usageNote',
+            'examples',
+            'collocations',
+            'falseFriends',
+            'register',
+            'mnemonic',
+          ],
         },
       },
     });
@@ -123,6 +189,10 @@ export class GeminiProvider {
       cefrLevel?: string;
       usageNote?: string;
       examples?: { de?: string; en?: string }[];
+      collocations?: { phrase?: string; translation?: string }[];
+      falseFriends?: { word?: string; explanation?: string }[];
+      register?: string;
+      mnemonic?: string;
     };
 
     return {
@@ -134,6 +204,20 @@ export class GeminiProvider {
         .filter((e): e is { de: string; en: string } => Boolean(e?.de && e?.en))
         .map((e) => ({ de: e.de.trim(), en: e.en.trim() }))
         .slice(0, 4),
+      collocations: (parsed.collocations ?? [])
+        .filter((c): c is { phrase: string; translation: string } =>
+          Boolean(c?.phrase && c?.translation),
+        )
+        .map((c) => ({ phrase: c.phrase.trim(), translation: c.translation.trim() }))
+        .slice(0, 4),
+      falseFriends: (parsed.falseFriends ?? [])
+        .filter((f): f is { word: string; explanation: string } =>
+          Boolean(f?.word && f?.explanation),
+        )
+        .map((f) => ({ word: f.word.trim(), explanation: f.explanation.trim() }))
+        .slice(0, 2),
+      register: parsed.register?.trim() || null,
+      mnemonic: parsed.mnemonic?.trim() || null,
     };
   }
 }

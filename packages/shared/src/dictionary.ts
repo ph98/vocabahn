@@ -152,6 +152,14 @@ export const dictionaryEntryDetailSchema = z.object({
   emoji: z.string().nullable(),
   cefrLevel: z.string().nullable(),
   usageNote: z.string().nullable(),
+  collocations: z.array(
+    z.object({ phrase: z.string(), translation: z.string() }),
+  ),
+  falseFriends: z.array(
+    z.object({ word: z.string(), explanation: z.string() }),
+  ),
+  register: z.string().nullable(),
+  mnemonic: z.string().nullable(),
   imageUrl: z.string().nullable(),
   audioUrl: z.string().nullable(),
   enrichmentStatus: enrichmentStatusSchema,

@@ -105,6 +105,12 @@ model DictionaryEntry {
   cefrLevel        String? // half sub-level, e.g. "A1.1" … "C2.2"
   // One concise learner-facing usage note (when/how to use + key grammar pitfall)
   usageNote        String?
+  // AI learner aids (PRD §19): common collocations/idioms, English false
+  // friends, register/domain, and a short memory hook.
+  collocations     Json?
+  falseFriends     Json?
+  register         String?
+  mnemonic         String?
   imageUrl         String?
   imageSource      ImageSource?
   audioUrl         String?

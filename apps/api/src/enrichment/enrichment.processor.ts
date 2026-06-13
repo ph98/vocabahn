@@ -53,6 +53,10 @@ export class EnrichmentProcessor extends WorkerHost {
     let cefrLevel = entry.cefrLevel;
     let usageNote = entry.usageNote;
     let examples: { de: string; en: string }[] = [];
+    let collocations = entry.collocations;
+    let falseFriends = entry.falseFriends;
+    let register = entry.register;
+    let mnemonic = entry.mnemonic;
 
     // 2. Gemini gap-fill. A real failure throws → job retries with backoff.
     const ai = await this.gemini.enrich({
@@ -67,6 +71,10 @@ export class EnrichmentProcessor extends WorkerHost {
       cefrLevel = ai.cefrLevel ?? cefrLevel;
       usageNote = ai.usageNote ?? usageNote;
       examples = ai.examples;
+      collocations = ai.collocations;
+      falseFriends = ai.falseFriends;
+      register = ai.register ?? register;
+      mnemonic = ai.mnemonic ?? mnemonic;
     }
 
     // 3 & 4. Image and audio are optional polish — never block ENRICHED on them.
@@ -97,6 +105,10 @@ export class EnrichmentProcessor extends WorkerHost {
           emoji,
           cefrLevel,
           usageNote,
+          collocations: collocations ?? undefined,
+          falseFriends: falseFriends ?? undefined,
+          register,
+          mnemonic,
           audioUrl,
           imageUrl: image?.imageUrl ?? entry.imageUrl,
           imageSource: image ? 'UNSPLASH' : entry.imageSource,
