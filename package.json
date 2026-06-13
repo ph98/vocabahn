@@ -17,5 +17,13 @@
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.33.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@tiptap/core": "2.27.2",
+      "@tiptap/pm": "2.27.2",
+      "@tiptap/react": "2.27.2",
+      "@tiptap/starter-kit": "2.27.2"
+    }
   }
 }

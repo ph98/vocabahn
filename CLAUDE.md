@@ -50,6 +50,15 @@ Run from the repo root unless noted:
 - `pnpm --filter @vocabahn/api prisma:migrate` — Prisma migrate dev (loads root `.env` via dotenv-cli).
 - `pnpm --filter @vocabahn/api prisma:generate` — regenerate Prisma client.
 
+Data tooling (all in `apps/api`, all load root `.env`):
+- `ingest:lexicon [--limit N | --force]` — stream the 938 MB Wiktextract dump into the lexicon tables.
+- `seed:dictionary [--top N]` — promote top-N-by-frequency lexicon entries to PENDING dictionary entries.
+
+Monitoring (see `DEV_TOOLS.md` for details):
+- `stats` — terminal snapshot of the whole system (counts, enrichment funnel, top words).
+- `studio` — Prisma Studio table browser (:5555).
+- `admin` — AdminJS panel (:3001/admin; creds in `.env`). **Must stay `admin.mts`** (ESM); the root `pnpm.overrides` pinning `@tiptap/*` to 2.27.2 is required or it crashes.
+
 Health check: `curl http://localhost:3000/api/v1/health` (reports db + redis status; the web app's status page consumes the same endpoint).
 
 CI (`.github/workflows/ci.yml`): build, lint (includes `eslint-plugin-jsx-a11y`), `pnpm audit`. Axe component tests still to come.

@@ -22,3 +22,6 @@ coverage/
 
 # pnpm local store
 .pnpm-store/
+
+# AdminJS frontend bundle
+.adminjs/
