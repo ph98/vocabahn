@@ -65,7 +65,7 @@ function EntryDetail({
           Couldn't load “{word}”.
         </p>
       )}
-      {entry && <EntryBody entry={entry} onSelectWord={onSelectWord} />}
+      {entry && <EntryBody key={entry.word} entry={entry} onSelectWord={onSelectWord} />}
     </div>
   );
 }
@@ -370,6 +370,201 @@ function AdjectiveDeclensionSection({ declension }: { declension: AdjectiveDecle
   );
 }
 
+/** Collocations/idioms, false friends, register, and a memory hook. */
+function LearnerAidsSection({ entry }: { entry: DictionaryEntryDetail }) {
+  return (
+    <div className="space-y-4">
+      {entry.register && entry.register !== 'neutral' && (
+        <p className="text-sm">
+          <span className="text-neutral-500">Register: </span>
+          <span className="rounded bg-neutral-800 px-1.5 capitalize text-neutral-300">
+            {entry.register}
+          </span>
+        </p>
+      )}
+
+      {entry.mnemonic && (
+        <section>
+          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Memory hook
+          </h4>
+          <p className="text-sm text-neutral-200">{entry.mnemonic}</p>
+        </section>
+      )}
+
+      {entry.collocations.length > 0 && (
+        <section>
+          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Collocations &amp; idioms
+          </h4>
+          <ul className="space-y-1.5 text-sm">
+            {entry.collocations.map((c) => (
+              <li key={c.phrase}>
+                <span lang="de">{c.phrase}</span>
+                <span className="text-neutral-400"> — {c.translation}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {entry.falseFriends.length > 0 && (
+        <section>
+          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            False friends
+          </h4>
+          <ul className="space-y-1.5 text-sm">
+            {entry.falseFriends.map((f) => (
+              <li key={f.word}>
+                <span lang="en" className="font-medium">
+                  {f.word}
+                </span>
+                <span className="text-neutral-400"> — {f.explanation}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/** Word family chips + pronunciation variants. */
+function FamilySection({
+  entry,
+  onSelectWord,
+}: {
+  entry: DictionaryEntryDetail;
+  onSelectWord: (word: string) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      {entry.wordFamily.length > 0 && (
+        <section>
+          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Word family
+          </h4>
+          <ul className="flex flex-wrap gap-1.5">
+            {entry.wordFamily.map((f) => (
+              <li key={f.word}>
+                <button
+                  type="button"
+                  lang="de"
+                  onClick={() => onSelectWord(f.word)}
+                  className="min-h-8 rounded-full border border-neutral-700 px-2.5 py-0.5 text-sm transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  {f.word}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {entry.pronunciation.length > 1 && (
+        <section>
+          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Pronunciation
+          </h4>
+          <ul className="space-y-1.5 text-sm">
+            {entry.pronunciation.map((p, i) => (
+              <li key={i} className="flex items-center gap-2">
+                {p.audioUrl && (
+                  <AudioButton
+                    src={p.audioUrl}
+                    label={`Pronounce ${entry.word}${p.note ? ` (${p.note})` : ''}`}
+                  />
+                )}
+                {p.ipa && <span>{p.ipa}</span>}
+                {p.note && <span className="text-neutral-500">{p.note}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}
+
+/** Morphology: verb conjugation or noun/adjective declension tables. */
+function MorphologySection({ entry }: { entry: DictionaryEntryDetail }) {
+  return (
+    <div>
+      {entry.conjugation && <ConjugationSection conjugation={entry.conjugation} />}
+      {entry.nounDeclension && <NounDeclensionSection declension={entry.nounDeclension} />}
+      {entry.adjectiveDeclension && (
+        <AdjectiveDeclensionSection declension={entry.adjectiveDeclension} />
+      )}
+    </div>
+  );
+}
+
+/** Meanings, synonyms, etymology, and the raw forms table. */
+function DetailsSection({
+  glosses,
+  synonyms,
+  entry,
+}: {
+  glosses: string[];
+  synonyms: string[];
+  entry: DictionaryEntryDetail;
+}) {
+  return (
+    <div className="text-sm">
+      {glosses.length > 0 && (
+        <div>
+          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Meanings
+          </h5>
+          <ol className="list-decimal space-y-1 pl-5">
+            {glosses.map((g) => (
+              <li key={g}>{g}</li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {synonyms.length > 0 && (
+        <p className="mt-3">
+          <span className="text-neutral-500">Synonyms: </span>
+          <span lang="de">{synonyms.join(', ')}</span>
+        </p>
+      )}
+
+      {entry.etymology && (
+        <div className="mt-3">
+          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Etymology
+          </h5>
+          <p className="text-neutral-300">{entry.etymology}</p>
+        </div>
+      )}
+
+      {entry.forms.length > 0 && (
+        <div className="mt-3">
+          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+            Forms
+          </h5>
+          <div className="max-h-64 overflow-y-auto">
+            <table className="w-full text-left">
+              <tbody>
+                {entry.forms.map((f, i) => (
+                  <tr key={`${f.form}-${i}`} className="border-b border-neutral-900">
+                    <td lang="de" className="py-1 pr-3 align-top">
+                      {f.form}
+                    </td>
+                    <td className="py-1 text-neutral-500">{f.tags.join(', ')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EntryBody({
   entry,
   onSelectWord,
@@ -382,6 +577,25 @@ function EntryBody({
   const synonyms = [...new Set(entry.senses.flatMap((s) => s.synonyms))];
   const hasDetails =
     glosses.length > 0 || synonyms.length > 0 || Boolean(entry.etymology) || entry.forms.length > 0;
+  const hasMorphology = Boolean(
+    entry.conjugation || entry.nounDeclension || entry.adjectiveDeclension,
+  );
+  const hasFamily = entry.wordFamily.length > 0 || entry.pronunciation.length > 1;
+  const hasAids =
+    entry.collocations.length > 0 ||
+    entry.falseFriends.length > 0 ||
+    entry.mnemonic !== null ||
+    (entry.register !== null && entry.register !== 'neutral');
+
+  const tabs = [
+    { id: 'overview' as const, label: 'Overview' },
+    ...(hasMorphology ? [{ id: 'morphology' as const, label: 'Morphology' }] : []),
+    ...(hasFamily ? [{ id: 'family' as const, label: 'Family' }] : []),
+    ...(hasAids ? [{ id: 'aids' as const, label: 'Tips' }] : []),
+    ...(hasDetails ? [{ id: 'details' as const, label: 'Details' }] : []),
+  ];
+  const [active, setActive] = useState<(typeof tabs)[number]['id']>('overview');
+  const activeTab = tabs.some((t) => t.id === active) ? active : 'overview';
 
   return (
     <article aria-live="polite">
@@ -473,137 +687,69 @@ function EntryBody({
 
       {entry.translation && <p className="mb-3 text-lg">{entry.translation}</p>}
 
-      {entry.usageNote && (
-        <section className="mb-4 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2">
-          <h4 className="mb-0.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
-            How to use
-          </h4>
-          <p className="text-sm text-neutral-200">{entry.usageNote}</p>
-        </section>
+      {tabs.length > 1 && (
+        <div role="tablist" aria-label="Entry sections" className="mb-3 flex gap-1 overflow-x-auto border-b border-neutral-800">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              onClick={() => setActive(tab.id)}
+              className={`min-h-11 shrink-0 rounded-t-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                activeTab === tab.id
+                  ? 'border-b-2 border-white text-white'
+                  : 'text-neutral-400 hover:bg-neutral-800'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
       )}
 
-      {entry.examples.length > 0 && (
-        <section className="mb-4">
-          <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">
-            Examples
-          </h4>
-          <ul className="space-y-3">
-            {entry.examples.map((ex) => (
-              <li key={ex.de} className="flex items-start gap-2">
-                {ex.audioUrl && <AudioButton src={ex.audioUrl} label={`Play: ${ex.de}`} />}
-                <span className="min-w-0">
-                  <span lang="de" className="block">
-                    {ex.de}
-                  </span>
-                  <span className="block text-sm text-neutral-400">{ex.en}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <div role="tabpanel">
+        {activeTab === 'overview' && (
+          <>
+            {entry.usageNote && (
+              <section className="mb-4 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2">
+                <h4 className="mb-0.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
+                  How to use
+                </h4>
+                <p className="text-sm text-neutral-200">{entry.usageNote}</p>
+              </section>
+            )}
 
-      {entry.conjugation && <ConjugationSection conjugation={entry.conjugation} />}
-      {entry.nounDeclension && <NounDeclensionSection declension={entry.nounDeclension} />}
-      {entry.adjectiveDeclension && <AdjectiveDeclensionSection declension={entry.adjectiveDeclension} />}
+            {entry.examples.length > 0 && (
+              <section className="mb-4">
+                <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">
+                  Examples
+                </h4>
+                <ul className="space-y-3">
+                  {entry.examples.map((ex) => (
+                    <li key={ex.de} className="flex items-start gap-2">
+                      {ex.audioUrl && <AudioButton src={ex.audioUrl} label={`Play: ${ex.de}`} />}
+                      <span className="min-w-0">
+                        <span lang="de" className="block">
+                          {ex.de}
+                        </span>
+                        <span className="block text-sm text-neutral-400">{ex.en}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+          </>
+        )}
 
-      {entry.wordFamily.length > 0 && (
-        <section className="mb-4">
-          <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">
-            Word family
-          </h4>
-          <ul className="flex flex-wrap gap-1.5">
-            {entry.wordFamily.map((f) => (
-              <li key={f.word}>
-                <button
-                  type="button"
-                  lang="de"
-                  onClick={() => onSelectWord(f.word)}
-                  className="min-h-8 rounded-full border border-neutral-700 px-2.5 py-0.5 text-sm transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  {f.word}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {entry.pronunciation.length > 1 && (
-        <section className="mb-4">
-          <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">
-            Pronunciation
-          </h4>
-          <ul className="space-y-1.5 text-sm">
-            {entry.pronunciation.map((p, i) => (
-              <li key={i} className="flex items-center gap-2">
-                {p.audioUrl && <AudioButton src={p.audioUrl} label={`Pronounce ${entry.word}${p.note ? ` (${p.note})` : ''}`} />}
-                {p.ipa && <span>{p.ipa}</span>}
-                {p.note && <span className="text-neutral-500">{p.note}</span>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {hasDetails && (
-        <details className="mt-2 border-t border-neutral-800 pt-2 text-sm">
-          <summary className="cursor-pointer text-neutral-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
-            Dictionary details
-          </summary>
-
-          {glosses.length > 0 && (
-            <div className="mt-3">
-              <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                Meanings
-              </h5>
-              <ol className="list-decimal space-y-1 pl-5">
-                {glosses.map((g) => (
-                  <li key={g}>{g}</li>
-                ))}
-              </ol>
-            </div>
-          )}
-
-          {synonyms.length > 0 && (
-            <p className="mt-3">
-              <span className="text-neutral-500">Synonyms: </span>
-              <span lang="de">{synonyms.join(', ')}</span>
-            </p>
-          )}
-
-          {entry.etymology && (
-            <div className="mt-3">
-              <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                Etymology
-              </h5>
-              <p className="text-neutral-300">{entry.etymology}</p>
-            </div>
-          )}
-
-          {entry.forms.length > 0 && (
-            <div className="mt-3">
-              <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
-                Forms
-              </h5>
-              <div className="max-h-64 overflow-y-auto">
-                <table className="w-full text-left">
-                  <tbody>
-                    {entry.forms.map((f, i) => (
-                      <tr key={`${f.form}-${i}`} className="border-b border-neutral-900">
-                        <td lang="de" className="py-1 pr-3 align-top">
-                          {f.form}
-                        </td>
-                        <td className="py-1 text-neutral-500">{f.tags.join(', ')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-        </details>
-      )}
+        {activeTab === 'morphology' && <MorphologySection entry={entry} />}
+        {activeTab === 'family' && <FamilySection entry={entry} onSelectWord={onSelectWord} />}
+        {activeTab === 'aids' && <LearnerAidsSection entry={entry} />}
+        {activeTab === 'details' && (
+          <DetailsSection glosses={glosses} synonyms={synonyms} entry={entry} />
+        )}
+      </div>
     </article>
   );
 }
