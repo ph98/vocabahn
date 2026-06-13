@@ -31,7 +31,15 @@ function useDebounced(value: string, ms: number): string {
   return debounced;
 }
 
-function EntryDetail({ word, onBack }: { word: string; onBack: () => void }) {
+function EntryDetail({
+  word,
+  onBack,
+  onSelectWord,
+}: {
+  word: string;
+  onBack: () => void;
+  onSelectWord: (word: string) => void;
+}) {
   const { data: entry, isPending, isError } = useQuery({
     queryKey: ['dictionary-entry', word],
     queryFn: () => fetchDictionaryEntry(word),
@@ -57,7 +65,7 @@ function EntryDetail({ word, onBack }: { word: string; onBack: () => void }) {
           Couldn't load “{word}”.
         </p>
       )}
-      {entry && <EntryBody entry={entry} />}
+      {entry && <EntryBody entry={entry} onSelectWord={onSelectWord} />}
     </div>
   );
 }
@@ -362,7 +370,13 @@ function AdjectiveDeclensionSection({ declension }: { declension: AdjectiveDecle
   );
 }
 
-function EntryBody({ entry }: { entry: DictionaryEntryDetail }) {
+function EntryBody({
+  entry,
+  onSelectWord,
+}: {
+  entry: DictionaryEntryDetail;
+  onSelectWord: (word: string) => void;
+}) {
   const article = articleFor(entry.gender);
   const glosses = [...new Set(entry.senses.flatMap((s) => s.glosses))];
   const synonyms = [...new Set(entry.senses.flatMap((s) => s.synonyms))];
@@ -391,6 +405,15 @@ function EntryBody({ entry }: { entry: DictionaryEntryDetail }) {
           )}
           {entry.frequencyRank && <span>#{entry.frequencyRank} by frequency</span>}
         </p>
+        {entry.topics.length > 0 && (
+          <p className="mt-2 flex flex-wrap gap-1.5">
+            {entry.topics.map((topic) => (
+              <span key={topic} className="rounded-full bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300">
+                {topic}
+              </span>
+            ))}
+          </p>
+        )}
       </header>
 
       {(entry.enrichmentStatus === 'PENDING' || entry.enrichmentStatus === 'ENRICHING') && (
@@ -469,6 +492,45 @@ function EntryBody({ entry }: { entry: DictionaryEntryDetail }) {
       {entry.conjugation && <ConjugationSection conjugation={entry.conjugation} />}
       {entry.nounDeclension && <NounDeclensionSection declension={entry.nounDeclension} />}
       {entry.adjectiveDeclension && <AdjectiveDeclensionSection declension={entry.adjectiveDeclension} />}
+
+      {entry.wordFamily.length > 0 && (
+        <section className="mb-4">
+          <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">
+            Word family
+          </h4>
+          <ul className="flex flex-wrap gap-1.5">
+            {entry.wordFamily.map((f) => (
+              <li key={f.word}>
+                <button
+                  type="button"
+                  lang="de"
+                  onClick={() => onSelectWord(f.word)}
+                  className="min-h-8 rounded-full border border-neutral-700 px-2.5 py-0.5 text-sm transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  {f.word}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {entry.pronunciation.length > 1 && (
+        <section className="mb-4">
+          <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">
+            Pronunciation
+          </h4>
+          <ul className="space-y-1.5 text-sm">
+            {entry.pronunciation.map((p, i) => (
+              <li key={i} className="flex items-center gap-2">
+                {p.audioUrl && <AudioButton src={p.audioUrl} label={`Pronounce ${entry.word}${p.note ? ` (${p.note})` : ''}`} />}
+                {p.ipa && <span>{p.ipa}</span>}
+                {p.note && <span className="text-neutral-500">{p.note}</span>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {hasDetails && (
         <details className="mt-2 border-t border-neutral-800 pt-2 text-sm">
@@ -553,7 +615,7 @@ export function DictionaryCard() {
       </h2>
 
       {selected ? (
-        <EntryDetail word={selected} onBack={() => setSelected(null)} />
+        <EntryDetail word={selected} onBack={() => setSelected(null)} onSelectWord={setSelected} />
       ) : (
         <>
           <label htmlFor="dict-search" className="sr-only">

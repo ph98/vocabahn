@@ -120,6 +120,19 @@ export const adjectiveDeclensionSchema = z.object({
   superlative: adjectiveDegreeSchema.nullable(),
 });
 
+export const wordFamilyEntrySchema = z.object({
+  word: z.string(),
+});
+
+export const pronunciationVariantSchema = z.object({
+  ipa: z.string().nullable(),
+  note: z.string().nullable(),
+  audioUrl: z.string().nullable(),
+});
+
+export type WordFamilyEntry = z.infer<typeof wordFamilyEntrySchema>;
+export type PronunciationVariant = z.infer<typeof pronunciationVariantSchema>;
+
 export type NounDeclension = z.infer<typeof nounDeclensionSchema>;
 export type AdjectiveCaseForms = z.infer<typeof adjectiveCaseFormsSchema>;
 export type AdjectiveDeclensionTable = z.infer<typeof adjectiveDeclensionTableSchema>;
@@ -154,6 +167,9 @@ export const dictionaryEntryDetailSchema = z.object({
   conjugation: verbConjugationSchema.nullable(),
   nounDeclension: nounDeclensionSchema.nullable(),
   adjectiveDeclension: adjectiveDeclensionSchema.nullable(),
+  wordFamily: z.array(wordFamilyEntrySchema),
+  pronunciation: z.array(pronunciationVariantSchema),
+  topics: z.array(z.string()),
   imageCredit: z
     .object({ authorName: z.string(), authorUrl: z.string().nullable() })
     .nullable(),
