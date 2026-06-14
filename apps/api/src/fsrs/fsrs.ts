@@ -1,5 +1,5 @@
 import { Card as PrismaCard, FsrsState, ReviewRating } from '@prisma/client';
-import { Card as FsrsCard, fsrs, Grade, State } from 'ts-fsrs';
+import { Card as FsrsCard, createEmptyCard, fsrs, Grade, State } from 'ts-fsrs';
 
 // Short-term (same-day) learning steps rely on a `learning_steps` counter
 // that isn't persisted on the Prisma `Card` model. Disabling short-term
@@ -12,6 +12,11 @@ export function createScheduler() {
 
 const FSRS_STATES: FsrsState[] = ['NEW', 'LEARNING', 'REVIEW', 'RELEARNING'];
 const FSRS_RATINGS: ReviewRating[] = ['AGAIN', 'HARD', 'GOOD', 'EASY'];
+
+/** A brand-new card's FSRS state, used as the replay starting point (PRD §4.4 offline sync). */
+export function emptyFsrsCard(): FsrsCard {
+  return createEmptyCard();
+}
 
 export function toFsrsCard(card: PrismaCard): FsrsCard {
   return {

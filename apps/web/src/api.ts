@@ -10,9 +10,11 @@ import {
   healthResponseSchema,
   knownWordsResponseSchema,
   submitReviewResponseSchema,
+  syncReviewsResponseSchema,
   userSchema,
   type ReviewRating,
   type SubmitFeedbackBody,
+  type SyncReviewItem,
   type User,
 } from '@vocabahn/shared';
 import axios, { isAxiosError } from 'axios';
@@ -82,6 +84,11 @@ export async function submitReview(
 ) {
   const { data } = await api.post(`/reviews/${encodeURIComponent(cardId)}`, body);
   return submitReviewResponseSchema.parse(data);
+}
+
+export async function syncReviews(reviews: SyncReviewItem[]) {
+  const { data } = await api.post('/reviews/sync', { reviews });
+  return syncReviewsResponseSchema.parse(data).synced;
 }
 
 export async function fetchKnownWords() {

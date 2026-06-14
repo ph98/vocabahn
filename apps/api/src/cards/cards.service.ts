@@ -1,7 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { AutoGraduation, ReviewCard, ReviewRating } from '@vocabahn/shared';
+import type { AutoGraduation, ReviewCard, ReviewRating, SyncReviewItem } from '@vocabahn/shared';
 import { PrismaService } from '../prisma/prisma.service';
-import { buildReviewLogSnapshot, createScheduler, fromFsrsCard, ratingToFsrs, toFsrsCard } from '../fsrs/fsrs';
+import {
+  buildReviewLogSnapshot,
+  createScheduler,
+  emptyFsrsCard,
+  fromFsrsCard,
+  ratingToFsrs,
+  toFsrsCard,
+} from '../fsrs/fsrs';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 
 const cardInclude = {
@@ -91,6 +98,74 @@ export class CardsService {
     const autoGraduated = await this.knowledge.recomputeAfterReview(userId, card.id);
 
     return { card: this.toReviewCard(saved), autoGraduated };
+  }
+
+  /**
+   * Syncs reviews completed offline (PRD §4.4). Each card touched is fully
+   * replayed from an empty FSRS state through its complete ReviewLog history
+   * (existing + newly-synced, sorted by `reviewedAt`) — the log is the source
+   * of truth, so this also self-heals out-of-order submissions.
+   */
+  async syncReviews(userId: string, items: SyncReviewItem[]): Promise<{ synced: number }> {
+    const cardIds = [...new Set(items.map((i) => i.cardId))];
+    const owned = await this.prisma.card.findMany({
+      where: { id: { in: cardIds }, userId },
+      select: { id: true },
+    });
+    const ownedIds = new Set(owned.map((c) => c.id));
+    const valid = items.filter((i) => ownedIds.has(i.cardId));
+
+    const byCard = new Map<string, SyncReviewItem[]>();
+    for (const item of valid) {
+      const bucket = byCard.get(item.cardId);
+      if (bucket) bucket.push(item);
+      else byCard.set(item.cardId, [item]);
+    }
+
+    for (const [cardId, newItems] of byCard) {
+      await this.replayCard(userId, cardId, newItems);
+      await this.knowledge.recomputeAfterReview(userId, cardId);
+    }
+
+    return { synced: valid.length };
+  }
+
+  private async replayCard(userId: string, cardId: string, newItems: SyncReviewItem[]): Promise<void> {
+    const existingLogs = await this.prisma.reviewLog.findMany({
+      where: { cardId },
+      orderBy: { reviewedAt: 'asc' },
+      select: { id: true, rating: true, latencyMs: true, reviewedAt: true },
+    });
+
+    type Entry = { id?: string; rating: ReviewRating; latencyMs: number | null; reviewedAt: Date };
+    const merged: Entry[] = [
+      ...existingLogs.map((l) => ({ id: l.id, rating: l.rating, latencyMs: l.latencyMs, reviewedAt: l.reviewedAt })),
+      ...newItems.map((i) => ({ rating: i.rating, latencyMs: i.latencyMs ?? null, reviewedAt: new Date(i.reviewedAt) })),
+    ].sort((a, b) => a.reviewedAt.getTime() - b.reviewedAt.getTime());
+
+    let fsrsCard = emptyFsrsCard();
+    const ops = [];
+    for (const entry of merged) {
+      const { card: updated } = this.scheduler.next(fsrsCard, entry.reviewedAt, ratingToFsrs(entry.rating));
+      const snapshot = buildReviewLogSnapshot(updated, entry.reviewedAt);
+      ops.push(
+        entry.id
+          ? this.prisma.reviewLog.update({ where: { id: entry.id }, data: snapshot })
+          : this.prisma.reviewLog.create({
+              data: {
+                cardId,
+                userId,
+                rating: entry.rating,
+                latencyMs: entry.latencyMs ?? undefined,
+                ...snapshot,
+              },
+            }),
+      );
+      fsrsCard = updated;
+    }
+    ops.push(this.prisma.card.update({ where: { id: cardId }, data: fromFsrsCard(fsrsCard) }));
+
+    await this.prisma.$transaction(ops);
   }
 
   private findOwnedCard(userId: string, cardId: string) {

@@ -2,9 +2,64 @@ import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
+import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['icon.svg'],
+      manifest: {
+        name: 'Vocabahn',
+        short_name: 'Vocabahn',
+        description: 'German vocabulary learning with spaced repetition',
+        theme_color: '#0a0a0a',
+        background_color: '#0a0a0a',
+        display: 'standalone',
+        start_url: '/',
+        icons: [
+          { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: '/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+      workbox: {
+        // Due cards and dictionary entries are the data a review session
+        // needs offline; cache them with a network-first strategy so a
+        // stale-but-usable response is available when offline.
+        runtimeCaching: [
+          {
+            urlPattern: /\/api\/v1\/reviews\/due/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'reviews-due',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 },
+            },
+          },
+          {
+            urlPattern: /\/api\/v1\/dictionary\//,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'dictionary-entries',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 7 },
+            },
+          },
+          {
+            urlPattern: ({ request }) => request.destination === 'audio' || request.destination === 'image',
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'media-assets',
+              expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 30 },
+            },
+          },
+        ],
+      },
+    }),
+  ],
   resolve: {
     alias: {
       // Use the shared package's TS source so Vite serves ESM (the dist build

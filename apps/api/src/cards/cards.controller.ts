@@ -2,8 +2,11 @@ import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/co
 import {
   dueCardsQuerySchema,
   submitReviewBodySchema,
+  syncReviewsBodySchema,
   type DueCardsResponse,
   type SubmitReviewResponse,
+  type SyncReviewsBody,
+  type SyncReviewsResponse,
 } from '@vocabahn/shared';
 import { CurrentUserId, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -22,6 +25,15 @@ export class CardsController {
   ): Promise<DueCardsResponse> {
     const cards = await this.cards.getDueCards(userId, query);
     return { cards };
+  }
+
+  @Post('sync')
+  async sync(
+    @Body(new ZodValidationPipe(syncReviewsBodySchema))
+    body: SyncReviewsBody,
+    @CurrentUserId() userId: string,
+  ): Promise<SyncReviewsResponse> {
+    return this.cards.syncReviews(userId, body.reviews);
   }
 
   @Post(':cardId')

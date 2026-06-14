@@ -6,6 +6,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useDrag } from '@use-gesture/react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchDictionaryEntry, fetchDueCards, submitReview } from '../api';
+import { enqueueReview, flushQueue, getQueueCount } from '../offline/queue';
+import { useOnlineStatus } from '../offline/useOnlineStatus';
 import { AudioButton, EntryBody } from './DictionaryCard';
 
 /** Card entry merged with the full dictionary entry once it's fetched. */
@@ -170,15 +172,46 @@ export function ReviewSession() {
   const entry: CardEntry | undefined = card && { ...card.entry, ...detail };
 
   const [autoGraduatedCount, setAutoGraduatedCount] = useState(0);
+  const isOnline = useOnlineStatus();
+  const [queuedCount, setQueuedCount] = useState(0);
+
+  const refreshQueuedCount = () => {
+    void getQueueCount().then(setQueuedCount);
+  };
+
+  // Sync any reviews queued while offline as soon as we're back online.
+  useEffect(() => {
+    refreshQueuedCount();
+    if (!isOnline) return;
+    void flushQueue().then((synced) => {
+      if (synced === 0) return;
+      refreshQueuedCount();
+      void queryClient.invalidateQueries({ queryKey: ['due-cards'] });
+      void queryClient.invalidateQueries({ queryKey: ['courses'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['known-words'] });
+    });
+  }, [isOnline, queryClient]);
 
   const reviewMutation = useMutation({
-    mutationFn: (vars: { cardId: string; rating: ReviewRating; latencyMs?: number }) =>
+    mutationFn: (vars: { cardId: string; rating: ReviewRating; latencyMs?: number; reviewedAt: string }) =>
       submitReview(vars.cardId, { rating: vars.rating, latencyMs: vars.latencyMs }),
     onSuccess: ({ autoGraduated }) => {
       void queryClient.invalidateQueries({ queryKey: ['courses'] });
       if (autoGraduated && autoGraduated.count > 0) {
         setAutoGraduatedCount((n) => n + autoGraduated.count);
       }
+    },
+    // Offline (or a flaky connection): queue the review for sync on reconnect
+    // rather than losing it (PRD §4.4).
+    onError: async (_error, vars) => {
+      await enqueueReview({
+        cardId: vars.cardId,
+        rating: vars.rating,
+        latencyMs: vars.latencyMs,
+        reviewedAt: vars.reviewedAt,
+      });
+      refreshQueuedCount();
     },
   });
 
@@ -194,11 +227,13 @@ export function ReviewSession() {
   );
 
   const advance = (rating: ReviewRating, current: ReviewCard) => {
-    reviewMutation.mutate({
-      cardId: current.id,
-      rating,
-      latencyMs: revealedAt.current ? Date.now() - revealedAt.current : undefined,
-    });
+    const latencyMs = revealedAt.current ? Date.now() - revealedAt.current : undefined;
+    const reviewedAt = new Date().toISOString();
+    if (isOnline) {
+      reviewMutation.mutate({ cardId: current.id, rating, latencyMs, reviewedAt });
+    } else {
+      void enqueueReview({ cardId: current.id, rating, latencyMs, reviewedAt }).then(refreshQueuedCount);
+    }
     setStats((s) => ({ ...s, [rating]: s[rating] + 1 }));
     setRevealed(false);
     revealedAt.current = null;
@@ -301,6 +336,17 @@ export function ReviewSession() {
   return (
     <section aria-label="Review session" className="space-y-4">
       <h2 className="text-sm font-medium uppercase tracking-wide text-neutral-400">Review</h2>
+
+      {(!isOnline || queuedCount > 0) && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-2.5 text-sm text-amber-300"
+        >
+          {!isOnline ? "You're offline — reviews are saved on this device" : 'Syncing offline reviews…'}
+          {queuedCount > 0 && ` (${queuedCount} queued)`}
+        </div>
+      )}
 
       {autoGraduatedCount > 0 && (
         <div

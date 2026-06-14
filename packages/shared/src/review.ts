@@ -56,3 +56,26 @@ export const submitReviewResponseSchema = z.object({
   autoGraduated: autoGraduationSchema.nullable(),
 });
 export type SubmitReviewResponse = z.infer<typeof submitReviewResponseSchema>;
+
+// ── Offline review sync (PRD §4.4) ──────────────────────────────────────────
+// Reviews completed while offline are queued client-side with their original
+// timestamp, then replayed in timestamp order; server-side FSRS state is
+// recomputed from the full ReviewLog (the log is the source of truth).
+
+export const syncReviewItemSchema = z.object({
+  cardId: z.string(),
+  rating: reviewRatingSchema,
+  latencyMs: z.number().int().nonnegative().optional(),
+  reviewedAt: z.string(),
+});
+export type SyncReviewItem = z.infer<typeof syncReviewItemSchema>;
+
+export const syncReviewsBodySchema = z.object({
+  reviews: z.array(syncReviewItemSchema).min(1).max(200),
+});
+export type SyncReviewsBody = z.infer<typeof syncReviewsBodySchema>;
+
+export const syncReviewsResponseSchema = z.object({
+  synced: z.number(),
+});
+export type SyncReviewsResponse = z.infer<typeof syncReviewsResponseSchema>;
