@@ -12,6 +12,7 @@
     "studio": "dotenv -e ../../.env -- prisma studio",
     "ingest:lexicon": "dotenv -e ../../.env -- tsx scripts/ingest-lexicon.ts",
     "seed:dictionary": "dotenv -e ../../.env -- tsx scripts/seed-dictionary.ts",
+    "seed:course": "dotenv -e ../../.env -- tsx scripts/seed-course.ts",
     "stats": "dotenv -e ../../.env -- tsx scripts/stats.ts",
     "admin": "dotenv -e ../../.env -- tsx scripts/admin.mts"
   },
@@ -40,6 +41,7 @@
     "ioredis": "^5.6.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "ts-fsrs": "^5.4.1",
     "zod": "^3.25.0"
   },
   "devDependencies": {

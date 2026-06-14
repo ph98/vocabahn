@@ -1,0 +1,14 @@
+.git
+node_modules
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+data/
+apps/api/static/
+.adminjs/
+.pnpm-store/
+*.log
+.DS_Store
+.env
+.env.*
+!.env.example

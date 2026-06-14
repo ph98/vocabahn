@@ -9,6 +9,7 @@ import type {
   VerbConjugation,
 } from '@vocabahn/shared';
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { fetchDictionaryEntry, searchDictionary } from '../api';
 
 const ARTICLES: Record<string, string> = { m: 'der', f: 'die', n: 'das' };
@@ -55,7 +56,7 @@ function EntryDetail({
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 min-h-11 rounded-xl border border-neutral-700 px-4 text-sm transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="mb-4 min-h-11 rounded-xl border border-neutral-700 px-4 text-sm transition-colors hover:border-neutral-600 hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
         ← Back to results
       </button>
@@ -71,7 +72,7 @@ function EntryDetail({
 }
 
 /** Compact, keyboard-accessible "play audio" button backed by a hidden <audio>. */
-function AudioButton({ src, label }: { src: string; label: string }) {
+export function AudioButton({ src, label }: { src: string; label: string }) {
   const ref = useRef<HTMLAudioElement>(null);
   return (
     <span className="inline-flex items-center align-middle">
@@ -195,7 +196,7 @@ function ConjugationSection({ conjugation }: { conjugation: VerbConjugation }) {
             aria-selected={active === tab}
             onClick={() => setActive(tab)}
             className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-              active === tab ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:bg-neutral-800'
+              active === tab ? 'bg-indigo-500/20 text-indigo-300' : 'text-neutral-400 hover:bg-neutral-800'
             }`}
           >
             {MOOD_LABELS[tab]}
@@ -331,7 +332,7 @@ function AdjectiveDeclensionSection({ declension }: { declension: AdjectiveDecle
               aria-selected={activeDegree === d}
               onClick={() => setActiveDegree(d)}
               className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                activeDegree === d ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:bg-neutral-800'
+                activeDegree === d ? 'bg-indigo-500/20 text-indigo-300' : 'text-neutral-400 hover:bg-neutral-800'
               }`}
             >
               {DEGREE_LABELS[d]}
@@ -356,7 +357,7 @@ function AdjectiveDeclensionSection({ declension }: { declension: AdjectiveDecle
               aria-selected={strength === s}
               onClick={() => setActiveStrength(s)}
               className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                strength === s ? 'bg-neutral-700 text-white' : 'text-neutral-400 hover:bg-neutral-800'
+                strength === s ? 'bg-indigo-500/20 text-indigo-300' : 'text-neutral-400 hover:bg-neutral-800'
               }`}
             >
               {STRENGTH_LABELS[s]}
@@ -698,7 +699,7 @@ function EntryBody({
               onClick={() => setActive(tab.id)}
               className={`min-h-11 shrink-0 rounded-t-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
                 activeTab === tab.id
-                  ? 'border-b-2 border-white text-white'
+                  ? 'border-b-2 border-indigo-400 text-white'
                   : 'text-neutral-400 hover:bg-neutral-800'
               }`}
             >
@@ -754,77 +755,95 @@ function EntryBody({
   );
 }
 
+/** Entry detail page at /word/:word — shareable, deep-linkable. */
+export function DictionaryEntryPage() {
+  const { word } = useParams<{ word: string }>();
+  const navigate = useNavigate();
+  if (!word) return null;
+
+  return (
+    <section
+      aria-label="Dictionary"
+      className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg shadow-black/20"
+    >
+      <EntryDetail
+        word={decodeURIComponent(word)}
+        onBack={() => navigate('/')}
+        onSelectWord={(w) => navigate(`/word/${encodeURIComponent(w)}`)}
+      />
+    </section>
+  );
+}
+
 export function DictionaryCard() {
-  const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const query = searchParams.get('q') ?? '';
   const debounced = useDebounced(query.trim(), 250);
 
   const { data: results, isFetching } = useQuery({
     queryKey: ['dictionary-search', debounced],
     queryFn: () => searchDictionary(debounced),
-    enabled: debounced.length >= 2 && !selected,
+    enabled: debounced.length >= 2,
   });
 
   return (
     <section
       aria-label="Dictionary"
-      className="w-full max-w-sm rounded-2xl border border-neutral-800 bg-neutral-900 p-6"
+      className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg shadow-black/20"
     >
       <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-neutral-400">
         Dictionary
       </h2>
 
-      {selected ? (
-        <EntryDetail word={selected} onBack={() => setSelected(null)} onSelectWord={setSelected} />
-      ) : (
-        <>
-          <label htmlFor="dict-search" className="sr-only">
-            Search German words
-          </label>
-          <input
-            id="dict-search"
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search German words…"
-            autoComplete="off"
-            lang="de"
-            className="min-h-11 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 text-base placeholder:text-neutral-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          />
-          <div aria-live="polite" className="mt-3">
-            {isFetching && <p className="text-sm text-neutral-400">Searching…</p>}
-            {results && results.length === 0 && (
-              <p className="text-sm text-neutral-400">No matches for “{debounced}”.</p>
-            )}
-            {results && results.length > 0 && (
-              <ul className="divide-y divide-neutral-800">
-                {results.map((r) => (
-                  <li key={`${r.word}-${r.pos}`}>
-                    <button
-                      type="button"
-                      onClick={() => setSelected(r.word)}
-                      className="flex min-h-11 w-full items-center justify-between gap-2 px-1 py-2 text-left transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                    >
-                      <span className="min-w-0">
-                        <span lang="de" className="font-medium">
-                          {articleFor(r.gender) ? `${articleFor(r.gender)} ` : ''}
-                          {r.word}
-                        </span>
-                        {r.translation && (
-                          <span className="ml-2 truncate text-sm text-neutral-400">
-                            {r.translation}
-                          </span>
-                        )}
+      <label htmlFor="dict-search" className="sr-only">
+        Search German words
+      </label>
+      <input
+        id="dict-search"
+        type="search"
+        value={query}
+        onChange={(e) => {
+          const value = e.target.value;
+          setSearchParams(value ? { q: value } : {}, { replace: true });
+        }}
+        placeholder="Search German words…"
+        autoComplete="off"
+        lang="de"
+        className="min-h-11 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 text-base placeholder:text-neutral-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+      />
+      <div aria-live="polite" className="mt-3">
+        {isFetching && <p className="text-sm text-neutral-400">Searching…</p>}
+        {results && results.length === 0 && (
+          <p className="text-sm text-neutral-400">No matches for “{debounced}”.</p>
+        )}
+        {results && results.length > 0 && (
+          <ul className="divide-y divide-neutral-800">
+            {results.map((r) => (
+              <li key={`${r.word}-${r.pos}`}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/word/${encodeURIComponent(r.word)}`)}
+                  className="flex min-h-11 w-full items-center justify-between gap-2 px-1 py-2 text-left transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  <span className="min-w-0">
+                    <span lang="de" className="font-medium">
+                      {articleFor(r.gender) ? `${articleFor(r.gender)} ` : ''}
+                      {r.word}
+                    </span>
+                    {r.translation && (
+                      <span className="ml-2 truncate text-sm text-neutral-400">
+                        {r.translation}
                       </span>
-                      <span className="shrink-0 text-xs text-neutral-500">{r.pos}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </>
-      )}
+                    )}
+                  </span>
+                  <span className="shrink-0 text-xs text-neutral-500">{r.pos}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }

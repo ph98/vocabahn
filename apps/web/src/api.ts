@@ -1,8 +1,15 @@
 import {
+  courseDetailSchema,
+  courseListResponseSchema,
   dictionaryEntryDetailSchema,
   dictionarySearchResponseSchema,
+  dueCardsResponseSchema,
+  enrollResponseSchema,
   healthResponseSchema,
+  submitReviewResponseSchema,
   userSchema,
+  type ReviewMode,
+  type ReviewRating,
   type User,
 } from '@vocabahn/shared';
 import axios, { isAxiosError } from 'axios';
@@ -44,4 +51,32 @@ export async function searchDictionary(q: string) {
 export async function fetchDictionaryEntry(word: string) {
   const { data } = await api.get(`/dictionary/${encodeURIComponent(word)}`);
   return dictionaryEntryDetailSchema.parse(data);
+}
+
+export async function fetchCourses() {
+  const { data } = await api.get('/courses');
+  return courseListResponseSchema.parse(data).courses;
+}
+
+export async function fetchCourse(slug: string) {
+  const { data } = await api.get(`/courses/${encodeURIComponent(slug)}`);
+  return courseDetailSchema.parse(data);
+}
+
+export async function enrollCourse(slug: string) {
+  const { data } = await api.post(`/courses/${encodeURIComponent(slug)}/enroll`);
+  return enrollResponseSchema.parse(data);
+}
+
+export async function fetchDueCards(courseId?: string) {
+  const { data } = await api.get('/reviews/due', { params: courseId ? { courseId } : undefined });
+  return dueCardsResponseSchema.parse(data).cards;
+}
+
+export async function submitReview(
+  cardId: string,
+  body: { rating: ReviewRating; mode: ReviewMode; latencyMs?: number },
+) {
+  const { data } = await api.post(`/reviews/${encodeURIComponent(cardId)}`, body);
+  return submitReviewResponseSchema.parse(data).card;
 }

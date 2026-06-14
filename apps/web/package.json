@@ -10,11 +10,15 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@gsap/react": "^2.1.2",
     "@tanstack/react-query": "^5.79.0",
+    "@use-gesture/react": "^10.3.1",
     "@vocabahn/shared": "workspace:*",
     "axios": "^1.9.0",
+    "gsap": "^3.15.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.17.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.8",

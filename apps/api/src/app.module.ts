@@ -4,6 +4,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
+import { CardsModule } from './cards/cards.module';
+import { CoursesModule } from './courses/courses.module';
 import { DictionaryModule } from './dictionary/dictionary.module';
 import { EnrichmentModule } from './enrichment/enrichment.module';
 import { HealthModule } from './health/health.module';
@@ -30,6 +32,8 @@ import { RedisModule } from './redis/redis.module';
     PrismaModule,
     RedisModule,
     AuthModule,
+    CardsModule,
+    CoursesModule,
     DictionaryModule,
     EnrichmentModule,
     HealthModule,
