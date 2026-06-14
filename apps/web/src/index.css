@@ -4,3 +4,28 @@ html,
 body {
   overscroll-behavior-y: contain;
 }
+
+.react-calendar-heatmap text {
+  fill: #a3a3a3;
+  font-size: 6px;
+}
+
+.react-calendar-heatmap .color-empty {
+  fill: #262626;
+}
+
+.react-calendar-heatmap .color-scale-1 {
+  fill: #312e81;
+}
+
+.react-calendar-heatmap .color-scale-2 {
+  fill: #4338ca;
+}
+
+.react-calendar-heatmap .color-scale-3 {
+  fill: #6366f1;
+}
+
+.react-calendar-heatmap .color-scale-4 {
+  fill: #a5b4fc;
+}

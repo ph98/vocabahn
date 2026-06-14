@@ -3,6 +3,7 @@ import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { fetchHealth, fetchMe } from './api';
 import { CourseDetailPage } from './components/CourseDetailPage';
 import { CoursesPage } from './components/CoursesPage';
+import { DashboardPage } from './components/DashboardPage';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
 import { ProfilePage } from './components/ProfilePage';
 import { ReviewSession } from './components/ReviewSession';
@@ -39,6 +40,9 @@ function Nav() {
       </NavLink>
       <NavLink to="/review" className={navLinkClassName}>
         Review
+      </NavLink>
+      <NavLink to="/dashboard" className={navLinkClassName}>
+        Dashboard
       </NavLink>
     </nav>
   );
@@ -117,6 +121,7 @@ export default function App() {
               <Route path="/courses" element={<CoursesPage />} />
               <Route path="/courses/:slug" element={<CourseDetailPage />} />
               <Route path="/review" element={<ReviewSession />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/profile" element={<div className="mx-auto max-w-sm"><ProfilePage /></div>} />
               <Route path="/status" element={<div className="mx-auto max-w-sm"><StatusPage /></div>} />
             </Routes>
@@ -124,7 +129,7 @@ export default function App() {
         </>
       )}
 
-      <p className="text-sm text-neutral-500">Phase 2 — courses & reviews</p>
+      <p className="text-sm text-neutral-500">Phase 3 — dashboard</p>
     </main>
   );
 }

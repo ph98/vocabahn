@@ -1,6 +1,7 @@
 import {
   courseDetailSchema,
   courseListResponseSchema,
+  dashboardResponseSchema,
   dictionaryEntryDetailSchema,
   dictionarySearchResponseSchema,
   dueCardsResponseSchema,
@@ -80,6 +81,11 @@ export async function submitReview(
 ) {
   const { data } = await api.post(`/reviews/${encodeURIComponent(cardId)}`, body);
   return submitReviewResponseSchema.parse(data).card;
+}
+
+export async function fetchDashboard() {
+  const { data } = await api.get('/dashboard');
+  return dashboardResponseSchema.parse(data);
 }
 
 export async function fetchFeedback(word: string) {
