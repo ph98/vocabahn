@@ -154,6 +154,36 @@ export class DictionaryService implements OnModuleInit {
       }
     }
 
+    // Some words have a sibling lexicon entry for the same exact spelling that is
+    // just an alternative letter-case form of a different word (e.g. "Du" the
+    // pronoun is the capitalized form of "du", but "Du" the noun — "das Du" — is
+    // its own rare lemma). When that's the case, show the other word's entry as
+    // primary and fold this entry's own sense(s) in alongside it, so the common
+    // meaning isn't shadowed by the rare one.
+    if (depth < 2) {
+      const caseVariant = await this.findCaseVariantLemma(word, entry.lexiconEntryId);
+      if (caseVariant) {
+        const target = await this.prisma.dictionaryEntry.findFirst({ where: { word: caseVariant }, include });
+        if (target && target.id !== entry.id) {
+          const merged = await this.getEntry(caseVariant, userId, depth + 1);
+          return {
+            ...merged,
+            word,
+            senses: [
+              ...merged.senses,
+              ...entry.lexiconEntry.senses.map((s) => ({
+                glosses: s.glosses,
+                tags: s.tags,
+                topics: s.topics,
+                synonyms: s.synonyms,
+                antonyms: s.antonyms,
+              })),
+            ],
+          };
+        }
+      }
+    }
+
     // On-demand enrichment (PRD §4.2): fire only when the word is actually viewed
     // and still needs work. Also re-enrich entries that predate the AI learner
     // aids (collocations/false friends/register/mnemonic) so they backfill on view.
@@ -207,6 +237,34 @@ export class DictionaryService implements OnModuleInit {
         authorUrl: entry.imageCredit.authorUrl,
       },
     };
+  }
+
+  /**
+   * A sibling lexicon entry for the same exact spelling that is just an
+   * alternative letter-case form of a different word (e.g. "Du" the pronoun
+   * is alt-of "du"). Returns that other word if one exists.
+   */
+  private async findCaseVariantLemma(word: string, excludeLexiconEntryId: string): Promise<string | null> {
+    const siblings = await this.prisma.lexiconEntry.findMany({
+      where: { word, NOT: { id: excludeLexiconEntryId } },
+      select: { raw: true },
+    });
+    for (const sibling of siblings) {
+      const senses =
+        (
+          sibling.raw as {
+            senses?: { tags?: string[]; form_of?: { word?: string }[]; alt_of?: { word?: string }[] }[];
+          }
+        )?.senses ?? [];
+      for (const sense of senses) {
+        if (!sense.tags?.some((t) => FORM_TAGS.includes(t))) continue;
+        const target = sense.form_of?.[0]?.word ?? sense.alt_of?.[0]?.word;
+        if (target && target !== word && target.toLowerCase() === word.toLowerCase()) {
+          return target;
+        }
+      }
+    }
+    return null;
   }
 
   /** Lemma headword that a set of form-of/alt-of lexicon entries points to. */
