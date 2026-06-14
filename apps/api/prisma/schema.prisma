@@ -24,6 +24,7 @@ model User {
   reviewLogs      ReviewLog[]
   knowledgeScores KnowledgeScore[]
   courses         UserCourse[]
+  feedback        EntryFeedback[]
 }
 
 // ── Lexicon layer (complete Wiktextract ingest, PRD §7) ─────────────────────
@@ -124,6 +125,7 @@ model DictionaryEntry {
   imageCredit  ImageCredit?
   cards        Card[]
   courseWords  CourseWord[]
+  feedback     EntryFeedback[]
 
   @@index([word])
   @@index([enrichmentStatus])
@@ -150,6 +152,53 @@ model ImageCredit {
   sourceUrl  String?
 
   entry DictionaryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+}
+
+// ── Dictionary entry feedback (quality reports) ─────────────────────────────
+
+enum FeedbackVote {
+  UP
+  DOWN
+}
+
+// Quick-pick issue categories shown as checkboxes alongside the free-text comment.
+enum FeedbackIssue {
+  LEVEL
+  TRANSLATION
+  IMAGE
+  EMOJI
+  AUDIO
+  EXAMPLE
+  GRAMMAR
+  MNEMONIC
+  OTHER
+}
+
+model EntryFeedback {
+  id      String @id @default(cuid())
+  entryId String
+  userId  String
+  // Denormalized headword, for quick filtering/browsing in AdminJS
+  word    String
+
+  vote    FeedbackVote?
+  issues  FeedbackIssue[] @default([])
+  comment String?
+
+  // Context captured at submission time, to help triage quality reports
+  userAgent String?
+  locale    String?
+  path      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  entry DictionaryEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([entryId, userId])
+  @@index([entryId])
+  @@index([vote])
 }
 
 // ── Study loop: FSRS cards + review log (PRD §4.4) ──────────────────────────

@@ -58,11 +58,17 @@ const SPECS: ResourceSpec[] = [
   { model: 'DictionaryExample', navigation: 'dictionary' },
   { model: 'ImageCredit', navigation: 'dictionary' },
   { model: 'Card', navigation: 'study', listProperties: ['userId', 'knownState', 'state', 'due', 'reps'] },
-  { model: 'ReviewLog', navigation: 'study', listProperties: ['userId', 'rating', 'mode', 'reviewedAt'] },
+  { model: 'ReviewLog', navigation: 'study', listProperties: ['userId', 'rating', 'reviewedAt'] },
   { model: 'KnowledgeScore', navigation: 'study' },
   { model: 'Course', navigation: 'courses' },
   { model: 'CourseWord', navigation: 'courses' },
   { model: 'UserCourse', navigation: 'courses' },
+  {
+    model: 'EntryFeedback',
+    navigation: 'dictionary',
+    listProperties: ['word', 'vote', 'issues', 'comment', 'userId', 'createdAt'],
+    hideFromList: ['userAgent', 'locale', 'path', 'entryId', 'updatedAt'],
+  },
   { model: 'ContactMessage', navigation: 'system' },
 ];
 

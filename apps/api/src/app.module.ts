@@ -8,6 +8,7 @@ import { CardsModule } from './cards/cards.module';
 import { CoursesModule } from './courses/courses.module';
 import { DictionaryModule } from './dictionary/dictionary.module';
 import { EnrichmentModule } from './enrichment/enrichment.module';
+import { FeedbackModule } from './feedback/feedback.module';
 import { HealthModule } from './health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -36,6 +37,7 @@ import { RedisModule } from './redis/redis.module';
     CoursesModule,
     DictionaryModule,
     EnrichmentModule,
+    FeedbackModule,
     HealthModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

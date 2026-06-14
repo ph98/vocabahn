@@ -1,16 +1,22 @@
-import { useQuery } from '@tanstack/react-query';
-import type {
-  AdjectiveDeclension,
-  AdjectiveDeclensionTable,
-  ConjugationMood,
-  DictionaryEntryDetail,
-  NounDeclension,
-  PersonForms,
-  VerbConjugation,
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  FEEDBACK_ISSUE_LABELS,
+  type AdjectiveDeclension,
+  type AdjectiveDeclensionTable,
+  type ConjugationMood,
+  type DictionaryEntryDetail,
+  type FeedbackIssue,
+  type FeedbackVote,
+  type NounDeclension,
+  type PersonForms,
+  type SubmitFeedbackBody,
+  type VerbConjugation,
 } from '@vocabahn/shared';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { fetchDictionaryEntry, searchDictionary } from '../api';
+import { fetchDictionaryEntry, fetchFeedback, searchDictionary, submitFeedback } from '../api';
+
+const FEEDBACK_ISSUES = Object.keys(FEEDBACK_ISSUE_LABELS) as FeedbackIssue[];
 
 const ARTICLES: Record<string, string> = { m: 'der', f: 'die', n: 'das' };
 
@@ -566,6 +572,148 @@ function DetailsSection({
   );
 }
 
+/** "Was this helpful?" vote + optional issue checkboxes and comment, upserted per user/entry. */
+function FeedbackWidget({ word }: { word: string }) {
+  const queryClient = useQueryClient();
+  const { data } = useQuery({
+    queryKey: ['entry-feedback', word],
+    queryFn: () => fetchFeedback(word),
+  });
+
+  const [vote, setVote] = useState<FeedbackVote | null>(null);
+  const [issues, setIssues] = useState<Set<FeedbackIssue>>(new Set());
+  const [comment, setComment] = useState('');
+  const [expanded, setExpanded] = useState(false);
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (!data || initialized.current) return;
+    initialized.current = true;
+    setVote(data.vote);
+    setIssues(new Set(data.issues));
+    setComment(data.comment ?? '');
+    setExpanded(data.issues.length > 0 || Boolean(data.comment));
+  }, [data]);
+
+  const mutation = useMutation({
+    mutationFn: (body: SubmitFeedbackBody) => submitFeedback(word, body),
+    onSuccess: (result) => queryClient.setQueryData(['entry-feedback', word], result),
+  });
+
+  const send = (overrides: Partial<SubmitFeedbackBody>) => {
+    mutation.mutate({ vote, issues: [...issues], comment: comment || undefined, ...overrides });
+  };
+
+  const toggleVote = (v: FeedbackVote) => {
+    const next = vote === v ? null : v;
+    setVote(next);
+    send({ vote: next });
+  };
+
+  const toggleIssue = (issue: FeedbackIssue) => {
+    const next = new Set(issues);
+    if (next.has(issue)) {
+      next.delete(issue);
+    } else {
+      next.add(issue);
+    }
+    setIssues(next);
+    send({ issues: [...next] });
+  };
+
+  return (
+    <section className="mt-6 border-t border-neutral-800 pt-4">
+      <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+        Is this entry helpful?
+      </h4>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          aria-pressed={vote === 'UP'}
+          onClick={() => toggleVote('UP')}
+          aria-label="This entry is helpful"
+          className={`min-h-11 min-w-11 rounded-xl border px-3 text-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+            vote === 'UP'
+              ? 'border-emerald-400/60 bg-emerald-400/10'
+              : 'border-neutral-700 hover:bg-neutral-800'
+          }`}
+        >
+          👍
+        </button>
+        <button
+          type="button"
+          aria-pressed={vote === 'DOWN'}
+          onClick={() => toggleVote('DOWN')}
+          aria-label="This entry has a problem"
+          className={`min-h-11 min-w-11 rounded-xl border px-3 text-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+            vote === 'DOWN'
+              ? 'border-red-400/60 bg-red-400/10'
+              : 'border-neutral-700 hover:bg-neutral-800'
+          }`}
+        >
+          👎
+        </button>
+        <button
+          type="button"
+          onClick={() => setExpanded((e) => !e)}
+          aria-expanded={expanded}
+          className="min-h-11 rounded-xl px-2 text-sm text-neutral-400 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          {expanded ? 'Hide details' : 'Report a problem'}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="mt-3 space-y-3">
+          <fieldset>
+            <legend className="mb-1.5 text-xs text-neutral-500">What's wrong? (optional)</legend>
+            <div className="flex flex-wrap gap-2">
+              {FEEDBACK_ISSUES.map((issue) => (
+                <label
+                  key={issue}
+                  className={`flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${
+                    issues.has(issue)
+                      ? 'border-indigo-400/60 bg-indigo-500/10 text-indigo-200'
+                      : 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={issues.has(issue)}
+                    onChange={() => toggleIssue(issue)}
+                    className="size-4 rounded border-neutral-600 bg-neutral-900 text-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  />
+                  {FEEDBACK_ISSUE_LABELS[issue]}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div>
+            <label htmlFor={`feedback-comment-${word}`} className="mb-1 block text-xs text-neutral-500">
+              Additional details (optional)
+            </label>
+            <textarea
+              id={`feedback-comment-${word}`}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              onBlur={() => send({ comment: comment || undefined })}
+              rows={3}
+              maxLength={2000}
+              className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm placeholder:text-neutral-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              placeholder="What did you notice?"
+            />
+          </div>
+
+          <p aria-live="polite" className="text-xs text-emerald-400">
+            {mutation.isSuccess && !mutation.isPending ? 'Thanks for the feedback!' : ' '}
+          </p>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function EntryBody({
   entry,
   onSelectWord,
@@ -646,7 +794,14 @@ export function EntryBody({
       </header>
 
       {(entry.enrichmentStatus === 'PENDING' || entry.enrichmentStatus === 'ENRICHING') && (
-        <p className="mb-3 rounded-lg bg-amber-950/60 px-3 py-2 text-sm text-amber-300">
+        <p
+          role="status"
+          className="mb-3 flex items-center gap-2 rounded-lg bg-amber-950/60 px-3 py-2 text-sm text-amber-300"
+        >
+          <span
+            aria-hidden="true"
+            className="size-4 shrink-0 animate-spin motion-reduce:animate-none rounded-full border-2 border-amber-300/30 border-t-amber-300"
+          />
           Enriching this entry in the background…
         </p>
       )}
@@ -751,6 +906,8 @@ export function EntryBody({
           <DetailsSection glosses={glosses} synonyms={synonyms} entry={entry} />
         )}
       </div>
+
+      <FeedbackWidget word={entry.word} />
     </article>
   );
 }

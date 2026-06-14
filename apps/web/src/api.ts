@@ -4,11 +4,13 @@ import {
   dictionaryEntryDetailSchema,
   dictionarySearchResponseSchema,
   dueCardsResponseSchema,
+  entryFeedbackSchema,
   enrollResponseSchema,
   healthResponseSchema,
   submitReviewResponseSchema,
   userSchema,
   type ReviewRating,
+  type SubmitFeedbackBody,
   type User,
 } from '@vocabahn/shared';
 import axios, { isAxiosError } from 'axios';
@@ -78,4 +80,14 @@ export async function submitReview(
 ) {
   const { data } = await api.post(`/reviews/${encodeURIComponent(cardId)}`, body);
   return submitReviewResponseSchema.parse(data).card;
+}
+
+export async function fetchFeedback(word: string) {
+  const { data } = await api.get(`/dictionary/${encodeURIComponent(word)}/feedback`);
+  return entryFeedbackSchema.parse(data);
+}
+
+export async function submitFeedback(word: string, body: SubmitFeedbackBody) {
+  const { data } = await api.post(`/dictionary/${encodeURIComponent(word)}/feedback`, body);
+  return entryFeedbackSchema.parse(data);
 }
