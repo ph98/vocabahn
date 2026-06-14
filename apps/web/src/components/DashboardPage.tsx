@@ -28,6 +28,7 @@ function heatmapTitleForValue(value?: CalendarHeatmap.ReactCalendarHeatmapValue<
 
 export function DashboardPage() {
   const { data, isPending, isError } = useQuery({ queryKey: ['dashboard'], queryFn: fetchDashboard });
+  const activeDays = (data?.heatmap ?? []).filter((d) => d.count > 0).reverse();
 
   return (
     <section aria-label="Dashboard" className="space-y-4">
@@ -54,14 +55,44 @@ export function DashboardPage() {
 
           <div className="overflow-x-auto rounded-2xl border border-neutral-800 bg-neutral-900 p-4 shadow-lg shadow-black/20">
             <h3 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">Activity</h3>
-            <CalendarHeatmap
-              startDate={data.heatmap[0]?.date}
-              endDate={data.heatmap[data.heatmap.length - 1]?.date}
-              values={data.heatmap}
-              classForValue={heatmapClassForValue}
-              titleForValue={heatmapTitleForValue}
-              showWeekdayLabels
-            />
+            {/* The heatmap conveys the same data as the list below; hide it
+                from assistive tech rather than relying on per-cell titles,
+                which screen readers handle poorly. */}
+            <div aria-hidden="true">
+              <CalendarHeatmap
+                startDate={data.heatmap[0]?.date}
+                endDate={data.heatmap[data.heatmap.length - 1]?.date}
+                values={data.heatmap}
+                classForValue={heatmapClassForValue}
+                titleForValue={heatmapTitleForValue}
+                showWeekdayLabels
+              />
+            </div>
+            <details className="mt-2">
+              <summary className="min-h-11 cursor-pointer content-center text-sm text-neutral-400 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+                View activity as a list
+              </summary>
+              {activeDays.length > 0 ? (
+                <table className="mt-2 w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-neutral-800 text-neutral-400">
+                      <th className="py-1 pr-3 font-medium">Date</th>
+                      <th className="py-1 font-medium">Reviews</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activeDays.map(({ date, count }) => (
+                      <tr key={date} className="border-b border-neutral-900">
+                        <td className="py-1 pr-3">{date}</td>
+                        <td className="py-1">{count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="mt-2 text-sm text-neutral-400">No reviews in this period yet.</p>
+              )}
+            </details>
           </div>
 
           <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg shadow-black/20">

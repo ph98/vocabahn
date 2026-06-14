@@ -1,0 +1,53 @@
+import { screen, waitFor } from '@testing-library/react';
+import type { DashboardResponse } from '@vocabahn/shared';
+import { axe } from 'jest-axe';
+import { describe, expect, it, vi } from 'vitest';
+import { renderWithProviders } from '../../test/test-utils';
+import { DashboardPage } from '../DashboardPage';
+
+vi.mock('../../api', () => ({
+  fetchDashboard: vi.fn(),
+}));
+
+const { fetchDashboard } = await import('../../api');
+
+const DASHBOARD: DashboardResponse = {
+  streak: 5,
+  heatmap: [
+    { date: '2026-06-12', count: 0 },
+    { date: '2026-06-13', count: 3 },
+    { date: '2026-06-14', count: 7 },
+  ],
+  stats: { dueToday: 2, reviewedToday: 7, totalKnown: 40, totalLearning: 12, totalNew: 5 },
+  courses: [
+    {
+      id: 'course-1',
+      slug: 'a1-basics',
+      title: 'A1 Basics',
+      description: null,
+      cefrLevel: 'A1',
+      order: 0,
+      wordCount: 100,
+      enrolled: true,
+      progress: { learned: 20, inProgress: 30, notStarted: 50 },
+    },
+  ],
+};
+
+describe('DashboardPage', () => {
+  it('renders stats, heatmap, and an accessible activity list with no a11y violations', async () => {
+    vi.mocked(fetchDashboard).mockResolvedValue(DASHBOARD);
+    const { container } = renderWithProviders(<DashboardPage />);
+
+    await waitFor(() => expect(screen.getByText('day streak')).toBeInTheDocument());
+
+    const list = screen.getByText('View activity as a list');
+    expect(list.closest('details')).not.toBeNull();
+    // The heatmap SVG is hidden from assistive tech; the list is the
+    // accessible alternative and should include the non-zero days.
+    expect(screen.getByText('2026-06-13')).toBeInTheDocument();
+    expect(screen.getByText('2026-06-14')).toBeInTheDocument();
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});

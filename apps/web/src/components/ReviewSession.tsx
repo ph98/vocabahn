@@ -227,6 +227,7 @@ export function ReviewSession() {
   );
 
   const advance = (rating: ReviewRating, current: ReviewCard) => {
+    lastRatingRef.current = rating;
     const latencyMs = revealedAt.current ? Date.now() - revealedAt.current : undefined;
     const reviewedAt = new Date().toISOString();
     if (isOnline) {
@@ -286,9 +287,26 @@ export function ReviewSession() {
     },
   );
 
+  // Screen-reader-only announcements for card transitions and review
+  // results (PRD §4.0).
+  const [announcement, setAnnouncement] = useState('');
+  const lastRatingRef = useRef<ReviewRating | null>(null);
+
+  useEffect(() => {
+    if (!queue) return;
+    const prefix = lastRatingRef.current ? `Rated ${RATING_LABELS[lastRatingRef.current]}. ` : '';
+    lastRatingRef.current = null;
+    if (card) {
+      setAnnouncement(`${prefix}Card ${index + 1} of ${queue.length}: ${card.entry.word}.`);
+    } else if (queue.length > 0) {
+      setAnnouncement(`${prefix}Session complete. ${queue.length} card${queue.length === 1 ? '' : 's'} reviewed.`);
+    }
+  }, [queue, card, index]);
+
   const reveal = () => {
     revealedAt.current = Date.now();
     setRevealed(true);
+    setAnnouncement('Answer revealed.');
   };
 
   // Auto-play the word's pronunciation as soon as a new card is shown.
@@ -336,6 +354,10 @@ export function ReviewSession() {
   return (
     <section aria-label="Review session" className="space-y-4">
       <h2 className="text-sm font-medium uppercase tracking-wide text-neutral-400">Review</h2>
+
+      <p aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
 
       {(!isOnline || queuedCount > 0) && (
         <div

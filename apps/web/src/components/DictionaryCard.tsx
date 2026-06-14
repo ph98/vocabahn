@@ -12,9 +12,10 @@ import {
   type SubmitFeedbackBody,
   type VerbConjugation,
 } from '@vocabahn/shared';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { fetchDictionaryEntry, fetchFeedback, searchDictionary, submitFeedback } from '../api';
+import { Tab, TabList, TabPanel } from './Tabs';
 
 const FEEDBACK_ISSUES = Object.keys(FEEDBACK_ISSUE_LABELS) as FeedbackIssue[];
 
@@ -170,8 +171,11 @@ function ConjugationSection({ conjugation }: { conjugation: VerbConjugation }) {
   const hasImperative = Object.keys(conjugation.imperative).length > 0;
   const tabs = hasImperative ? [...moods, 'imperative' as const] : moods;
   const [active, setActive] = useState<(typeof tabs)[number] | undefined>(tabs[0]);
+  const baseId = useId();
 
   if (!active) return null;
+
+  const panelId = `${baseId}-panel`;
 
   return (
     <section className="mb-4">
@@ -193,29 +197,29 @@ function ConjugationSection({ conjugation }: { conjugation: VerbConjugation }) {
           )}
         </p>
       )}
-      <div role="tablist" aria-label="Conjugation mood" className="mb-3 flex gap-1 overflow-x-auto">
+      <TabList label="Conjugation mood" className="mb-3 flex gap-1 overflow-x-auto">
         {tabs.map((tab) => (
-          <button
+          <Tab
             key={tab}
-            type="button"
-            role="tab"
-            aria-selected={active === tab}
-            onClick={() => setActive(tab)}
+            id={`${baseId}-tab-${tab}`}
+            controls={panelId}
+            selected={active === tab}
+            onSelect={() => setActive(tab)}
             className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
               active === tab ? 'bg-indigo-500/20 text-indigo-300' : 'text-neutral-400 hover:bg-neutral-800'
             }`}
           >
             {MOOD_LABELS[tab]}
-          </button>
+          </Tab>
         ))}
-      </div>
-      <div role="tabpanel">
+      </TabList>
+      <TabPanel id={panelId} labelledBy={`${baseId}-tab-${active}`}>
         {active === 'imperative' ? (
           <PersonFormsTable forms={conjugation.imperative} />
         ) : (
           <MoodPanel mood={conjugation[active]} />
         )}
-      </div>
+      </TabPanel>
     </section>
   );
 }
@@ -323,28 +327,31 @@ function AdjectiveDeclensionSection({ declension }: { declension: AdjectiveDecle
   );
   const [activeStrength, setActiveStrength] = useState<(typeof strengths)[number] | undefined>(strengths[0]);
   const strength = strengths.includes(activeStrength as never) ? activeStrength : strengths[0];
+  const baseId = useId();
+  const panelId = `${baseId}-panel`;
+  const activeTabId = strength ? `${baseId}-strength-tab-${strength}` : `${baseId}-degree-tab-${activeDegree}`;
 
   return (
     <section className="mb-4">
       <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">Declension</h4>
 
       {degrees.length > 1 && (
-        <div role="tablist" aria-label="Degree" className="mb-2 flex gap-1 overflow-x-auto">
+        <TabList label="Degree" className="mb-2 flex gap-1 overflow-x-auto">
           {degrees.map((d) => (
-            <button
+            <Tab
               key={d}
-              type="button"
-              role="tab"
-              aria-selected={activeDegree === d}
-              onClick={() => setActiveDegree(d)}
+              id={`${baseId}-degree-tab-${d}`}
+              controls={panelId}
+              selected={activeDegree === d}
+              onSelect={() => setActiveDegree(d)}
               className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
                 activeDegree === d ? 'bg-indigo-500/20 text-indigo-300' : 'text-neutral-400 hover:bg-neutral-800'
               }`}
             >
               {DEGREE_LABELS[d]}
-            </button>
+            </Tab>
           ))}
-        </div>
+        </TabList>
       )}
 
       {degree.predicative && (
@@ -354,25 +361,27 @@ function AdjectiveDeclensionSection({ declension }: { declension: AdjectiveDecle
       )}
 
       {strengths.length > 0 && (
-        <div role="tablist" aria-label="Declension type" className="mb-3 flex gap-1 overflow-x-auto">
+        <TabList label="Declension type" className="mb-3 flex gap-1 overflow-x-auto">
           {strengths.map((s) => (
-            <button
+            <Tab
               key={s}
-              type="button"
-              role="tab"
-              aria-selected={strength === s}
-              onClick={() => setActiveStrength(s)}
+              id={`${baseId}-strength-tab-${s}`}
+              controls={panelId}
+              selected={strength === s}
+              onSelect={() => setActiveStrength(s)}
               className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
                 strength === s ? 'bg-indigo-500/20 text-indigo-300' : 'text-neutral-400 hover:bg-neutral-800'
               }`}
             >
               {STRENGTH_LABELS[s]}
-            </button>
+            </Tab>
           ))}
-        </div>
+        </TabList>
       )}
 
-      <div role="tabpanel">{strength && <AdjectiveCaseTable table={degree[strength]} />}</div>
+      <TabPanel id={panelId} labelledBy={activeTabId}>
+        {strength && <AdjectiveCaseTable table={degree[strength]} />}
+      </TabPanel>
     </section>
   );
 }
@@ -745,6 +754,8 @@ export function EntryBody({
   ];
   const [active, setActive] = useState<(typeof tabs)[number]['id']>('overview');
   const activeTab = tabs.some((t) => t.id === active) ? active : 'overview';
+  const baseId = useId();
+  const panelId = `${baseId}-panel`;
 
   return (
     <article aria-live="polite">
@@ -844,14 +855,14 @@ export function EntryBody({
       {entry.translation && <p className="mb-3 text-lg">{entry.translation}</p>}
 
       {tabs.length > 1 && (
-        <div role="tablist" aria-label="Entry sections" className="mb-3 flex gap-1 overflow-x-auto border-b border-neutral-800">
+        <TabList label="Entry sections" className="mb-3 flex gap-1 overflow-x-auto border-b border-neutral-800">
           {tabs.map((tab) => (
-            <button
+            <Tab
               key={tab.id}
-              type="button"
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              onClick={() => setActive(tab.id)}
+              id={`${baseId}-tab-${tab.id}`}
+              controls={panelId}
+              selected={activeTab === tab.id}
+              onSelect={() => setActive(tab.id)}
               className={`min-h-11 shrink-0 rounded-t-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
                 activeTab === tab.id
                   ? 'border-b-2 border-indigo-400 text-white'
@@ -859,12 +870,12 @@ export function EntryBody({
               }`}
             >
               {tab.label}
-            </button>
+            </Tab>
           ))}
-        </div>
+        </TabList>
       )}
 
-      <div role="tabpanel">
+      <TabPanel id={panelId} labelledBy={`${baseId}-tab-${activeTab}`}>
         {activeTab === 'overview' && (
           <>
             {entry.usageNote && (
@@ -905,7 +916,7 @@ export function EntryBody({
         {activeTab === 'details' && (
           <DetailsSection glosses={glosses} synonyms={synonyms} entry={entry} />
         )}
-      </div>
+      </TabPanel>
 
       <FeedbackWidget word={entry.word} />
     </article>

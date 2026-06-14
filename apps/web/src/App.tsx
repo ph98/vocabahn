@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, type RefObject } from 'react';
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { fetchHealth, fetchMe } from './api';
 import { CourseDetailPage } from './components/CourseDetailPage';
@@ -23,6 +24,39 @@ const iconLinkClassName = ({ isActive }: { isActive: boolean }) =>
   `flex size-9 items-center justify-center rounded-full border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
     isActive ? 'border-indigo-400' : 'border-neutral-800 hover:border-neutral-600'
   }`;
+
+/** Maps the current path to a human-readable page name for titles and SPA-navigation announcements. */
+function pageNameForPath(pathname: string): string {
+  if (pathname === '/' || pathname.startsWith('/word/')) return 'Dictionary';
+  if (pathname.startsWith('/courses')) return 'Courses';
+  if (pathname.startsWith('/review')) return 'Review';
+  if (pathname.startsWith('/dashboard')) return 'Dashboard';
+  if (pathname.startsWith('/known-words')) return 'Known words';
+  if (pathname.startsWith('/profile')) return 'Profile';
+  if (pathname.startsWith('/status')) return 'System status';
+  return 'Vocabahn';
+}
+
+/**
+ * On SPA route changes, updates the document title, announces the new page
+ * to screen readers, and moves focus to the main landmark so keyboard and
+ * AT users get the same "new page" signal a full navigation would give.
+ */
+function RouteAnnouncer({ mainRef }: { mainRef: RefObject<HTMLElement | null> }) {
+  const { pathname } = useLocation();
+  const pageName = pageNameForPath(pathname);
+
+  useEffect(() => {
+    document.title = pageName === 'Dictionary' ? 'Vocabahn' : `${pageName} — Vocabahn`;
+    mainRef.current?.focus();
+  }, [pathname, pageName, mainRef]);
+
+  return (
+    <p aria-live="polite" className="sr-only">
+      {pageName}
+    </p>
+  );
+}
 
 function Nav() {
   const { pathname } = useLocation();
@@ -89,9 +123,23 @@ function ProfileLink() {
 
 export default function App() {
   const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
+  const mainRef = useRef<HTMLElement>(null);
 
   return (
-    <main className="flex min-h-dvh flex-col items-center gap-6 bg-neutral-950 px-4 py-8 text-neutral-100 sm:px-6 sm:py-10">
+    <>
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-indigo-500 focus:px-4 focus:py-2.5 focus:text-sm focus:font-medium focus:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+      >
+        Skip to content
+      </a>
+      <RouteAnnouncer mainRef={mainRef} />
+      <main
+        id="main"
+        ref={mainRef}
+        tabIndex={-1}
+        className="flex min-h-dvh flex-col items-center gap-6 bg-neutral-950 px-4 py-8 text-neutral-100 outline-none sm:px-6 sm:py-10"
+      >
       <header className="flex w-full max-w-2xl items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">
@@ -134,7 +182,8 @@ export default function App() {
         </>
       )}
 
-      <p className="text-sm text-neutral-500">Phase 4 — knowledge model</p>
-    </main>
+      <p className="text-sm text-neutral-500">Phase 5 — polish &amp; accessibility</p>
+      </main>
+    </>
   );
 }

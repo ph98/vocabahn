@@ -19,4 +19,5 @@ jobs:
       - run: pnpm --filter @vocabahn/api prisma:generate
       - run: pnpm build
       - run: pnpm lint
+      - run: pnpm --filter @vocabahn/web test
       - run: pnpm audit --audit-level high
