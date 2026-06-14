@@ -9,7 +9,15 @@
     "dev": "pnpm --filter @vocabahn/shared build && pnpm --parallel -r dev",
     "build": "pnpm -r build",
     "lint": "eslint .",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "prisma:migrate": "pnpm --filter @vocabahn/api prisma:migrate",
+    "prisma:generate": "pnpm --filter @vocabahn/api prisma:generate",
+    "studio": "pnpm --filter @vocabahn/api studio",
+    "admin": "pnpm --filter @vocabahn/api admin",
+    "stats": "pnpm --filter @vocabahn/api stats",
+    "health": "curl http://localhost:3000/api/v1/health"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
