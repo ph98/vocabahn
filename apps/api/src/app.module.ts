@@ -11,6 +11,7 @@ import { DictionaryModule } from './dictionary/dictionary.module';
 import { EnrichmentModule } from './enrichment/enrichment.module';
 import { FeedbackModule } from './feedback/feedback.module';
 import { HealthModule } from './health/health.module';
+import { KnowledgeModule } from './knowledge/knowledge.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 
@@ -41,6 +42,7 @@ import { RedisModule } from './redis/redis.module';
     EnrichmentModule,
     FeedbackModule,
     HealthModule,
+    KnowledgeModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

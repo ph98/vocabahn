@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { ReviewCard, ReviewRating } from '@vocabahn/shared';
+import type { AutoGraduation, ReviewCard, ReviewRating } from '@vocabahn/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { buildReviewLogSnapshot, createScheduler, fromFsrsCard, ratingToFsrs, toFsrsCard } from '../fsrs/fsrs';
+import { KnowledgeService } from '../knowledge/knowledge.service';
 
 const cardInclude = {
   dictionaryEntry: {
     include: {
-      lexiconEntry: { select: { pos: true } },
+      lexiconEntry: { select: { pos: true, frequencyRank: true } },
       examples: { orderBy: { order: 'asc' as const } },
     },
   },
@@ -18,25 +19,42 @@ type CardWithEntry = NonNullable<Awaited<ReturnType<CardsService['findOwnedCard'
 export class CardsService {
   private readonly scheduler = createScheduler();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly knowledge: KnowledgeService,
+  ) {}
 
   async getDueCards(
     userId: string,
     { courseId, limit = 20 }: { courseId?: string; limit?: number },
   ): Promise<ReviewCard[]> {
-    const cards = await this.prisma.card.findMany({
-      where: {
-        userId,
-        knownState: 'ACTIVE',
-        due: { lte: new Date() },
-        ...(courseId
-          ? { dictionaryEntry: { courseWords: { some: { courseId } } } }
-          : {}),
-      },
+    const baseWhere = {
+      userId,
+      knownState: 'ACTIVE' as const,
+      due: { lte: new Date() },
+      ...(courseId ? { dictionaryEntry: { courseWords: { some: { courseId } } } } : {}),
+    };
+
+    const dueReviews = await this.prisma.card.findMany({
+      where: { ...baseWhere, state: { not: 'NEW' as const } },
       orderBy: { due: 'asc' },
       take: limit,
       include: cardInclude,
     });
+
+    let cards = dueReviews;
+    if (cards.length < limit) {
+      const remaining = limit - cards.length;
+      const newCards = await this.prisma.card.findMany({
+        where: { ...baseWhere, state: 'NEW' as const },
+        take: Math.max(remaining * 3, remaining),
+        include: cardInclude,
+      });
+      const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { cefrLevel: true } });
+      const ordered = this.knowledge.orderByPrior(user?.cefrLevel ?? null, newCards);
+      cards = [...cards, ...ordered.slice(0, remaining)];
+    }
+
     return cards.map((c) => this.toReviewCard(c));
   }
 
@@ -44,7 +62,7 @@ export class CardsService {
     userId: string,
     cardId: string,
     { rating, latencyMs }: { rating: ReviewRating; latencyMs?: number },
-  ): Promise<ReviewCard> {
+  ): Promise<{ card: ReviewCard; autoGraduated: AutoGraduation | null }> {
     const card = await this.findOwnedCard(userId, cardId);
     if (!card) {
       throw new NotFoundException('Card not found');
@@ -70,7 +88,9 @@ export class CardsService {
       }),
     ]);
 
-    return this.toReviewCard(saved);
+    const autoGraduated = await this.knowledge.recomputeAfterReview(userId, card.id);
+
+    return { card: this.toReviewCard(saved), autoGraduated };
   }
 
   private findOwnedCard(userId: string, cardId: string) {

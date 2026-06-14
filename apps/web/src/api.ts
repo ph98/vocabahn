@@ -8,6 +8,7 @@ import {
   entryFeedbackSchema,
   enrollResponseSchema,
   healthResponseSchema,
+  knownWordsResponseSchema,
   submitReviewResponseSchema,
   userSchema,
   type ReviewRating,
@@ -80,7 +81,16 @@ export async function submitReview(
   body: { rating: ReviewRating; latencyMs?: number },
 ) {
   const { data } = await api.post(`/reviews/${encodeURIComponent(cardId)}`, body);
-  return submitReviewResponseSchema.parse(data).card;
+  return submitReviewResponseSchema.parse(data);
+}
+
+export async function fetchKnownWords() {
+  const { data } = await api.get('/knowledge/known');
+  return knownWordsResponseSchema.parse(data).words;
+}
+
+export async function undoKnownWord(cardId: string) {
+  await api.post(`/knowledge/${encodeURIComponent(cardId)}/undo`);
 }
 
 export async function fetchDashboard() {

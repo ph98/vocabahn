@@ -169,10 +169,17 @@ export function ReviewSession() {
 
   const entry: CardEntry | undefined = card && { ...card.entry, ...detail };
 
+  const [autoGraduatedCount, setAutoGraduatedCount] = useState(0);
+
   const reviewMutation = useMutation({
     mutationFn: (vars: { cardId: string; rating: ReviewRating; latencyMs?: number }) =>
       submitReview(vars.cardId, { rating: vars.rating, latencyMs: vars.latencyMs }),
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['courses'] }),
+    onSuccess: ({ autoGraduated }) => {
+      void queryClient.invalidateQueries({ queryKey: ['courses'] });
+      if (autoGraduated && autoGraduated.count > 0) {
+        setAutoGraduatedCount((n) => n + autoGraduated.count);
+      }
+    },
   });
 
   useGSAP(
@@ -294,6 +301,34 @@ export function ReviewSession() {
   return (
     <section aria-label="Review session" className="space-y-4">
       <h2 className="text-sm font-medium uppercase tracking-wide text-neutral-400">Review</h2>
+
+      {autoGraduatedCount > 0 && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-center justify-between gap-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm text-emerald-300"
+        >
+          <p>
+            {autoGraduatedCount} word{autoGraduatedCount === 1 ? '' : 's'} auto-marked as known
+          </p>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/known-words"
+              className="min-h-11 content-center rounded-lg px-2 font-medium underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              Review / undo
+            </Link>
+            <button
+              type="button"
+              onClick={() => setAutoGraduatedCount(0)}
+              aria-label="Dismiss"
+              className="min-h-11 min-w-11 rounded-lg text-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {isPending && <p aria-live="polite">Loading due cards…</p>}
       {isError && <p aria-live="polite" className="text-red-400">Couldn't load due cards.</p>}

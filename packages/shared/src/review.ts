@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { autoGraduationSchema } from './knowledge';
 
 export const fsrsStateSchema = z.enum(['NEW', 'LEARNING', 'REVIEW', 'RELEARNING']);
 export type FsrsState = z.infer<typeof fsrsStateSchema>;
@@ -52,5 +53,6 @@ export type SubmitReviewBody = z.infer<typeof submitReviewBodySchema>;
 
 export const submitReviewResponseSchema = z.object({
   card: reviewCardSchema,
+  autoGraduated: autoGraduationSchema.nullable(),
 });
 export type SubmitReviewResponse = z.infer<typeof submitReviewResponseSchema>;

@@ -31,7 +31,6 @@ export class CardsController {
     body: { rating: 'AGAIN' | 'HARD' | 'GOOD' | 'EASY'; latencyMs?: number },
     @CurrentUserId() userId: string,
   ): Promise<SubmitReviewResponse> {
-    const card = await this.cards.submitReview(userId, cardId, body);
-    return { card };
+    return this.cards.submitReview(userId, cardId, body);
   }
 }

@@ -5,6 +5,7 @@ import { CourseDetailPage } from './components/CourseDetailPage';
 import { CoursesPage } from './components/CoursesPage';
 import { DashboardPage } from './components/DashboardPage';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
+import { KnownWordsPage } from './components/KnownWordsPage';
 import { ProfilePage } from './components/ProfilePage';
 import { ReviewSession } from './components/ReviewSession';
 import { StatusPage } from './components/StatusPage';
@@ -43,6 +44,9 @@ function Nav() {
       </NavLink>
       <NavLink to="/dashboard" className={navLinkClassName}>
         Dashboard
+      </NavLink>
+      <NavLink to="/known-words" className={navLinkClassName}>
+        Known words
       </NavLink>
     </nav>
   );
@@ -122,6 +126,7 @@ export default function App() {
               <Route path="/courses/:slug" element={<CourseDetailPage />} />
               <Route path="/review" element={<ReviewSession />} />
               <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/known-words" element={<KnownWordsPage />} />
               <Route path="/profile" element={<div className="mx-auto max-w-sm"><ProfilePage /></div>} />
               <Route path="/status" element={<div className="mx-auto max-w-sm"><StatusPage /></div>} />
             </Routes>
@@ -129,7 +134,7 @@ export default function App() {
         </>
       )}
 
-      <p className="text-sm text-neutral-500">Phase 3 — dashboard</p>
+      <p className="text-sm text-neutral-500">Phase 4 — knowledge model</p>
     </main>
   );
 }
