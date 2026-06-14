@@ -566,7 +566,7 @@ function DetailsSection({
   );
 }
 
-function EntryBody({
+export function EntryBody({
   entry,
   onSelectWord,
 }: {

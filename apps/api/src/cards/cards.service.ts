@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { ReviewCard, ReviewMode, ReviewRating } from '@vocabahn/shared';
+import type { ReviewCard, ReviewRating } from '@vocabahn/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { buildReviewLogSnapshot, createScheduler, fromFsrsCard, ratingToFsrs, toFsrsCard } from '../fsrs/fsrs';
 
@@ -43,7 +43,7 @@ export class CardsService {
   async submitReview(
     userId: string,
     cardId: string,
-    { rating, mode, latencyMs }: { rating: ReviewRating; mode: ReviewMode; latencyMs?: number },
+    { rating, latencyMs }: { rating: ReviewRating; latencyMs?: number },
   ): Promise<ReviewCard> {
     const card = await this.findOwnedCard(userId, cardId);
     if (!card) {
@@ -64,7 +64,6 @@ export class CardsService {
           cardId: card.id,
           userId,
           rating,
-          mode,
           latencyMs,
           ...buildReviewLogSnapshot(updated, now),
         },

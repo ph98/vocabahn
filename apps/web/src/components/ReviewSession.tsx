@@ -1,12 +1,12 @@
 import { useGSAP } from '@gsap/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { DictionaryEntryDetail, ReviewCard, ReviewMode, ReviewRating } from '@vocabahn/shared';
+import type { DictionaryEntryDetail, ReviewCard, ReviewRating } from '@vocabahn/shared';
 import gsap from 'gsap';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useDrag } from '@use-gesture/react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchDictionaryEntry, fetchDueCards, submitReview } from '../api';
-import { AudioButton } from './DictionaryCard';
+import { AudioButton, EntryBody } from './DictionaryCard';
 
 /** Card entry merged with the full dictionary entry once it's fetched. */
 type CardEntry = ReviewCard['entry'] & Partial<DictionaryEntryDetail>;
@@ -43,20 +43,7 @@ function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-function CardFront({ entry, mode }: { entry: CardEntry; mode: ReviewMode }) {
-  if (mode === 'LISTENING') {
-    return (
-      <div className="flex flex-col items-center gap-4 py-12">
-        <p className="text-sm text-neutral-400">Listen and recall</p>
-        {entry.audioUrl ? (
-          <AudioButton src={entry.audioUrl} label={`Play pronunciation of ${entry.word}`} />
-        ) : (
-          <p className="text-sm text-red-400">No audio available for this word.</p>
-        )}
-      </div>
-    );
-  }
-
+function CardFront({ entry }: { entry: CardEntry }) {
   return (
     <div className="flex flex-col items-center gap-3 py-12 text-center">
       {entry.imageUrl && (
@@ -71,16 +58,27 @@ function CardFront({ entry, mode }: { entry: CardEntry; mode: ReviewMode }) {
   );
 }
 
-function CardBack({ entry, mode }: { entry: CardEntry; mode: ReviewMode }) {
+/** The answer side shows the full dictionary entry — same content as the dictionary page. */
+function CardBack({
+  entry,
+  detail,
+  onSelectWord,
+}: {
+  entry: CardEntry;
+  detail?: DictionaryEntryDetail;
+  onSelectWord: (word: string) => void;
+}) {
+  if (detail) {
+    return (
+      <div className="border-t border-neutral-800 pt-4 text-left">
+        <EntryBody entry={detail} onSelectWord={onSelectWord} />
+      </div>
+    );
+  }
+
   const example = entry.examples[0];
   return (
-    <div className="space-y-3 py-6 text-center">
-      {mode === 'LISTENING' && (
-        <p className="text-2xl font-medium" lang="de">
-          {entry.word}
-          {entry.ipa && <span className="ml-2 text-base text-neutral-400">{entry.ipa}</span>}
-        </p>
-      )}
+    <div className="space-y-3 border-t border-neutral-800 py-6 pt-4 text-center">
       <p className="text-xl">{entry.translation ?? '—'}</p>
       {example && (
         <div className="rounded-xl bg-neutral-950 p-3 text-left text-sm">
@@ -94,17 +92,6 @@ function CardBack({ entry, mode }: { entry: CardEntry; mode: ReviewMode }) {
           </p>
           <p className="mt-1 text-neutral-400">{example.en}</p>
         </div>
-      )}
-      {entry.usageNote && (
-        <p className="rounded-xl border border-neutral-800 bg-neutral-950 p-3 text-left text-sm text-neutral-300">
-          {entry.usageNote}
-        </p>
-      )}
-      {entry.mnemonic && (
-        <p className="text-left text-sm text-neutral-400">
-          <span className="text-neutral-500">Memory hook: </span>
-          {entry.mnemonic}
-        </p>
       )}
     </div>
   );
@@ -159,9 +146,9 @@ export function ReviewSession() {
     queryFn: () => fetchDueCards(courseId ?? undefined),
   });
 
+  const navigate = useNavigate();
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
-  const [mode, setMode] = useState<ReviewMode>('STANDARD');
   const [stats, setStats] = useState<Record<ReviewRating, number>>({ AGAIN: 0, HARD: 0, GOOD: 0, EASY: 0 });
   const revealedAt = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -183,8 +170,8 @@ export function ReviewSession() {
   const entry: CardEntry | undefined = card && { ...card.entry, ...detail };
 
   const reviewMutation = useMutation({
-    mutationFn: (vars: { cardId: string; rating: ReviewRating; mode: ReviewMode; latencyMs?: number }) =>
-      submitReview(vars.cardId, { rating: vars.rating, mode: vars.mode, latencyMs: vars.latencyMs }),
+    mutationFn: (vars: { cardId: string; rating: ReviewRating; latencyMs?: number }) =>
+      submitReview(vars.cardId, { rating: vars.rating, latencyMs: vars.latencyMs }),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['courses'] }),
   });
 
@@ -203,7 +190,6 @@ export function ReviewSession() {
     reviewMutation.mutate({
       cardId: current.id,
       rating,
-      mode,
       latencyMs: revealedAt.current ? Date.now() - revealedAt.current : undefined,
     });
     setStats((s) => ({ ...s, [rating]: s[rating] + 1 }));
@@ -305,30 +291,7 @@ export function ReviewSession() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [card, revealed, mode]);
-
-  const modeToggle = useMemo(
-    () => (
-      <div className="flex justify-center gap-2 text-sm">
-        {(['STANDARD', 'LISTENING'] as ReviewMode[]).map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => setMode(m)}
-            aria-pressed={mode === m}
-            className={`min-h-11 rounded-xl px-4 py-2.5 font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-              mode === m
-                ? 'bg-indigo-500 text-white shadow-sm shadow-indigo-950/50'
-                : 'border border-neutral-700 text-neutral-300 hover:border-neutral-600 hover:bg-neutral-800'
-            }`}
-          >
-            {m === 'STANDARD' ? 'Standard' : 'Listening'}
-          </button>
-        ))}
-      </div>
-    ),
-    [mode],
-  );
+  }, [card, revealed]);
 
   return (
     <section aria-label="Review session" className="space-y-4">
@@ -362,7 +325,6 @@ export function ReviewSession() {
 
       {queue && card && entry && (
         <>
-          {modeToggle}
           <p className="text-center text-sm text-neutral-500">
             {index + 1} / {queue.length}
           </p>
@@ -377,8 +339,14 @@ export function ReviewSession() {
             aria-label="Flashcard"
             className="touch-none select-none rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg shadow-black/20"
           >
-            <CardFront entry={entry} mode={mode} />
-            {revealed && <CardBack entry={entry} mode={mode} />}
+            <CardFront entry={entry} />
+            {revealed && (
+              <CardBack
+                entry={entry}
+                detail={detail}
+                onSelectWord={(w) => navigate(`/word/${encodeURIComponent(w)}`)}
+              />
+            )}
           </div>
 
           {!revealed && (

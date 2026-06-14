@@ -8,7 +8,6 @@ import {
   healthResponseSchema,
   submitReviewResponseSchema,
   userSchema,
-  type ReviewMode,
   type ReviewRating,
   type User,
 } from '@vocabahn/shared';
@@ -75,7 +74,7 @@ export async function fetchDueCards(courseId?: string) {
 
 export async function submitReview(
   cardId: string,
-  body: { rating: ReviewRating; mode: ReviewMode; latencyMs?: number },
+  body: { rating: ReviewRating; latencyMs?: number },
 ) {
   const { data } = await api.post(`/reviews/${encodeURIComponent(cardId)}`, body);
   return submitReviewResponseSchema.parse(data).card;

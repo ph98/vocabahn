@@ -6,9 +6,6 @@ export type FsrsState = z.infer<typeof fsrsStateSchema>;
 export const reviewRatingSchema = z.enum(['AGAIN', 'HARD', 'GOOD', 'EASY']);
 export type ReviewRating = z.infer<typeof reviewRatingSchema>;
 
-export const reviewModeSchema = z.enum(['STANDARD', 'LISTENING']);
-export type ReviewMode = z.infer<typeof reviewModeSchema>;
-
 export const reviewExampleSchema = z.object({
   de: z.string(),
   en: z.string(),
@@ -49,7 +46,6 @@ export type DueCardsResponse = z.infer<typeof dueCardsResponseSchema>;
 
 export const submitReviewBodySchema = z.object({
   rating: reviewRatingSchema,
-  mode: reviewModeSchema.default('STANDARD'),
   latencyMs: z.number().int().nonnegative().optional(),
 });
 export type SubmitReviewBody = z.infer<typeof submitReviewBodySchema>;

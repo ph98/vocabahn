@@ -86,22 +86,35 @@ export class DictionaryService implements OnModuleInit {
       },
     };
 
-    let entry = await this.prisma.dictionaryEntry.findFirst({
-      where: { word: { equals: word, mode: 'insensitive' } },
-      include,
-    });
+    // German case carries meaning (e.g. "Frau" the noun vs "frau" the pronoun),
+    // so an exact-case match must win over a same-spelling different-case entry.
+    let entry =
+      (await this.prisma.dictionaryEntry.findFirst({ where: { word }, include })) ??
+      (await this.prisma.dictionaryEntry.findFirst({
+        where: { word: { equals: word, mode: 'insensitive' } },
+        include,
+      }));
 
     if (!entry) {
+      const candidateSelect = {
+        id: true,
+        word: true,
+        pos: true,
+        senses: { select: { tags: true, glosses: true } },
+        _count: { select: { senses: true } },
+      } as const;
       const candidates = await this.prisma.lexiconEntry.findMany({
-        where: { word: { equals: word, mode: 'insensitive' } },
-        select: {
-          id: true,
-          word: true,
-          pos: true,
-          senses: { select: { tags: true, glosses: true } },
-          _count: { select: { senses: true } },
-        },
+        where: { word },
+        select: candidateSelect,
       });
+      if (candidates.length === 0) {
+        candidates.push(
+          ...(await this.prisma.lexiconEntry.findMany({
+            where: { word: { equals: word, mode: 'insensitive' } },
+            select: candidateSelect,
+          })),
+        );
+      }
 
       // Promote only real lemmas; inflected/alternative forms are never listed.
       const best = candidates

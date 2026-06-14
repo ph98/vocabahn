@@ -175,11 +175,6 @@ enum ReviewRating {
   EASY
 }
 
-enum ReviewMode {
-  STANDARD
-  LISTENING
-}
-
 model Card {
   id                String     @id @default(cuid())
   userId            String
@@ -214,7 +209,6 @@ model ReviewLog {
   cardId String
   userId String
   rating ReviewRating
-  mode   ReviewMode   @default(STANDARD)
   // Answer latency feeds the knowledge model's performance signal (PRD §4.5)
   latencyMs Int?
 
