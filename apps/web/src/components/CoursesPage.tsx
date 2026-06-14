@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CourseSummary } from '@vocabahn/shared';
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { enrollCourse, fetchCourses } from '../api';
+import { useStaggerIn } from '../lib/motion';
 import { ProgressBar } from './ProgressBar';
 
 function CourseCard({ course }: { course: CourseSummary }) {
@@ -61,6 +63,8 @@ function CourseCard({ course }: { course: CourseSummary }) {
 
 export function CoursesPage() {
   const { data, isPending, isError } = useQuery({ queryKey: ['courses'], queryFn: fetchCourses });
+  const listRef = useRef<HTMLUListElement>(null);
+  useStaggerIn(listRef, 'li', [data]);
 
   return (
     <section aria-label="Courses">
@@ -69,7 +73,7 @@ export function CoursesPage() {
       {isError && <p aria-live="polite" className="text-red-400">Couldn't load courses.</p>}
       {data && data.length === 0 && <p className="text-neutral-400">No courses available yet.</p>}
       {data && data.length > 0 && (
-        <ul className="space-y-4">
+        <ul ref={listRef} className="space-y-4">
           {data.map((course) => (
             <CourseCard key={course.id} course={course} />
           ))}

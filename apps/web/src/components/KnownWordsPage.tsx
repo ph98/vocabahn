@@ -1,10 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchKnownWords, undoKnownWord } from '../api';
+import { useStaggerIn } from '../lib/motion';
 
 export function KnownWordsPage() {
   const queryClient = useQueryClient();
   const { data: words, isPending, isError } = useQuery({ queryKey: ['known-words'], queryFn: fetchKnownWords });
+  const listRef = useRef<HTMLUListElement>(null);
+  useStaggerIn(listRef, 'li', [words]);
 
   const undoMutation = useMutation({
     mutationFn: undoKnownWord,
@@ -38,7 +42,7 @@ export function KnownWordsPage() {
       )}
 
       {words && words.length > 0 && (
-        <ul className="space-y-2">
+        <ul ref={listRef} className="space-y-2">
           {words.map((w) => (
             <li
               key={w.cardId}

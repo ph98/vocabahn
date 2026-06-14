@@ -1,3 +1,4 @@
+import { useGSAP } from '@gsap/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   FEEDBACK_ISSUE_LABELS,
@@ -12,9 +13,11 @@ import {
   type SubmitFeedbackBody,
   type VerbConjugation,
 } from '@vocabahn/shared';
+import gsap from 'gsap';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { fetchDictionaryEntry, fetchFeedback, searchDictionary, submitFeedback } from '../api';
+import { prefersReducedMotion } from '../lib/motion';
 import { Tab, TabList, TabPanel } from './Tabs';
 
 const FEEDBACK_ISSUES = Object.keys(FEEDBACK_ISSUE_LABELS) as FeedbackIssue[];
@@ -582,6 +585,25 @@ function DetailsSection({
 }
 
 /** "Was this helpful?" vote + optional issue checkboxes and comment, upserted per user/entry. */
+/** Fades and slides in the "Thanks for the feedback!" confirmation when `show` becomes true. */
+function FeedbackConfirmation({ show }: { show: boolean }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+
+  useGSAP(
+    () => {
+      if (!show || !ref.current || prefersReducedMotion()) return;
+      gsap.from(ref.current, { opacity: 0, y: 6, duration: 0.25, ease: 'power2.out' });
+    },
+    { dependencies: [show], scope: ref },
+  );
+
+  return (
+    <p ref={ref} aria-live="polite" className="text-xs text-emerald-400">
+      {show ? 'Thanks for the feedback!' : ' '}
+    </p>
+  );
+}
+
 function FeedbackWidget({ word }: { word: string }) {
   const queryClient = useQueryClient();
   const { data } = useQuery({
@@ -714,9 +736,7 @@ function FeedbackWidget({ word }: { word: string }) {
             />
           </div>
 
-          <p aria-live="polite" className="text-xs text-emerald-400">
-            {mutation.isSuccess && !mutation.isPending ? 'Thanks for the feedback!' : ' '}
-          </p>
+          <FeedbackConfirmation show={mutation.isSuccess && !mutation.isPending} />
         </div>
       )}
     </section>

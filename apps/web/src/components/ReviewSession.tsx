@@ -8,6 +8,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchDictionaryEntry, fetchDueCards, submitReview } from '../api';
 import { enqueueReview, flushQueue, getQueueCount } from '../offline/queue';
 import { useOnlineStatus } from '../offline/useOnlineStatus';
+import { prefersReducedMotion } from '../lib/motion';
 import { AudioButton, EntryBody } from './DictionaryCard';
 
 /** Card entry merged with the full dictionary entry once it's fetched. */
@@ -40,10 +41,6 @@ const RATING_OFFSET: Record<ReviewRating, { x: number; y: number }> = {
 
 const SWIPE_THRESHOLD = 100;
 const FLY_DISTANCE = 500;
-
-function prefersReducedMotion() {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 function CardFront({ entry }: { entry: CardEntry }) {
   return (

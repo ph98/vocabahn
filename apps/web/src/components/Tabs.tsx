@@ -1,4 +1,7 @@
-import type { KeyboardEvent, ReactNode } from 'react';
+import { useGSAP } from '@gsap/react';
+import gsap from 'gsap';
+import { useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { prefersReducedMotion } from '../lib/motion';
 
 /** Groups `Tab` buttons under `role="tablist"`. */
 export function TabList({
@@ -80,8 +83,19 @@ export function TabPanel({
   className?: string;
   children: ReactNode;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Cross-fade panel content when the active tab changes.
+  useGSAP(
+    () => {
+      if (!ref.current || prefersReducedMotion()) return;
+      gsap.from(ref.current, { opacity: 0, duration: 0.15, ease: 'power1.out' });
+    },
+    { dependencies: [labelledBy], scope: ref },
+  );
+
   return (
-    <div role="tabpanel" id={id} aria-labelledby={labelledBy} tabIndex={0} className={className}>
+    <div ref={ref} role="tabpanel" id={id} aria-labelledby={labelledBy} tabIndex={0} className={className}>
       {children}
     </div>
   );
