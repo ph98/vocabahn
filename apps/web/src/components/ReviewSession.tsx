@@ -219,7 +219,7 @@ export function ReviewSession() {
 
   const bindDrag = useDrag(
     ({ down, movement: [mx, my], last, cancel }) => {
-      if (!revealed || !cardRef.current) return;
+      if (!cardRef.current) return;
       if (!down) {
         const absX = Math.abs(mx);
         const absY = Math.abs(my);
@@ -257,17 +257,15 @@ export function ReviewSession() {
     void el.play().catch(() => {});
   }, [index, entry?.audioUrl]);
 
-  // Keyboard shortcuts: Space/Enter reveals the answer; arrow keys mirror the
-  // swipe gestures (← Again · → Good · ↑ Easy · ↓ Hard).
+  // Keyboard shortcuts: Space/Enter reveals the answer; arrow keys rate the
+  // card (← Again · → Good · ↑ Easy · ↓ Hard), with or without revealing it.
   useEffect(() => {
     if (!card) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
-      if (!revealed) {
-        if (e.code === 'Space' || e.code === 'Enter') {
-          e.preventDefault();
-          reveal();
-        }
+      if (!revealed && (e.code === 'Space' || e.code === 'Enter')) {
+        e.preventDefault();
+        reveal();
         return;
       }
       switch (e.key) {
@@ -363,26 +361,22 @@ export function ReviewSession() {
             <p className="text-center text-xs text-neutral-500">Press Space or Enter to reveal</p>
           )}
 
-          {revealed && (
-            <div className="grid grid-cols-4 gap-2">
-              {RATINGS.map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => rate(r)}
-                  className={`min-h-11 rounded-xl border px-2 py-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${RATING_COLORS[r]}`}
-                >
-                  {RATING_LABELS[r]}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="grid grid-cols-4 gap-2">
+            {RATINGS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => rate(r)}
+                className={`min-h-11 rounded-xl border px-2 py-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${RATING_COLORS[r]}`}
+              >
+                {RATING_LABELS[r]}
+              </button>
+            ))}
+          </div>
 
-          {revealed && (
-            <p className="text-center text-xs text-neutral-500">
-              Swipe or press arrow keys: ← Again · → Good · ↑ Easy · ↓ Hard
-            </p>
-          )}
+          <p className="text-center text-xs text-neutral-500">
+            Swipe or press arrow keys: ← Again · → Good · ↑ Easy · ↓ Hard
+          </p>
         </>
       )}
     </section>
