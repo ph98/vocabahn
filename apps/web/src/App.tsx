@@ -1,15 +1,29 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useRef, type RefObject } from 'react';
+import { lazy, Suspense, useEffect, useRef, type RefObject } from 'react';
 import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { fetchHealth, fetchMe } from './api';
-import { CourseDetailPage } from './components/CourseDetailPage';
-import { CoursesPage } from './components/CoursesPage';
-import { DashboardPage } from './components/DashboardPage';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
-import { KnownWordsPage } from './components/KnownWordsPage';
 import { ProfilePage } from './components/ProfilePage';
-import { ReviewSession } from './components/ReviewSession';
-import { StatusPage } from './components/StatusPage';
+
+const CourseDetailPage = lazy(() =>
+  import('./components/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })),
+);
+const CoursesPage = lazy(() => import('./components/CoursesPage').then((m) => ({ default: m.CoursesPage })));
+const DashboardPage = lazy(() =>
+  import('./components/DashboardPage').then((m) => ({ default: m.DashboardPage })),
+);
+const KnownWordsPage = lazy(() =>
+  import('./components/KnownWordsPage').then((m) => ({ default: m.KnownWordsPage })),
+);
+const ReviewSession = lazy(() =>
+  import('./components/ReviewSession').then((m) => ({ default: m.ReviewSession })),
+);
+const StatusPage = lazy(() => import('./components/StatusPage').then((m) => ({ default: m.StatusPage })));
+
+/** Suspense fallback for lazy-loaded routes; announced to screen readers. */
+function RouteLoading() {
+  return <p aria-live="polite">Loading…</p>;
+}
 
 const navLinkClass = (isActive: boolean) =>
   `min-h-11 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
@@ -167,22 +181,23 @@ export default function App() {
         <>
           <Nav />
           <div className="w-full max-w-2xl">
-            <Routes>
-              <Route path="/" element={<DictionaryCard />} />
-              <Route path="/word/:word" element={<DictionaryEntryPage />} />
-              <Route path="/courses" element={<CoursesPage />} />
-              <Route path="/courses/:slug" element={<CourseDetailPage />} />
-              <Route path="/review" element={<ReviewSession />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/known-words" element={<KnownWordsPage />} />
-              <Route path="/profile" element={<div className="mx-auto max-w-sm"><ProfilePage /></div>} />
-              <Route path="/status" element={<div className="mx-auto max-w-sm"><StatusPage /></div>} />
-            </Routes>
+            <Suspense fallback={<RouteLoading />}>
+              <Routes>
+                <Route path="/" element={<DictionaryCard />} />
+                <Route path="/word/:word" element={<DictionaryEntryPage />} />
+                <Route path="/courses" element={<CoursesPage />} />
+                <Route path="/courses/:slug" element={<CourseDetailPage />} />
+                <Route path="/review" element={<ReviewSession />} />
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/known-words" element={<KnownWordsPage />} />
+                <Route path="/profile" element={<div className="mx-auto max-w-sm"><ProfilePage /></div>} />
+                <Route path="/status" element={<div className="mx-auto max-w-sm"><StatusPage /></div>} />
+              </Routes>
+            </Suspense>
           </div>
         </>
       )}
 
-      <p className="text-sm text-neutral-500">Phase 5 — polish &amp; accessibility</p>
       </main>
     </>
   );

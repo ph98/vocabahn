@@ -46,7 +46,7 @@ function CardFront({ entry }: { entry: CardEntry }) {
   return (
     <div className="flex flex-col items-center gap-3 py-12 text-center">
       {entry.imageUrl && (
-        <img src={entry.imageUrl} alt="" className="mb-2 size-24 rounded-xl object-cover" />
+        <img src={entry.imageUrl} alt="" loading="lazy" className="mb-2 size-24 rounded-xl object-cover" />
       )}
       {entry.emoji && <span className="text-5xl">{entry.emoji}</span>}
       <p className="text-2xl font-medium" lang="de">
