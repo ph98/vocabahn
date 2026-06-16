@@ -1,0 +1,78 @@
+# Production deployment — all four services on a single VPS.
+# Usage: see DEPLOYMENT.md and scripts/deploy.sh
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vocabahn
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      POSTGRES_DB: vocabahn
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./backups:/backups          # backup target (scripts/backup.sh)
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vocabahn -d vocabahn"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save 60 1 --appendonly yes
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://vocabahn:${POSTGRES_PASSWORD}@db:5432/vocabahn
+      REDIS_URL: redis://redis:6379
+      NODE_ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+    volumes:
+      - ./service-account.json:/repo/service-account.json:ro
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./ssl:/etc/nginx/ssl:ro         # TLS certs (see DEPLOYMENT.md §SSL)
+      - ./apps/web/nginx.production.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+    networks:
+      - internal
+
+volumes:
+  db-data:
+  redis-data:
+
+networks:
+  internal:
+    driver: bridge

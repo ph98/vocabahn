@@ -64,6 +64,7 @@ export class GeminiProvider {
     pos: string;
     gender: string | null;
     glosses: string[];
+    betterModel?: boolean;
   }): Promise<GeminiEnrichment | null> {
     if (!this.client) {
       this.logger.warn('GEMINI_API_KEY not set — skipping AI enrichment');
@@ -110,7 +111,7 @@ export class GeminiProvider {
     ].join('\n');
 
     const res = await this.client.models.generateContent({
-      model: MODEL,
+      model: input.betterModel ? 'gemini-2.0-flash' : MODEL,
       contents: prompt,
       config: {
         temperature: 0.4,

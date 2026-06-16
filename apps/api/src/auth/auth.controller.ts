@@ -121,6 +121,32 @@ export class AuthController {
     clearAuthCookies(res);
   }
 
+  /** Request a magic-link sign-in email. Always 204 to prevent email enumeration. */
+  @Post('email/request')
+  @HttpCode(204)
+  async emailRequest(@Body() body: { email: string }): Promise<void> {
+    if (!body.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
+      return; // silently ignore malformed requests
+    }
+    await this.auth.requestEmailOtp(body.email.toLowerCase().trim());
+  }
+
+  /** Verify a magic-link token, set auth cookies, redirect to the app. */
+  @Get('email/verify')
+  async emailVerify(@Query('token') token: string, @Res() res: Response) {
+    if (!token) {
+      res.redirect(`${this.frontendUrl}/?auth_error=invalid_link`);
+      return;
+    }
+    try {
+      const user = await this.auth.verifyEmailOtp(token);
+      setAuthCookies(res, this.auth.issueTokens(user.id));
+      res.redirect(this.frontendUrl);
+    } catch {
+      res.redirect(`${this.frontendUrl}/?auth_error=invalid_link`);
+    }
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUserId() userId: string): Promise<User> {

@@ -6,6 +6,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { CardsModule } from './cards/cards.module';
 import { CoursesModule } from './courses/courses.module';
+import { DecksModule } from './decks/decks.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DictionaryModule } from './dictionary/dictionary.module';
 import { EnrichmentModule } from './enrichment/enrichment.module';
@@ -37,6 +38,7 @@ import { RedisModule } from './redis/redis.module';
     AuthModule,
     CardsModule,
     CoursesModule,
+    DecksModule,
     DashboardModule,
     DictionaryModule,
     EnrichmentModule,

@@ -111,11 +111,32 @@ function SessionSummary({
   onReviewMore: () => void;
 }) {
   const total = RATINGS.reduce((sum, r) => sum + stats[r], 0);
+  const ref = useRef<HTMLElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  useGSAP(
+    () => {
+      if (!ref.current || prefersReducedMotion()) return;
+      gsap.from(ref.current, { opacity: 0, scale: 0.92, duration: 0.35, ease: 'back.out(1.6)' });
+      if (listRef.current) {
+        gsap.from(listRef.current.querySelectorAll('li'), {
+          opacity: 0,
+          y: 12,
+          duration: 0.25,
+          stagger: 0.06,
+          ease: 'power2.out',
+          delay: 0.2,
+        });
+      }
+    },
+    { scope: ref },
+  );
+
   return (
-    <section aria-label="Session summary" className="rounded-2xl border border-surface-800 bg-surface-900 p-6 text-center shadow-lg shadow-black/20">
+    <section ref={ref} aria-label="Session summary" className="rounded-2xl border border-surface-800 bg-surface-900 p-6 text-center shadow-lg shadow-black/20">
       <h2 className="text-lg font-medium">Session complete</h2>
       <p className="mt-1 text-surface-400">{total} card{total === 1 ? '' : 's'} reviewed</p>
-      <ul className="mt-4 grid grid-cols-4 gap-2 text-sm">
+      <ul ref={listRef} className="mt-4 grid grid-cols-4 gap-2 text-sm">
         {RATINGS.map((r) => (
           <li key={r} className={`rounded-xl border px-2 py-3 ${RATING_COLORS[r]}`}>
             <p className="text-lg font-semibold">{stats[r]}</p>
@@ -158,6 +179,7 @@ export function ReviewSession() {
   const [stats, setStats] = useState<Record<ReviewRating, number>>({ AGAIN: 0, HARD: 0, GOOD: 0, EASY: 0 });
   const revealedAt = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const cardBackRef = useRef<HTMLDivElement>(null);
   const autoplayRef = useRef<HTMLAudioElement>(null);
   const hintRefs = useRef<Partial<Record<ReviewRating, HTMLDivElement | null>>>({});
 
@@ -220,6 +242,7 @@ export function ReviewSession() {
     },
   });
 
+  // New-card entrance animation (index change only).
   useGSAP(
     () => {
       if (!cardRef.current) return;
@@ -228,7 +251,16 @@ export function ReviewSession() {
         gsap.from(cardRef.current, { opacity: 0, y: 16, duration: 0.25, ease: 'power2.out' });
       }
     },
-    { dependencies: [index, revealed], scope: cardRef },
+    { dependencies: [index], scope: cardRef },
+  );
+
+  // Reveal slide-in: CardBack appears from below when answer is shown.
+  useGSAP(
+    () => {
+      if (!revealed || !cardBackRef.current || prefersReducedMotion()) return;
+      gsap.from(cardBackRef.current, { opacity: 0, y: 10, duration: 0.2, ease: 'power2.out' });
+    },
+    { dependencies: [revealed] },
   );
 
   const advance = (rating: ReviewRating, current: ReviewCard) => {
@@ -337,6 +369,7 @@ export function ReviewSession() {
 
   const reveal = () => {
     revealedAt.current = Date.now();
+    if (cardRef.current) gsap.set(cardRef.current, { x: 0, y: 0, rotation: 0 });
     setRevealed(true);
     setAnnouncement('Answer revealed.');
   };
@@ -486,11 +519,13 @@ export function ReviewSession() {
             ))}
             <CardFront entry={entry} />
             {revealed && (
-              <CardBack
-                entry={entry}
-                detail={detail}
-                onSelectWord={(w) => navigate(`/word/${encodeURIComponent(w)}`)}
-              />
+              <div ref={cardBackRef}>
+                <CardBack
+                  entry={entry}
+                  detail={detail}
+                  onSelectWord={(w) => navigate(`/word/${encodeURIComponent(w)}`)}
+                />
+              </div>
             )}
           </div>
 

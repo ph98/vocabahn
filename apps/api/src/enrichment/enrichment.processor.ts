@@ -64,6 +64,7 @@ export class EnrichmentProcessor extends WorkerHost {
       pos: lex.pos,
       gender: lex.gender,
       glosses,
+      betterModel: job.data.betterModel,
     });
     if (ai) {
       translation = ai.translation ?? translation;

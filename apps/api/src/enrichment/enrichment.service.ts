@@ -60,6 +60,43 @@ export class EnrichmentService {
     }
   }
 
+  /**
+   * Force re-enrichment with a higher-quality model, bypassing the daily quota.
+   * Called when a user submits a DOWN vote with content-quality issues.
+   * Resets enrichment status so the dictionary page shows the "enriching" spinner again.
+   */
+  async requestReenrichment(dictionaryEntryId: string): Promise<void> {
+    try {
+      const existing = await this.queue.getJob(dictionaryEntryId);
+      if (existing) await existing.remove();
+
+      await this.queue.add(
+        'enrich',
+        { dictionaryEntryId, betterModel: true },
+        {
+          jobId: `reenrich:${dictionaryEntryId}`,
+          attempts: 2,
+          backoff: { type: 'exponential', delay: 5_000 },
+          removeOnComplete: true,
+          removeOnFail: { age: 86_400 },
+        },
+      );
+    } catch (err) {
+      this.logger.error(
+        `failed to enqueue re-enrichment for ${dictionaryEntryId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
+
+  /** Returns the current enrichment usage for today without incrementing the counter. */
+  async getQuota(userId: string): Promise<{ used: number; cap: number }> {
+    const key = `enrich:cap:${userId}:${new Date().toISOString().slice(0, 10)}`;
+    const raw = await this.redis.get(key);
+    return { used: raw ? Number(raw) : 0, cap: DAILY_CAP };
+  }
+
   /** Atomic INCR with a rolling 24h TTL; true while the user is under the cap. */
   private async consumeDailyQuota(userId: string): Promise<boolean> {
     const key = `enrich:cap:${userId}:${new Date().toISOString().slice(0, 10)}`;

@@ -16,7 +16,7 @@ import {
 import gsap from 'gsap';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { fetchDictionaryEntry, fetchFeedback, searchDictionary, submitFeedback } from '../api';
+import { addWordToDeck, fetchDecks, fetchDictionaryEntry, fetchFeedback, markWordKnown, searchDictionary, submitFeedback } from '../api';
 import { prefersReducedMotion } from '../lib/motion';
 import { Tab, TabList, TabPanel } from './Tabs';
 
@@ -750,6 +750,27 @@ export function EntryBody({
   entry: DictionaryEntryDetail;
   onSelectWord: (word: string) => void;
 }) {
+  const queryClient = useQueryClient();
+  const markKnownMutation = useMutation({
+    mutationFn: () => markWordKnown(entry.id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['known-words'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+
+  const { data: deckData } = useQuery({ queryKey: ['decks'], queryFn: fetchDecks });
+  const myDecks = deckData?.myDecks ?? [];
+  const [addedToDeck, setAddedToDeck] = useState<string | null>(null);
+  const addToDeckMutation = useMutation({
+    mutationFn: (deckId: string) => addWordToDeck(deckId, entry.id),
+    onSuccess: (_data, deckId) => {
+      void queryClient.invalidateQueries({ queryKey: ['deck', deckId] });
+      setAddedToDeck(deckId);
+      setTimeout(() => setAddedToDeck(null), 2000);
+    },
+  });
+
   const article = articleFor(entry.gender);
   const glosses = [...new Set(entry.senses.flatMap((s) => s.glosses))];
   const synonyms = [...new Set(entry.senses.flatMap((s) => s.synonyms))];
@@ -822,6 +843,43 @@ export function EntryBody({
             ))}
           </p>
         )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => markKnownMutation.mutate()}
+            disabled={markKnownMutation.isPending || markKnownMutation.isSuccess}
+            className={`min-h-11 rounded-xl border px-4 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 ${
+              markKnownMutation.isSuccess
+                ? 'border-emerald-400/60 bg-emerald-400/10 text-accent-emerald'
+                : 'border-surface-700 hover:border-surface-600 hover:bg-surface-800'
+            }`}
+          >
+            {markKnownMutation.isSuccess ? 'Known ✓' : markKnownMutation.isPending ? 'Marking…' : 'Mark as known'}
+          </button>
+          {myDecks.length > 0 && (
+            <div className="relative">
+              <label className="sr-only" htmlFor={`add-to-deck-${entry.id}`}>
+                Add to deck
+              </label>
+              <select
+                id={`add-to-deck-${entry.id}`}
+                value=""
+                onChange={(e) => { if (e.target.value) addToDeckMutation.mutate(e.target.value); }}
+                disabled={addToDeckMutation.isPending}
+                className="min-h-11 rounded-xl border border-surface-700 bg-surface-900 px-3 pr-8 text-sm transition-colors hover:border-surface-600 focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 appearance-none cursor-pointer"
+              >
+                <option value="" disabled>
+                  {addedToDeck ? 'Added ✓' : addToDeckMutation.isPending ? 'Adding…' : '+ Add to deck'}
+                </option>
+                {myDecks.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
       </header>
 
       {(entry.enrichmentStatus === 'PENDING' || entry.enrichmentStatus === 'ENRICHING') && (

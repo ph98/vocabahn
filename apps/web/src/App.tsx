@@ -5,6 +5,7 @@ import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-ro
 import { fetchHealth, fetchMe } from './api';
 import { prefersReducedMotion } from './lib/motion';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
+import { IllustrationDictionary, IllustrationFlashcard, IllustrationStreak, IllustrationTrophy } from './components/Illustrations';
 import { ProfilePage } from './components/ProfilePage';
 import { type Theme, useTheme } from './lib/theme';
 
@@ -22,6 +23,10 @@ const ReviewSession = lazy(() =>
   import('./components/ReviewSession').then((m) => ({ default: m.ReviewSession })),
 );
 const StatusPage = lazy(() => import('./components/StatusPage').then((m) => ({ default: m.StatusPage })));
+const DecksPage = lazy(() => import('./components/DecksPage').then((m) => ({ default: m.DecksPage })));
+const DeckDetailPage = lazy(() =>
+  import('./components/DecksPage').then((m) => ({ default: m.DeckDetailPage })),
+);
 
 /** Suspense fallback for lazy-loaded routes; announced to screen readers. */
 function RouteLoading() {
@@ -67,6 +72,7 @@ function ThemeToggle() {
 function pageNameForPath(pathname: string): string {
   if (pathname === '/' || pathname.startsWith('/word/')) return 'Dictionary';
   if (pathname.startsWith('/courses')) return 'Courses';
+  if (pathname.startsWith('/decks')) return 'Decks';
   if (pathname.startsWith('/review')) return 'Review';
   if (pathname.startsWith('/dashboard')) return 'Dashboard';
   if (pathname.startsWith('/known-words')) return 'Known words';
@@ -119,6 +125,9 @@ function Nav() {
       </NavLink>
       <NavLink to="/known-words" className={navLinkClassName}>
         Known words
+      </NavLink>
+      <NavLink to="/decks" className={navLinkClassName}>
+        Decks
       </NavLink>
     </nav>
   );
@@ -228,6 +237,55 @@ function EdgeSwipeBack() {
   );
 }
 
+const FEATURES = [
+  { Illus: IllustrationDictionary, title: 'AI-enriched dictionary', desc: 'Every German word comes with examples, images, audio, memory hooks, and level tags — all generated automatically.' },
+  { Illus: IllustrationFlashcard, title: 'Spaced-repetition flashcards', desc: 'FSRS-powered scheduling surfaces cards at exactly the right moment so you review less and remember more.' },
+  { Illus: IllustrationStreak, title: 'Progress you can see', desc: 'Streaks, a GitHub-style heatmap, and per-course stats keep you motivated on the journey from A1 to C1.' },
+  { Illus: IllustrationTrophy, title: 'Feels native on mobile', desc: 'Install as a PWA. Swipe cards to rate, pull to refresh, study offline — it works like a native app, not a website.' },
+];
+
+/** Marketing section shown to unauthenticated visitors before they sign in. */
+function LandingPage() {
+  return (
+    <>
+      <section aria-labelledby="hero-heading" className="space-y-6 text-center">
+        <IllustrationDictionary className="mx-auto h-32 w-auto text-indigo-400" />
+        <h2 id="hero-heading" className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Learn German, word by word.
+        </h2>
+        <p className="mx-auto max-w-xl text-lg text-surface-400">
+          Vocabahn is a free, open-source German vocabulary app with an AI-enriched dictionary
+          and FSRS spaced-repetition flashcards. No ads, no streaks for streak's sake — just the
+          most effective way to build your German vocabulary.
+        </p>
+        <Link
+          to="/profile"
+          className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-indigo-500 px-6 py-3 font-medium text-white shadow-md shadow-indigo-950/40 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          Get started
+        </Link>
+      </section>
+
+      <section aria-label="Features" className="grid gap-4 sm:grid-cols-2">
+        {FEATURES.map(({ Illus, title, desc }) => (
+          <div
+            key={title}
+            className="rounded-2xl border border-surface-800 bg-surface-900 p-5 shadow-sm"
+          >
+            <Illus className="mb-2 h-20 w-auto text-indigo-400" />
+            <h3 className="mb-1 font-semibold">{title}</h3>
+            <p className="text-sm text-surface-400">{desc}</p>
+          </div>
+        ))}
+      </section>
+
+      <section aria-label="Sign in" className="mx-auto max-w-sm">
+        <ProfilePage />
+      </section>
+    </>
+  );
+}
+
 export default function App() {
   const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const mainRef = useRef<HTMLElement>(null);
@@ -267,8 +325,8 @@ export default function App() {
       </header>
 
       {!isPending && !user && (
-        <div className="w-full max-w-sm">
-          <ProfilePage />
+        <div className="w-full max-w-2xl space-y-10">
+          <LandingPage />
         </div>
       )}
 
@@ -285,6 +343,8 @@ export default function App() {
                 <Route path="/review" element={<ReviewSession />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/known-words" element={<KnownWordsPage />} />
+                <Route path="/decks" element={<DecksPage />} />
+                <Route path="/decks/:id" element={<DeckDetailPage />} />
                 <Route path="/profile" element={<div className="mx-auto max-w-sm"><ProfilePage /></div>} />
                 <Route path="/status" element={<div className="mx-auto max-w-sm"><StatusPage /></div>} />
               </Routes>
@@ -292,6 +352,17 @@ export default function App() {
           </div>
         </>
       )}
+
+      <footer className="mt-auto w-full max-w-2xl border-t border-surface-800 pt-4 text-center text-xs text-surface-500">
+        <a
+          href="https://github.com/YOUR_ORG/vocabahn/blob/main/CHANGELOG.md"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-surface-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          v{__APP_VERSION__}
+        </a>
+      </footer>
 
       </main>
     </>

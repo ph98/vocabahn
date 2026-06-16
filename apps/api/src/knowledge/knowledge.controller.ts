@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import type { KnownWordsResponse } from '@vocabahn/shared';
 import { CurrentUserId, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { KnowledgeService } from './knowledge.service';
@@ -11,6 +11,18 @@ export class KnowledgeController {
   @Get('known')
   async listKnown(@CurrentUserId() userId: string): Promise<KnownWordsResponse> {
     return { words: await this.knowledge.listKnownWords(userId) };
+  }
+
+  @Post('entry/:entryId/mark-known')
+  async markKnown(@Param('entryId') entryId: string, @CurrentUserId() userId: string): Promise<{ success: true }> {
+    await this.knowledge.markKnown(userId, entryId);
+    return { success: true };
+  }
+
+  @Post('bulk-undo')
+  async bulkUndo(@Body() body: { cardIds: string[] }, @CurrentUserId() userId: string): Promise<{ success: true }> {
+    await this.knowledge.bulkUndo(userId, body.cardIds ?? []);
+    return { success: true };
   }
 
   @Post(':cardId/undo')

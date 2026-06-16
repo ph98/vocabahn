@@ -13,6 +13,7 @@
     "ingest:lexicon": "dotenv -e ../../.env -- tsx scripts/ingest-lexicon.ts",
     "seed:dictionary": "dotenv -e ../../.env -- tsx scripts/seed-dictionary.ts",
     "seed:course": "dotenv -e ../../.env -- tsx scripts/seed-course.ts",
+    "seed:decks": "dotenv -e ../../.env -- tsx scripts/seed-decks.ts",
     "stats": "dotenv -e ../../.env -- tsx scripts/stats.ts",
     "admin": "dotenv -e ../../.env -- tsx scripts/admin.mts"
   },
@@ -39,6 +40,7 @@
     "google-auth-library": "^9.15.1",
     "helmet": "^8.1.0",
     "ioredis": "^5.6.1",
+    "nodemailer": "^9.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "ts-fsrs": "^5.4.1",
@@ -49,6 +51,7 @@
     "@types/cookie-parser": "^1.4.8",
     "@types/express": "^5.0.1",
     "@types/node": "^20.17.0",
+    "@types/nodemailer": "^8.0.1",
     "dotenv-cli": "^8.0.0",
     "prisma": "^6.8.0",
     "tsx": "^4.19.4",

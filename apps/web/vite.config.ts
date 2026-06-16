@@ -3,8 +3,16 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { defineConfig } from 'vitest/config';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+// Read version from the root package.json so the UI and git tags stay in sync.
+const { version } = require('../../package.json') as { version: string };
 
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(version),
+  },
   build: {
     sourcemap: true,
   },

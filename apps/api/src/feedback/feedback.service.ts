@@ -1,10 +1,22 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { EntryFeedback, SubmitFeedbackBody } from '@vocabahn/shared';
+import type { EntryFeedback, FeedbackIssue, SubmitFeedbackBody } from '@vocabahn/shared';
+import { EnrichmentService } from '../enrichment/enrichment.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+// Issues that indicate the AI-generated content is wrong and warrants re-enrichment.
+const CONTENT_QUALITY_ISSUES: FeedbackIssue[] = [
+  'TRANSLATION',
+  'EXAMPLE',
+  'IMAGE',
+  'OTHER',
+];
 
 @Injectable()
 export class FeedbackService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly enrichment: EnrichmentService,
+  ) {}
 
   private async resolveEntryId(word: string): Promise<{ id: string; word: string }> {
     const entry =
@@ -58,6 +70,15 @@ export class FeedbackService {
       },
       select: { vote: true, issues: true, comment: true },
     });
+
+    // Trigger re-enrichment with a better model when the user flags content issues.
+    const hasQualityIssue = (body.issues ?? []).some((i) =>
+      CONTENT_QUALITY_ISSUES.includes(i as FeedbackIssue),
+    );
+    if (body.vote === 'DOWN' && hasQualityIssue) {
+      void this.enrichment.requestReenrichment(entry.id);
+    }
+
     return { vote: feedback.vote ?? null, issues: feedback.issues, comment: feedback.comment ?? null };
   }
 }

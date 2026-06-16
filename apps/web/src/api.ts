@@ -2,6 +2,9 @@ import {
   courseDetailSchema,
   courseListResponseSchema,
   dashboardResponseSchema,
+  deckDetailSchema,
+  deckListResponseSchema,
+  deckSummarySchema,
   dictionaryEntryDetailSchema,
   dictionarySearchResponseSchema,
   dueCardsResponseSchema,
@@ -12,9 +15,11 @@ import {
   submitReviewResponseSchema,
   syncReviewsResponseSchema,
   userSchema,
+  type CreateDeckBody,
   type ReviewRating,
   type SubmitFeedbackBody,
   type SyncReviewItem,
+  type UpdateDeckBody,
   type User,
 } from '@vocabahn/shared';
 import axios, { isAxiosError } from 'axios';
@@ -100,6 +105,14 @@ export async function undoKnownWord(cardId: string) {
   await api.post(`/knowledge/${encodeURIComponent(cardId)}/undo`);
 }
 
+export async function bulkUndoKnownWords(cardIds: string[]) {
+  await api.post('/knowledge/bulk-undo', { cardIds });
+}
+
+export async function markWordKnown(entryId: string) {
+  await api.post(`/knowledge/entry/${encodeURIComponent(entryId)}/mark-known`);
+}
+
 export async function fetchDashboard() {
   const { data } = await api.get('/dashboard');
   return dashboardResponseSchema.parse(data);
@@ -113,4 +126,45 @@ export async function fetchFeedback(word: string) {
 export async function submitFeedback(word: string, body: SubmitFeedbackBody) {
   const { data } = await api.post(`/dictionary/${encodeURIComponent(word)}/feedback`, body);
   return entryFeedbackSchema.parse(data);
+}
+
+export async function requestEmailSignIn(email: string): Promise<void> {
+  await api.post('/auth/email/request', { email });
+}
+
+export async function fetchEnrichmentQuota(): Promise<{ used: number; cap: number }> {
+  const { data } = await api.get('/dictionary/quota');
+  return data as { used: number; cap: number };
+}
+
+export async function fetchDecks() {
+  const { data } = await api.get('/decks');
+  return deckListResponseSchema.parse(data);
+}
+
+export async function fetchDeck(id: string) {
+  const { data } = await api.get(`/decks/${encodeURIComponent(id)}`);
+  return deckDetailSchema.parse(data);
+}
+
+export async function createDeck(body: CreateDeckBody) {
+  const { data } = await api.post('/decks', body);
+  return deckSummarySchema.parse(data);
+}
+
+export async function updateDeck(id: string, body: UpdateDeckBody) {
+  const { data } = await api.patch(`/decks/${encodeURIComponent(id)}`, body);
+  return deckSummarySchema.parse(data);
+}
+
+export async function deleteDeck(id: string) {
+  await api.delete(`/decks/${encodeURIComponent(id)}`);
+}
+
+export async function addWordToDeck(deckId: string, entryId: string) {
+  await api.post(`/decks/${encodeURIComponent(deckId)}/words`, { entryId });
+}
+
+export async function removeWordFromDeck(deckId: string, entryId: string) {
+  await api.delete(`/decks/${encodeURIComponent(deckId)}/words/${encodeURIComponent(entryId)}`);
 }

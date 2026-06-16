@@ -285,6 +285,34 @@ export class DictionaryService implements OnModuleInit {
     return null;
   }
 
+  /** Top-1000 enriched entries serialized for offline use. */
+  async getOfflinePack(): Promise<Array<{
+    word: string; pos: string; gender: string | null; translation: string | null;
+    emoji: string | null; cefrLevel: string | null; frequencyRank: number | null;
+  }>> {
+    const rows = await this.prisma.dictionaryEntry.findMany({
+      where: { enrichmentStatus: 'ENRICHED' },
+      orderBy: { lexiconEntry: { frequencyRank: 'asc' } },
+      take: 1000,
+      select: {
+        word: true,
+        translation: true,
+        emoji: true,
+        cefrLevel: true,
+        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true } },
+      },
+    });
+    return rows.map((e) => ({
+      word: e.word,
+      pos: e.lexiconEntry.pos,
+      gender: e.lexiconEntry.gender,
+      translation: e.translation,
+      emoji: e.emoji,
+      cefrLevel: e.cefrLevel,
+      frequencyRank: e.lexiconEntry.frequencyRank,
+    }));
+  }
+
   private toSearchResult(e: {
     word: string;
     translation: string | null;

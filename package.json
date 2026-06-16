@@ -1,5 +1,6 @@
 {
   "name": "vocabahn",
+  "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@10.23.0",
   "engines": {
@@ -17,10 +18,14 @@
     "studio": "pnpm --filter @vocabahn/api studio",
     "admin": "pnpm --filter @vocabahn/api admin",
     "stats": "pnpm --filter @vocabahn/api stats",
-    "health": "curl http://localhost:3000/api/v1/health"
+    "health": "curl http://localhost:3000/api/v1/health",
+    "release": "bash scripts/release.sh",
+    "e2e": "playwright test",
+    "e2e:ui": "playwright test --ui"
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
+    "@playwright/test": "^1.61.0",
     "eslint": "^9.28.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "typescript": "^5.8.3",

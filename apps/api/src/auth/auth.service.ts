@@ -1,4 +1,6 @@
+import { randomBytes } from 'node:crypto';
 import {
+  BadRequestException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -8,6 +10,9 @@ import type { User } from '@vocabahn/shared';
 import { OAuth2Client } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
 import { ACCESS_TTL_MS, REFRESH_TTL_MS } from './cookies';
+import { EmailService } from './email.service';
+
+const OTP_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 export interface JwtPayload {
   sub: string;
@@ -23,6 +28,7 @@ export class AuthService {
     private readonly config: ConfigService,
     private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
+    private readonly email: EmailService,
   ) {
     this.clientId = this.config.getOrThrow<string>('GOOGLE_CLIENT_ID');
     this.google = new OAuth2Client(
@@ -110,6 +116,46 @@ export class AuthService {
       throw new UnauthorizedException('User no longer exists');
     }
     return { ...this.issueTokens(user.id), user: this.toPublicUser(user) };
+  }
+
+  /**
+   * Issues a time-limited OTP token and sends it as a magic link to the given address.
+   * Always returns the same success message to avoid email-enumeration.
+   */
+  async requestEmailOtp(emailAddress: string): Promise<void> {
+    const token = randomBytes(24).toString('hex');
+    const expiresAt = new Date(Date.now() + OTP_TTL_MS);
+    // Invalidate any previous unused OTPs for this address
+    await this.prisma.emailOtp.updateMany({
+      where: { email: emailAddress, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    await this.prisma.emailOtp.create({ data: { email: emailAddress, token, expiresAt } });
+
+    const frontendUrl = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5173';
+    const link = `${frontendUrl}/auth/verify?token=${token}`;
+    await this.email.sendMagicLink(emailAddress, link);
+  }
+
+  /** Verifies the OTP token, upserts the user, and returns auth tokens. */
+  async verifyEmailOtp(token: string): Promise<User> {
+    const otp = await this.prisma.emailOtp.findUnique({ where: { token } });
+    if (!otp || otp.usedAt || otp.expiresAt < new Date()) {
+      throw new BadRequestException('Invalid or expired link');
+    }
+    await this.prisma.emailOtp.update({ where: { id: otp.id }, data: { usedAt: new Date() } });
+
+    const user = await this.prisma.user.upsert({
+      where: { email: otp.email },
+      create: {
+        googleId: `email:${otp.email}`,
+        email: otp.email,
+        name: null,
+        avatarUrl: null,
+      },
+      update: {},
+    });
+    return this.toPublicUser(user);
   }
 
   async getUserById(id: string): Promise<User | null> {

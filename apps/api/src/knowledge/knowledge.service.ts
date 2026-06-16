@@ -180,6 +180,32 @@ export class KnowledgeService {
   }
 
   /** One-tap undo: returns the card to ACTIVE, due now, so it reappears in review (PRD §4.5). */
+  /** Mark a word as USER_KNOWN by its dictionary entry ID; creates the card if needed. */
+  async markKnown(userId: string, dictionaryEntryId: string): Promise<void> {
+    await this.prisma.card.upsert({
+      where: { userId_dictionaryEntryId: { userId, dictionaryEntryId } },
+      create: {
+        userId,
+        dictionaryEntryId,
+        knownState: 'USER_KNOWN',
+        due: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year out
+        stability: 100,
+        difficulty: 1,
+        elapsedDays: 0,
+        scheduledDays: 365,
+        reps: 0,
+        lapses: 0,
+        state: 'REVIEW',
+      },
+      update: { knownState: 'USER_KNOWN', due: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) },
+    });
+  }
+
+  /** Undo multiple known words in parallel. */
+  async bulkUndo(userId: string, cardIds: string[]): Promise<void> {
+    await Promise.all(cardIds.map((id) => this.undoKnown(userId, id)));
+  }
+
   async undoKnown(userId: string, cardId: string): Promise<void> {
     const card = await this.prisma.card.findFirst({ where: { id: cardId, userId } });
     if (!card) {

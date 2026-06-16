@@ -1,4 +1,5 @@
 export * from './course';
+export * from './deck';
 export * from './dashboard';
 export * from './dictionary';
 export * from './feedback';
