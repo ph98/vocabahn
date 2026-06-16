@@ -11,6 +11,16 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <title>Vocabahn</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('vocabahn-theme');
+          if (stored === 'light' || stored === 'dark') {
+            document.documentElement.classList.add('theme-' + stored);
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

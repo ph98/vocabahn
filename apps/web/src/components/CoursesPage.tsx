@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { PullToRefresh } from './PullToRefresh';
 import type { CourseSummary } from '@vocabahn/shared';
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
@@ -14,20 +15,20 @@ function CourseCard({ course }: { course: CourseSummary }) {
   });
 
   return (
-    <li className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg shadow-black/20 transition-colors hover:border-neutral-700">
+    <li className="rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20 transition-colors hover:border-surface-700">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-lg font-medium">{course.title}</h3>
-          {course.description && <p className="mt-1 text-sm text-neutral-400">{course.description}</p>}
+          {course.description && <p className="mt-1 text-sm text-surface-400">{course.description}</p>}
         </div>
         {course.cefrLevel && (
-          <span className="shrink-0 rounded-full bg-neutral-800 px-2.5 py-1 text-xs font-medium text-neutral-300">
+          <span className="shrink-0 rounded-full bg-surface-800 px-2.5 py-1 text-xs font-medium text-surface-300">
             {course.cefrLevel}
           </span>
         )}
       </div>
 
-      <p className="mt-3 text-sm text-neutral-500">{course.wordCount} words</p>
+      <p className="mt-3 text-sm text-surface-500">{course.wordCount} words</p>
       <div className="mt-2">
         <ProgressBar progress={course.progress} wordCount={course.wordCount} />
       </div>
@@ -35,7 +36,7 @@ function CourseCard({ course }: { course: CourseSummary }) {
       <div className="mt-4 flex gap-2">
         <Link
           to={`/courses/${course.slug}`}
-          className="min-h-11 rounded-xl border border-neutral-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-neutral-600 hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           View words
         </Link>
@@ -62,16 +63,17 @@ function CourseCard({ course }: { course: CourseSummary }) {
 }
 
 export function CoursesPage() {
-  const { data, isPending, isError } = useQuery({ queryKey: ['courses'], queryFn: fetchCourses });
+  const { data, isPending, isError, refetch } = useQuery({ queryKey: ['courses'], queryFn: fetchCourses });
   const listRef = useRef<HTMLUListElement>(null);
   useStaggerIn(listRef, 'li', [data]);
 
   return (
     <section aria-label="Courses">
-      <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-neutral-400">Courses</h2>
+      <PullToRefresh onRefresh={refetch} />
+      <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-surface-400">Courses</h2>
       {isPending && <p aria-live="polite">Loading courses…</p>}
-      {isError && <p aria-live="polite" className="text-red-400">Couldn't load courses.</p>}
-      {data && data.length === 0 && <p className="text-neutral-400">No courses available yet.</p>}
+      {isError && <p aria-live="polite" className="text-accent-red">Couldn't load courses.</p>}
+      {data && data.length === 0 && <p className="text-surface-400">No courses available yet.</p>}
       {data && data.length > 0 && (
         <ul ref={listRef} className="space-y-4">
           {data.map((course) => (

@@ -24,10 +24,17 @@ const RATING_LABELS: Record<ReviewRating, string> = {
 };
 
 const RATING_COLORS: Record<ReviewRating, string> = {
-  AGAIN: 'border-red-400/40 text-red-400 hover:bg-red-400/10',
-  HARD: 'border-amber-300/40 text-amber-300 hover:bg-amber-300/10',
-  GOOD: 'border-emerald-400/40 text-emerald-400 hover:bg-emerald-400/10',
+  AGAIN: 'border-red-400/40 text-accent-red hover:bg-red-400/10',
+  HARD: 'border-amber-300/40 text-accent-amber hover:bg-amber-300/10',
+  GOOD: 'border-emerald-400/40 text-accent-emerald hover:bg-emerald-400/10',
   EASY: 'border-sky-400/40 text-sky-400 hover:bg-sky-400/10',
+};
+
+const RATING_BADGE_COLORS: Record<ReviewRating, string> = {
+  AGAIN: 'border border-red-400/40 bg-red-400/20 text-accent-red',
+  HARD: 'border border-amber-300/40 bg-amber-300/20 text-accent-amber',
+  GOOD: 'border border-emerald-400/40 bg-emerald-400/20 text-accent-emerald',
+  EASY: 'border border-sky-400/40 bg-sky-400/20 text-sky-400',
 };
 
 // Swipe direction each rating flies off toward (used for both the drag
@@ -69,7 +76,7 @@ function CardBack({
 }) {
   if (detail) {
     return (
-      <div className="border-t border-neutral-800 pt-4 text-left">
+      <div className="border-t border-surface-800 pt-4 text-left">
         <EntryBody entry={detail} onSelectWord={onSelectWord} />
       </div>
     );
@@ -77,10 +84,10 @@ function CardBack({
 
   const example = entry.examples[0];
   return (
-    <div className="space-y-3 border-t border-neutral-800 py-6 pt-4 text-center">
+    <div className="space-y-3 border-t border-surface-800 py-6 pt-4 text-center">
       <p className="text-xl">{entry.translation ?? '—'}</p>
       {example && (
-        <div className="rounded-xl bg-neutral-950 p-3 text-left text-sm">
+        <div className="rounded-xl bg-surface-950 p-3 text-left text-sm">
           <p lang="de">
             {example.de}
             {example.audioUrl && (
@@ -89,7 +96,7 @@ function CardBack({
               </span>
             )}
           </p>
-          <p className="mt-1 text-neutral-400">{example.en}</p>
+          <p className="mt-1 text-surface-400">{example.en}</p>
         </div>
       )}
     </div>
@@ -105,9 +112,9 @@ function SessionSummary({
 }) {
   const total = RATINGS.reduce((sum, r) => sum + stats[r], 0);
   return (
-    <section aria-label="Session summary" className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-center shadow-lg shadow-black/20">
+    <section aria-label="Session summary" className="rounded-2xl border border-surface-800 bg-surface-900 p-6 text-center shadow-lg shadow-black/20">
       <h2 className="text-lg font-medium">Session complete</h2>
-      <p className="mt-1 text-neutral-400">{total} card{total === 1 ? '' : 's'} reviewed</p>
+      <p className="mt-1 text-surface-400">{total} card{total === 1 ? '' : 's'} reviewed</p>
       <ul className="mt-4 grid grid-cols-4 gap-2 text-sm">
         {RATINGS.map((r) => (
           <li key={r} className={`rounded-xl border px-2 py-3 ${RATING_COLORS[r]}`}>
@@ -119,7 +126,7 @@ function SessionSummary({
       <div className="mt-6 flex justify-center gap-2">
         <Link
           to="/courses"
-          className="min-h-11 rounded-xl border border-neutral-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-neutral-600 hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           Back to courses
         </Link>
@@ -152,6 +159,7 @@ export function ReviewSession() {
   const revealedAt = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const autoplayRef = useRef<HTMLAudioElement>(null);
+  const hintRefs = useRef<Partial<Record<ReviewRating, HTMLDivElement | null>>>({});
 
   const card = queue?.[index];
 
@@ -257,24 +265,51 @@ export function ReviewSession() {
     });
   };
 
+  const clearHints = (animate = true) => {
+    RATINGS.forEach((r) => {
+      const el = hintRefs.current[r];
+      if (!el) return;
+      if (animate) gsap.to(el, { opacity: 0, duration: 0.15 });
+      else gsap.set(el, { opacity: 0 });
+    });
+  };
+
   const bindDrag = useDrag(
-    ({ down, movement: [mx, my], last, cancel }) => {
+    ({ down, movement: [mx, my], velocity: [vx, vy], last, cancel }) => {
       if (!cardRef.current) return;
       if (!down) {
         const absX = Math.abs(mx);
         const absY = Math.abs(my);
-        if (last && (absX > SWIPE_THRESHOLD || absY > SWIPE_THRESHOLD)) {
+        // Trigger on threshold distance OR on fast flick (velocity > 0.5 px/ms).
+        const fastFlick = Math.max(Math.abs(vx), Math.abs(vy)) > 0.5;
+        if (last && (absX > SWIPE_THRESHOLD || absY > SWIPE_THRESHOLD || fastFlick)) {
           const rating: ReviewRating = absX > absY ? (mx < 0 ? 'AGAIN' : 'GOOD') : my < 0 ? 'EASY' : 'HARD';
           cancel?.();
+          clearHints(false);
           rate(rating);
           return;
         }
-        // Spring back when released without crossing the threshold.
-        gsap.to(cardRef.current, { x: 0, y: 0, rotation: 0, duration: prefersReducedMotion() ? 0 : 0.3 });
+        // Spring back with duration proportional to how far the card traveled.
+        const distance = Math.sqrt(mx * mx + my * my);
+        const springDuration = prefersReducedMotion() ? 0 : Math.min(0.15 + distance / 600, 0.4);
+        gsap.to(cardRef.current, { x: 0, y: 0, rotation: 0, duration: springDuration, ease: 'back.out(1.4)' });
+        clearHints();
         return;
       }
       if (prefersReducedMotion()) return;
       gsap.set(cardRef.current, { x: mx, y: my, rotation: mx / 20 });
+
+      // Show directional affordance hint.
+      const absX = Math.abs(mx);
+      const absY = Math.abs(my);
+      const distance = Math.max(absX, absY);
+      const hintRating: ReviewRating = absX > absY ? (mx < 0 ? 'AGAIN' : 'GOOD') : my < 0 ? 'EASY' : 'HARD';
+      const hintOpacity = Math.min(Math.max((distance - 20) / (SWIPE_THRESHOLD - 20), 0), 0.92);
+      RATINGS.forEach((r) => {
+        const el = hintRefs.current[r];
+        if (!el) return;
+        gsap.set(el, { opacity: r === hintRating && distance > 20 ? hintOpacity : 0 });
+      });
     },
     {
       // Without this, touch browsers treat the drag as a page scroll
@@ -350,7 +385,7 @@ export function ReviewSession() {
 
   return (
     <section aria-label="Review session" className="space-y-4">
-      <h2 className="text-sm font-medium uppercase tracking-wide text-neutral-400">Review</h2>
+      <h2 className="text-sm font-medium uppercase tracking-wide text-surface-400">Review</h2>
 
       <p aria-live="polite" className="sr-only">
         {announcement}
@@ -360,7 +395,7 @@ export function ReviewSession() {
         <div
           role="status"
           aria-live="polite"
-          className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-2.5 text-sm text-amber-300"
+          className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-2.5 text-sm text-accent-amber"
         >
           {!isOnline ? "You're offline — reviews are saved on this device" : 'Syncing offline reviews…'}
           {queuedCount > 0 && ` (${queuedCount} queued)`}
@@ -371,7 +406,7 @@ export function ReviewSession() {
         <div
           role="status"
           aria-live="polite"
-          className="flex items-center justify-between gap-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm text-emerald-300"
+          className="flex items-center justify-between gap-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm text-accent-emerald"
         >
           <p>
             {autoGraduatedCount} word{autoGraduatedCount === 1 ? '' : 's'} auto-marked as known
@@ -396,14 +431,14 @@ export function ReviewSession() {
       )}
 
       {isPending && <p aria-live="polite">Loading due cards…</p>}
-      {isError && <p aria-live="polite" className="text-red-400">Couldn't load due cards.</p>}
+      {isError && <p aria-live="polite" className="text-accent-red">Couldn't load due cards.</p>}
 
       {queue && queue.length === 0 && (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-center shadow-lg shadow-black/20">
+        <div className="rounded-2xl border border-surface-800 bg-surface-900 p-6 text-center shadow-lg shadow-black/20">
           <p>All caught up — nothing due right now.</p>
           <Link
             to="/courses"
-            className="mt-4 inline-block min-h-11 rounded-xl border border-neutral-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-neutral-600 hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="mt-4 inline-block min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             Back to courses
           </Link>
@@ -423,7 +458,7 @@ export function ReviewSession() {
 
       {queue && card && entry && (
         <>
-          <p className="text-center text-sm text-neutral-500">
+          <p className="text-center text-sm text-surface-500">
             {index + 1} / {queue.length}
           </p>
 
@@ -435,8 +470,20 @@ export function ReviewSession() {
             ref={cardRef}
             role="group"
             aria-label="Flashcard"
-            className="touch-none select-none rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg shadow-black/20"
+            className="relative touch-none select-none rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20"
           >
+            {RATINGS.map((r) => (
+              <div
+                key={r}
+                ref={(el) => { hintRefs.current[r] = el; }}
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl opacity-0"
+              >
+                <span className={`rounded-xl px-5 py-2 text-2xl font-bold ${RATING_BADGE_COLORS[r]}`}>
+                  {RATING_LABELS[r]}
+                </span>
+              </div>
+            ))}
             <CardFront entry={entry} />
             {revealed && (
               <CardBack
@@ -458,7 +505,7 @@ export function ReviewSession() {
           )}
 
           {!revealed && (
-            <p className="text-center text-xs text-neutral-500">Press Space or Enter to reveal</p>
+            <p className="text-center text-xs text-surface-500">Press Space or Enter to reveal</p>
           )}
 
           <div className="grid grid-cols-4 gap-2">
@@ -474,7 +521,7 @@ export function ReviewSession() {
             ))}
           </div>
 
-          <p className="text-center text-xs text-neutral-500">
+          <p className="text-center text-xs text-surface-500">
             Swipe or press arrow keys: ← Again · → Good · ↑ Easy · ↓ Hard
           </p>
         </>

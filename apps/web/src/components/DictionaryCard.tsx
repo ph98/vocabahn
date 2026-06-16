@@ -66,13 +66,13 @@ function EntryDetail({
       <button
         type="button"
         onClick={onBack}
-        className="mb-4 min-h-11 rounded-xl border border-neutral-700 px-4 text-sm transition-colors hover:border-neutral-600 hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="mb-4 min-h-11 rounded-xl border border-surface-700 px-4 text-sm transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
         ← Back to results
       </button>
       {isPending && <p aria-live="polite">Loading entry…</p>}
       {isError && (
-        <p aria-live="polite" className="text-red-400">
+        <p aria-live="polite" className="text-accent-red">
           Couldn't load “{word}”.
         </p>
       )}
@@ -90,7 +90,7 @@ export function AudioButton({ src, label }: { src: string; label: string }) {
         type="button"
         onClick={() => void ref.current?.play()}
         aria-label={label}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-neutral-700 text-sm transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-surface-700 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       >
         <span aria-hidden="true">🔊</span>
       </button>
@@ -135,8 +135,8 @@ function PersonFormsTable({ forms }: { forms: PersonForms }) {
     <table className="w-full text-left text-sm">
       <tbody>
         {rows.map((p) => (
-          <tr key={p} className="border-b border-neutral-900">
-            <td className="w-24 py-1 pr-3 text-neutral-500">{PERSON_LABELS[p]}</td>
+          <tr key={p} className="border-b border-surface-900">
+            <td className="w-24 py-1 pr-3 text-surface-500">{PERSON_LABELS[p]}</td>
             <td lang="de" className="py-1">
               {forms[p]}
             </td>
@@ -150,13 +150,13 @@ function PersonFormsTable({ forms }: { forms: PersonForms }) {
 function MoodPanel({ mood }: { mood: ConjugationMood }) {
   const tenses = (Object.keys(TENSE_LABELS) as (keyof ConjugationMood)[]).filter((t) => mood[t]);
   if (tenses.length === 0) {
-    return <p className="text-sm text-neutral-500">No forms available.</p>;
+    return <p className="text-sm text-surface-500">No forms available.</p>;
   }
   return (
     <div className="space-y-4">
       {tenses.map((tense) => (
         <div key={tense}>
-          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-surface-500">
             {TENSE_LABELS[tense]}
           </h5>
           <PersonFormsTable forms={mood[tense]!} />
@@ -182,11 +182,11 @@ function ConjugationSection({ conjugation }: { conjugation: VerbConjugation }) {
 
   return (
     <section className="mb-4">
-      <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">
+      <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-surface-400">
         Conjugation
       </h4>
       {(conjugation.auxiliary || conjugation.participlePast) && (
-        <p className="mb-2 text-sm text-neutral-400">
+        <p className="mb-2 text-sm text-surface-400">
           {conjugation.auxiliary && (
             <>
               Aux: <span lang="de">{conjugation.auxiliary}</span>
@@ -209,7 +209,7 @@ function ConjugationSection({ conjugation }: { conjugation: VerbConjugation }) {
             selected={active === tab}
             onSelect={() => setActive(tab)}
             className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-              active === tab ? 'bg-indigo-500/20 text-indigo-300' : 'text-neutral-400 hover:bg-neutral-800'
+              active === tab ? 'bg-indigo-500/20 text-accent-indigo' : 'text-surface-400 hover:bg-surface-800'
             }`}
           >
             {MOOD_LABELS[tab]}
@@ -240,10 +240,10 @@ const CASE_ORDER = Object.keys(CASE_LABELS) as (keyof typeof CASE_LABELS)[];
 function NounDeclensionSection({ declension }: { declension: NounDeclension }) {
   return (
     <section className="mb-4">
-      <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">Declension</h4>
+      <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-surface-400">Declension</h4>
       <table className="w-full text-left text-sm">
         <thead>
-          <tr className="text-neutral-500">
+          <tr className="text-surface-500">
             <th className="py-1 pr-3 font-normal" />
             <th className="py-1 pr-3 font-normal">Singular</th>
             <th className="py-1 font-normal">Plural</th>
@@ -251,8 +251,8 @@ function NounDeclensionSection({ declension }: { declension: NounDeclension }) {
         </thead>
         <tbody>
           {CASE_ORDER.map((c) => (
-            <tr key={c} className="border-b border-neutral-900">
-              <td className="py-1 pr-3 text-neutral-500">{CASE_LABELS[c]}</td>
+            <tr key={c} className="border-b border-surface-900">
+              <td className="py-1 pr-3 text-surface-500">{CASE_LABELS[c]}</td>
               <td lang="de" className="py-1 pr-3">
                 {declension.singular[c] ?? '—'}
               </td>
@@ -271,12 +271,12 @@ function NounDeclensionSection({ declension }: { declension: NounDeclension }) {
 function AdjectiveCaseTable({ table }: { table: AdjectiveDeclensionTable }) {
   const rows = CASE_ORDER.filter((c) => table[c]);
   if (rows.length === 0) {
-    return <p className="text-sm text-neutral-500">No forms available.</p>;
+    return <p className="text-sm text-surface-500">No forms available.</p>;
   }
   return (
     <table className="w-full text-left text-sm">
       <thead>
-        <tr className="text-neutral-500">
+        <tr className="text-surface-500">
           <th className="py-1 pr-3 font-normal" />
           <th className="py-1 pr-2 font-normal">m</th>
           <th className="py-1 pr-2 font-normal">f</th>
@@ -288,8 +288,8 @@ function AdjectiveCaseTable({ table }: { table: AdjectiveDeclensionTable }) {
         {rows.map((c) => {
           const cell = table[c]!;
           return (
-            <tr key={c} className="border-b border-neutral-900">
-              <td className="py-1 pr-3 text-neutral-500">{CASE_LABELS[c]}</td>
+            <tr key={c} className="border-b border-surface-900">
+              <td className="py-1 pr-3 text-surface-500">{CASE_LABELS[c]}</td>
               <td lang="de" className="py-1 pr-2">
                 {cell.masculine ?? '—'}
               </td>
@@ -336,7 +336,7 @@ function AdjectiveDeclensionSection({ declension }: { declension: AdjectiveDecle
 
   return (
     <section className="mb-4">
-      <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">Declension</h4>
+      <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-surface-400">Declension</h4>
 
       {degrees.length > 1 && (
         <TabList label="Degree" className="mb-2 flex gap-1 overflow-x-auto">
@@ -348,7 +348,7 @@ function AdjectiveDeclensionSection({ declension }: { declension: AdjectiveDecle
               selected={activeDegree === d}
               onSelect={() => setActiveDegree(d)}
               className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                activeDegree === d ? 'bg-indigo-500/20 text-indigo-300' : 'text-neutral-400 hover:bg-neutral-800'
+                activeDegree === d ? 'bg-indigo-500/20 text-accent-indigo' : 'text-surface-400 hover:bg-surface-800'
               }`}
             >
               {DEGREE_LABELS[d]}
@@ -358,7 +358,7 @@ function AdjectiveDeclensionSection({ declension }: { declension: AdjectiveDecle
       )}
 
       {degree.predicative && (
-        <p className="mb-2 text-sm text-neutral-400">
+        <p className="mb-2 text-sm text-surface-400">
           Predicative: <span lang="de">{degree.predicative}</span>
         </p>
       )}
@@ -373,7 +373,7 @@ function AdjectiveDeclensionSection({ declension }: { declension: AdjectiveDecle
               selected={strength === s}
               onSelect={() => setActiveStrength(s)}
               className={`min-h-11 shrink-0 rounded-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                strength === s ? 'bg-indigo-500/20 text-indigo-300' : 'text-neutral-400 hover:bg-neutral-800'
+                strength === s ? 'bg-indigo-500/20 text-accent-indigo' : 'text-surface-400 hover:bg-surface-800'
               }`}
             >
               {STRENGTH_LABELS[s]}
@@ -395,8 +395,8 @@ function LearnerAidsSection({ entry }: { entry: DictionaryEntryDetail }) {
     <div className="space-y-4">
       {entry.register && entry.register !== 'neutral' && (
         <p className="text-sm">
-          <span className="text-neutral-500">Register: </span>
-          <span className="rounded bg-neutral-800 px-1.5 capitalize text-neutral-300">
+          <span className="text-surface-500">Register: </span>
+          <span className="rounded bg-surface-800 px-1.5 capitalize text-surface-300">
             {entry.register}
           </span>
         </p>
@@ -404,23 +404,23 @@ function LearnerAidsSection({ entry }: { entry: DictionaryEntryDetail }) {
 
       {entry.mnemonic && (
         <section>
-          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-surface-500">
             Memory hook
           </h4>
-          <p className="text-sm text-neutral-200">{entry.mnemonic}</p>
+          <p className="text-sm text-surface-200">{entry.mnemonic}</p>
         </section>
       )}
 
       {entry.collocations.length > 0 && (
         <section>
-          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-surface-500">
             Collocations &amp; idioms
           </h4>
           <ul className="space-y-1.5 text-sm">
             {entry.collocations.map((c) => (
               <li key={c.phrase}>
                 <span lang="de">{c.phrase}</span>
-                <span className="text-neutral-400"> — {c.translation}</span>
+                <span className="text-surface-400"> — {c.translation}</span>
               </li>
             ))}
           </ul>
@@ -429,7 +429,7 @@ function LearnerAidsSection({ entry }: { entry: DictionaryEntryDetail }) {
 
       {entry.falseFriends.length > 0 && (
         <section>
-          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h4 className="mb-1 text-xs font-medium uppercase tracking-wide text-surface-500">
             False friends
           </h4>
           <ul className="space-y-1.5 text-sm">
@@ -438,7 +438,7 @@ function LearnerAidsSection({ entry }: { entry: DictionaryEntryDetail }) {
                 <span lang="en" className="font-medium">
                   {f.word}
                 </span>
-                <span className="text-neutral-400"> — {f.explanation}</span>
+                <span className="text-surface-400"> — {f.explanation}</span>
               </li>
             ))}
           </ul>
@@ -460,7 +460,7 @@ function FamilySection({
     <div className="space-y-4">
       {entry.wordFamily.length > 0 && (
         <section>
-          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-surface-500">
             Word family
           </h4>
           <ul className="flex flex-wrap gap-1.5">
@@ -470,7 +470,7 @@ function FamilySection({
                   type="button"
                   lang="de"
                   onClick={() => onSelectWord(f.word)}
-                  className="min-h-8 rounded-full border border-neutral-700 px-2.5 py-0.5 text-sm transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="min-h-11 rounded-full border border-surface-700 px-2.5 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   {f.word}
                 </button>
@@ -482,7 +482,7 @@ function FamilySection({
 
       {entry.pronunciation.length > 1 && (
         <section>
-          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-surface-500">
             Pronunciation
           </h4>
           <ul className="space-y-1.5 text-sm">
@@ -495,7 +495,7 @@ function FamilySection({
                   />
                 )}
                 {p.ipa && <span>{p.ipa}</span>}
-                {p.note && <span className="text-neutral-500">{p.note}</span>}
+                {p.note && <span className="text-surface-500">{p.note}</span>}
               </li>
             ))}
           </ul>
@@ -532,7 +532,7 @@ function DetailsSection({
     <div className="text-sm">
       {glosses.length > 0 && (
         <div>
-          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-surface-500">
             Meanings
           </h5>
           <ol className="list-decimal space-y-1 pl-5">
@@ -545,34 +545,34 @@ function DetailsSection({
 
       {synonyms.length > 0 && (
         <p className="mt-3">
-          <span className="text-neutral-500">Synonyms: </span>
+          <span className="text-surface-500">Synonyms: </span>
           <span lang="de">{synonyms.join(', ')}</span>
         </p>
       )}
 
       {entry.etymology && (
         <div className="mt-3">
-          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-surface-500">
             Etymology
           </h5>
-          <p className="text-neutral-300">{entry.etymology}</p>
+          <p className="text-surface-300">{entry.etymology}</p>
         </div>
       )}
 
       {entry.forms.length > 0 && (
         <div className="mt-3">
-          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <h5 className="mb-1 text-xs font-medium uppercase tracking-wide text-surface-500">
             Forms
           </h5>
           <div className="max-h-64 overflow-y-auto">
             <table className="w-full text-left">
               <tbody>
                 {entry.forms.map((f, i) => (
-                  <tr key={`${f.form}-${i}`} className="border-b border-neutral-900">
+                  <tr key={`${f.form}-${i}`} className="border-b border-surface-900">
                     <td lang="de" className="py-1 pr-3 align-top">
                       {f.form}
                     </td>
-                    <td className="py-1 text-neutral-500">{f.tags.join(', ')}</td>
+                    <td className="py-1 text-surface-500">{f.tags.join(', ')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -598,7 +598,7 @@ function FeedbackConfirmation({ show }: { show: boolean }) {
   );
 
   return (
-    <p ref={ref} aria-live="polite" className="text-xs text-emerald-400">
+    <p ref={ref} aria-live="polite" className="text-xs text-accent-emerald">
       {show ? 'Thanks for the feedback!' : ' '}
     </p>
   );
@@ -653,8 +653,8 @@ function FeedbackWidget({ word }: { word: string }) {
   };
 
   return (
-    <section className="mt-6 border-t border-neutral-800 pt-4">
-      <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+    <section className="mt-6 border-t border-surface-800 pt-4">
+      <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-surface-500">
         Is this entry helpful?
       </h4>
       <div className="flex flex-wrap items-center gap-2">
@@ -666,7 +666,7 @@ function FeedbackWidget({ word }: { word: string }) {
           className={`min-h-11 min-w-11 rounded-xl border px-3 text-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
             vote === 'UP'
               ? 'border-emerald-400/60 bg-emerald-400/10'
-              : 'border-neutral-700 hover:bg-neutral-800'
+              : 'border-surface-700 hover:bg-surface-800'
           }`}
         >
           👍
@@ -679,7 +679,7 @@ function FeedbackWidget({ word }: { word: string }) {
           className={`min-h-11 min-w-11 rounded-xl border px-3 text-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
             vote === 'DOWN'
               ? 'border-red-400/60 bg-red-400/10'
-              : 'border-neutral-700 hover:bg-neutral-800'
+              : 'border-surface-700 hover:bg-surface-800'
           }`}
         >
           👎
@@ -688,7 +688,7 @@ function FeedbackWidget({ word }: { word: string }) {
           type="button"
           onClick={() => setExpanded((e) => !e)}
           aria-expanded={expanded}
-          className="min-h-11 rounded-xl px-2 text-sm text-neutral-400 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-11 rounded-xl px-2 text-sm text-surface-400 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           {expanded ? 'Hide details' : 'Report a problem'}
         </button>
@@ -697,7 +697,7 @@ function FeedbackWidget({ word }: { word: string }) {
       {expanded && (
         <div className="mt-3 space-y-3">
           <fieldset>
-            <legend className="mb-1.5 text-xs text-neutral-500">What's wrong? (optional)</legend>
+            <legend className="mb-1.5 text-xs text-surface-500">What's wrong? (optional)</legend>
             <div className="flex flex-wrap gap-2">
               {FEEDBACK_ISSUES.map((issue) => (
                 <label
@@ -705,14 +705,14 @@ function FeedbackWidget({ word }: { word: string }) {
                   className={`flex min-h-11 items-center gap-1.5 rounded-full border px-3 text-sm transition-colors ${
                     issues.has(issue)
                       ? 'border-indigo-400/60 bg-indigo-500/10 text-indigo-200'
-                      : 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'
+                      : 'border-surface-700 text-surface-300 hover:bg-surface-800'
                   }`}
                 >
                   <input
                     type="checkbox"
                     checked={issues.has(issue)}
                     onChange={() => toggleIssue(issue)}
-                    className="size-4 rounded border-neutral-600 bg-neutral-900 text-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    className="size-4 rounded border-surface-600 bg-surface-900 text-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                   />
                   {FEEDBACK_ISSUE_LABELS[issue]}
                 </label>
@@ -721,7 +721,7 @@ function FeedbackWidget({ word }: { word: string }) {
           </fieldset>
 
           <div>
-            <label htmlFor={`feedback-comment-${word}`} className="mb-1 block text-xs text-neutral-500">
+            <label htmlFor={`feedback-comment-${word}`} className="mb-1 block text-xs text-surface-500">
               Additional details (optional)
             </label>
             <textarea
@@ -731,7 +731,7 @@ function FeedbackWidget({ word }: { word: string }) {
               onBlur={() => send({ comment: comment || undefined })}
               rows={3}
               maxLength={2000}
-              className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm placeholder:text-neutral-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="w-full rounded-xl border border-surface-700 bg-surface-950 px-3 py-2 text-sm placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               placeholder="What did you notice?"
             />
           </div>
@@ -780,7 +780,7 @@ export function EntryBody({
   return (
     <article aria-live="polite">
       {entry.formOf && (
-        <p className="mb-3 rounded-lg bg-neutral-800 px-3 py-2 text-sm text-neutral-300">
+        <p className="mb-3 rounded-lg bg-surface-800 px-3 py-2 text-sm text-surface-300">
           {entry.formOf.descriptions.length > 0 ? entry.formOf.descriptions.join('; ') : 'Form of'}
           {' — '}
           <button
@@ -796,7 +796,7 @@ export function EntryBody({
       <header className="mb-3">
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-2xl font-bold">
-            {article && <span className="font-normal text-neutral-400">{article} </span>}
+            {article && <span className="font-normal text-surface-400">{article} </span>}
             <span lang="de">{entry.word}</span>
             {entry.emoji && <span aria-hidden="true"> {entry.emoji}</span>}
           </h3>
@@ -804,19 +804,19 @@ export function EntryBody({
             <AudioButton src={entry.audioUrl} label={`Pronounce ${entry.word}`} />
           )}
         </div>
-        <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-neutral-400">
+        <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-surface-400">
           <span>{entry.pos}</span>
           {entry.ipa && <span>{entry.ipa}</span>}
           {entry.hyphenation && <span lang="de">{entry.hyphenation}</span>}
           {entry.cefrLevel && (
-            <span className="rounded bg-neutral-800 px-1.5 text-neutral-300">{entry.cefrLevel}</span>
+            <span className="rounded bg-surface-800 px-1.5 text-surface-300">{entry.cefrLevel}</span>
           )}
           {entry.frequencyRank && <span>#{entry.frequencyRank} by frequency</span>}
         </p>
         {entry.topics.length > 0 && (
           <p className="mt-2 flex flex-wrap gap-1.5">
             {entry.topics.map((topic) => (
-              <span key={topic} className="rounded-full bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300">
+              <span key={topic} className="rounded-full bg-surface-800 px-2 py-0.5 text-xs text-surface-300">
                 {topic}
               </span>
             ))}
@@ -827,7 +827,7 @@ export function EntryBody({
       {(entry.enrichmentStatus === 'PENDING' || entry.enrichmentStatus === 'ENRICHING') && (
         <p
           role="status"
-          className="mb-3 flex items-center gap-2 rounded-lg bg-amber-950/60 px-3 py-2 text-sm text-amber-300"
+          className="mb-3 flex items-center gap-2 rounded-lg bg-amber-950/60 px-3 py-2 text-sm text-accent-amber"
         >
           <span
             aria-hidden="true"
@@ -852,7 +852,7 @@ export function EntryBody({
             className="aspect-square w-full rounded-xl object-cover"
           />
           {entry.imageCredit && (
-            <figcaption className="mt-1 text-xs text-neutral-500">
+            <figcaption className="mt-1 text-xs text-surface-500">
               Photo by{' '}
               {entry.imageCredit.authorUrl ? (
                 <a
@@ -875,7 +875,7 @@ export function EntryBody({
       {entry.translation && <p className="mb-3 text-lg">{entry.translation}</p>}
 
       {tabs.length > 1 && (
-        <TabList label="Entry sections" className="mb-3 flex gap-1 overflow-x-auto border-b border-neutral-800">
+        <TabList label="Entry sections" className="mb-3 flex gap-1 overflow-x-auto border-b border-surface-800">
           {tabs.map((tab) => (
             <Tab
               key={tab.id}
@@ -886,7 +886,7 @@ export function EntryBody({
               className={`min-h-11 shrink-0 rounded-t-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
                 activeTab === tab.id
                   ? 'border-b-2 border-indigo-400 text-white'
-                  : 'text-neutral-400 hover:bg-neutral-800'
+                  : 'text-surface-400 hover:bg-surface-800'
               }`}
             >
               {tab.label}
@@ -899,17 +899,17 @@ export function EntryBody({
         {activeTab === 'overview' && (
           <>
             {entry.usageNote && (
-              <section className="mb-4 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2">
-                <h4 className="mb-0.5 text-xs font-medium uppercase tracking-wide text-neutral-500">
+              <section className="mb-4 rounded-lg border border-surface-800 bg-surface-950 px-3 py-2">
+                <h4 className="mb-0.5 text-xs font-medium uppercase tracking-wide text-surface-500">
                   How to use
                 </h4>
-                <p className="text-sm text-neutral-200">{entry.usageNote}</p>
+                <p className="text-sm text-surface-200">{entry.usageNote}</p>
               </section>
             )}
 
             {entry.examples.length > 0 && (
               <section className="mb-4">
-                <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-neutral-400">
+                <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-surface-400">
                   Examples
                 </h4>
                 <ul className="space-y-3">
@@ -920,7 +920,7 @@ export function EntryBody({
                         <span lang="de" className="block">
                           {ex.de}
                         </span>
-                        <span className="block text-sm text-neutral-400">{ex.en}</span>
+                        <span className="block text-sm text-surface-400">{ex.en}</span>
                       </span>
                     </li>
                   ))}
@@ -952,7 +952,7 @@ export function DictionaryEntryPage() {
   return (
     <section
       aria-label="Dictionary"
-      className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg shadow-black/20"
+      className="w-full rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20"
     >
       <EntryDetail
         word={decodeURIComponent(word)}
@@ -978,9 +978,9 @@ export function DictionaryCard() {
   return (
     <section
       aria-label="Dictionary"
-      className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg shadow-black/20"
+      className="w-full rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20"
     >
-      <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-neutral-400">
+      <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-surface-400">
         Dictionary
       </h2>
 
@@ -998,21 +998,21 @@ export function DictionaryCard() {
         placeholder="Search German words…"
         autoComplete="off"
         lang="de"
-        className="min-h-11 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-4 text-base placeholder:text-neutral-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="min-h-11 w-full rounded-xl border border-surface-700 bg-surface-950 px-4 text-base placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
       />
       <div aria-live="polite" className="mt-3">
-        {isFetching && <p className="text-sm text-neutral-400">Searching…</p>}
+        {isFetching && <p className="text-sm text-surface-400">Searching…</p>}
         {results && results.length === 0 && (
-          <p className="text-sm text-neutral-400">No matches for “{debounced}”.</p>
+          <p className="text-sm text-surface-400">No matches for “{debounced}”.</p>
         )}
         {results && results.length > 0 && (
-          <ul className="divide-y divide-neutral-800">
+          <ul className="divide-y divide-surface-800">
             {results.map((r) => (
               <li key={`${r.word}-${r.pos}`}>
                 <button
                   type="button"
                   onClick={() => navigate(`/word/${encodeURIComponent(r.word)}`)}
-                  className="flex min-h-11 w-full items-center justify-between gap-2 px-1 py-2 text-left transition-colors hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="flex min-h-11 w-full items-center justify-between gap-2 px-1 py-2 text-left transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   <span className="min-w-0">
                     <span lang="de" className="font-medium">
@@ -1020,12 +1020,12 @@ export function DictionaryCard() {
                       {r.word}
                     </span>
                     {r.translation && (
-                      <span className="ml-2 truncate text-sm text-neutral-400">
+                      <span className="ml-2 truncate text-sm text-surface-400">
                         {r.translation}
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-xs text-neutral-500">{r.pos}</span>
+                  <span className="shrink-0 text-xs text-surface-500">{r.pos}</span>
                 </button>
               </li>
             ))}

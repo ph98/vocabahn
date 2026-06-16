@@ -1,31 +1,97 @@
 @import 'tailwindcss';
 
+@theme {
+  /* Surface/text/border scale: inverted neutral pairing so the existing dark
+     palette (right-hand value) keeps working unchanged, while light mode
+     mirrors it across the neutral scale (50<->950, 100<->900, ...). */
+  --color-surface-950: light-dark(var(--color-neutral-50), var(--color-neutral-950));
+  --color-surface-900: light-dark(var(--color-neutral-100), var(--color-neutral-900));
+  --color-surface-800: light-dark(var(--color-neutral-200), var(--color-neutral-800));
+  --color-surface-700: light-dark(var(--color-neutral-300), var(--color-neutral-700));
+  --color-surface-600: light-dark(var(--color-neutral-400), var(--color-neutral-600));
+  --color-surface-500: light-dark(var(--color-neutral-500), var(--color-neutral-500));
+  --color-surface-400: light-dark(var(--color-neutral-600), var(--color-neutral-400));
+  --color-surface-300: light-dark(var(--color-neutral-700), var(--color-neutral-300));
+  --color-surface-200: light-dark(var(--color-neutral-800), var(--color-neutral-200));
+  --color-surface-100: light-dark(var(--color-neutral-900), var(--color-neutral-100));
+
+  /* Accent text colors that need a darker shade on light backgrounds to keep
+     >=4.5:1 contrast; dark-mode value matches the existing palette. */
+  --color-accent-red: light-dark(var(--color-red-600), var(--color-red-400));
+  --color-accent-indigo: light-dark(var(--color-indigo-600), var(--color-indigo-400));
+  --color-accent-amber: light-dark(var(--color-amber-700), var(--color-amber-300));
+  --color-accent-emerald: light-dark(var(--color-emerald-700), var(--color-emerald-400));
+}
+
+:root {
+  color-scheme: light dark;
+}
+
+:root.theme-light {
+  color-scheme: light;
+}
+
+:root.theme-dark {
+  color-scheme: dark;
+}
+
 html,
 body {
-  overscroll-behavior-y: contain;
+  overscroll-behavior: none;
+  background-color: var(--color-surface-950);
+}
+
+@layer utilities {
+  .px-safe {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+
+  .pt-safe {
+    padding-top: max(2rem, env(safe-area-inset-top));
+  }
+
+  .pb-safe {
+    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  }
+}
+
+@media (min-width: 640px) {
+  .px-safe {
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
+  }
+
+  .pt-safe {
+    padding-top: max(2.5rem, env(safe-area-inset-top));
+  }
+
+  .pb-safe {
+    padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
+  }
 }
 
 .react-calendar-heatmap text {
-  fill: #a3a3a3;
+  fill: var(--color-surface-400);
   font-size: 6px;
 }
 
 .react-calendar-heatmap .color-empty {
-  fill: #262626;
+  fill: light-dark(#e5e5e5, #262626);
 }
 
 .react-calendar-heatmap .color-scale-1 {
-  fill: #312e81;
+  fill: light-dark(#a5b4fc, #312e81);
 }
 
 .react-calendar-heatmap .color-scale-2 {
-  fill: #4338ca;
+  fill: light-dark(#818cf8, #4338ca);
 }
 
 .react-calendar-heatmap .color-scale-3 {
-  fill: #6366f1;
+  fill: light-dark(#6366f1, #6366f1);
 }
 
 .react-calendar-heatmap .color-scale-4 {
-  fill: #a5b4fc;
+  fill: light-dark(#4338ca, #a5b4fc);
 }

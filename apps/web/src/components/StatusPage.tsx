@@ -21,14 +21,14 @@ export function StatusPage() {
   return (
     <section
       aria-label="System status"
-      className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-6 shadow-lg shadow-black/20"
+      className="w-full rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20"
     >
-      <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-neutral-400">
+      <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-surface-400">
         System status
       </h2>
       {isPending && <p aria-live="polite">Checking…</p>}
       {isError && (
-        <p aria-live="polite" className="text-red-400">
+        <p aria-live="polite" className="text-accent-red">
           API unreachable — is <code>pnpm dev</code> running?
         </p>
       )}

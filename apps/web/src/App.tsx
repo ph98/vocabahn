@@ -1,9 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
+import gsap from 'gsap';
 import { lazy, Suspense, useEffect, useRef, type RefObject } from 'react';
-import { Link, NavLink, Route, Routes, useLocation } from 'react-router-dom';
+import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { fetchHealth, fetchMe } from './api';
+import { prefersReducedMotion } from './lib/motion';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
 import { ProfilePage } from './components/ProfilePage';
+import { type Theme, useTheme } from './lib/theme';
 
 const CourseDetailPage = lazy(() =>
   import('./components/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })),
@@ -29,15 +32,36 @@ const navLinkClass = (isActive: boolean) =>
   `min-h-11 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
     isActive
       ? 'bg-indigo-500 text-white shadow-sm shadow-indigo-950/50'
-      : 'text-neutral-300 hover:bg-neutral-800'
+      : 'text-surface-300 hover:bg-surface-800'
   }`;
 
 const navLinkClassName = ({ isActive }: { isActive: boolean }) => navLinkClass(isActive);
 
 const iconLinkClassName = ({ isActive }: { isActive: boolean }) =>
-  `flex size-9 items-center justify-center rounded-full border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-    isActive ? 'border-indigo-400' : 'border-neutral-800 hover:border-neutral-600'
+  `flex min-h-11 min-w-11 items-center justify-center rounded-full border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+    isActive ? 'border-indigo-400' : 'border-surface-800 hover:border-surface-600'
   }`;
+
+const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
+const THEME_ICON: Record<Theme, string> = { system: '🖥️', light: '☀️', dark: '🌙' };
+const THEME_LABEL: Record<Theme, string> = { system: 'System theme', light: 'Light theme', dark: 'Dark theme' };
+
+/** Cycles the persisted theme preference (system → light → dark → system). */
+function ThemeToggle() {
+  const [theme, setTheme] = useTheme();
+  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length] ?? 'system';
+
+  return (
+    <button
+      type="button"
+      onClick={() => setTheme(next)}
+      aria-label={`${THEME_LABEL[theme]} active. Switch to ${THEME_LABEL[next].toLowerCase()}.`}
+      className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-surface-800 text-lg transition-colors hover:border-surface-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+    >
+      <span aria-hidden="true">{THEME_ICON[theme]}</span>
+    </button>
+  );
+}
 
 /** Maps the current path to a human-readable page name for titles and SPA-navigation announcements. */
 function pageNameForPath(pathname: string): string {
@@ -79,7 +103,7 @@ function Nav() {
   return (
     <nav
       aria-label="Main"
-      className="flex w-full max-w-2xl flex-wrap justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900 p-2 shadow-lg shadow-black/20"
+      className="flex w-full max-w-2xl flex-wrap justify-center gap-2 rounded-2xl border border-surface-800 bg-surface-900 p-2 shadow-lg shadow-black/20"
     >
       <Link to="/" className={navLinkClass(dictionaryActive)}>
         Dictionary
@@ -135,6 +159,75 @@ function ProfileLink() {
   );
 }
 
+/**
+ * Invisible left-edge detector that triggers navigate(-1) on a right-swipe
+ * starting within 24 px of the left edge. Disabled on /review so it doesn't
+ * conflict with the card's own swipe-to-rate gesture.
+ */
+function EdgeSwipeBack() {
+  const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const indicatorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (pathname.startsWith('/review')) return;
+
+    let startX = 0;
+    let startY = 0;
+    let active = false;
+
+    const onTouchStart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      if (!touch) return;
+      startX = touch.clientX;
+      startY = touch.clientY;
+      active = startX < 24;
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!active || !indicatorRef.current) return;
+      const touch = e.touches[0];
+      if (!touch) return;
+      const dx = touch.clientX - startX;
+      const dy = Math.abs(touch.clientY - startY);
+      if (dy > dx || dy > 40) { active = false; return; }
+      const tx = Math.min(Math.max(dx * 0.55, 0), 72);
+      const opacity = Math.min(tx / 60, 0.9);
+      if (prefersReducedMotion()) return;
+      gsap.set(indicatorRef.current, { x: tx - 40, opacity });
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (!active) return;
+      active = false;
+      const touch = e.changedTouches[0];
+      if (indicatorRef.current) gsap.to(indicatorRef.current, { x: -40, opacity: 0, duration: 0.2 });
+      if (!touch) return;
+      if (touch.clientX - startX > 80) navigate(-1);
+    };
+
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: true });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      window.removeEventListener('touchstart', onTouchStart);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [pathname, navigate]);
+
+  return (
+    <div
+      ref={indicatorRef}
+      aria-hidden="true"
+      className="pointer-events-none fixed left-0 top-1/2 z-50 flex h-10 w-10 -translate-x-10 -translate-y-1/2 items-center justify-center rounded-full bg-surface-900 text-surface-100 opacity-0 shadow-lg ring-1 ring-surface-800"
+    >
+      ‹
+    </div>
+  );
+}
+
 export default function App() {
   const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const mainRef = useRef<HTMLElement>(null);
@@ -148,23 +241,25 @@ export default function App() {
         Skip to content
       </a>
       <RouteAnnouncer mainRef={mainRef} />
+      <EdgeSwipeBack />
       <main
         id="main"
         ref={mainRef}
         tabIndex={-1}
-        className="flex min-h-dvh flex-col items-center gap-6 bg-neutral-950 px-4 py-8 text-neutral-100 outline-none sm:px-6 sm:py-10"
+        className="flex min-h-dvh flex-col items-center gap-6 bg-surface-950 px-safe pt-safe pb-safe text-surface-100 outline-none"
       >
       <header className="flex w-full max-w-2xl items-center justify-between gap-4">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">
-            Vocab<span className="text-indigo-400">ahn</span>
+            Vocab<span className="text-accent-indigo">ahn</span>
           </h1>
-          <p className="mt-2 text-neutral-400">
+          <p className="mt-2 text-surface-400">
             German vocabulary, <span lang="de">Wort für Wort</span>.
           </p>
         </div>
         {!isPending && (
           <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
             <StatusLink />
             <ProfileLink />
           </div>
