@@ -52,6 +52,7 @@ services:
       - internal
     volumes:
       - ./service-account.json:/repo/service-account.json:ro
+      - ./data:/repo/data:ro
 
   web:
     build:
