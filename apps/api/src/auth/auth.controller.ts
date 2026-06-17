@@ -97,6 +97,19 @@ export class AuthController {
     return { ...this.auth.issueTokens(user.id), user };
   }
 
+  /** Web-ready sign-in: verify a Google One Tap credential (ID token), set cookies. */
+  @Post('google/onetap')
+  @HttpCode(200)
+  async googleOneTap(
+    @Body(new ZodValidationPipe(googleIdTokenSignInSchema))
+    body: GoogleIdTokenSignIn,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<User> {
+    const user = await this.auth.signInWithIdToken(body.idToken);
+    setAuthCookies(res, this.auth.issueTokens(user.id));
+    return user;
+  }
+
   /** Rotate the token pair. Web: refresh cookie; native: token in body. */
   @Post('refresh')
   @HttpCode(200)

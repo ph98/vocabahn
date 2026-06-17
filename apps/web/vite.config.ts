@@ -10,6 +10,7 @@ const require = createRequire(import.meta.url);
 const { version } = require('../../package.json') as { version: string };
 
 export default defineConfig({
+  envDir: '../../',
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
