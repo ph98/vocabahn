@@ -66,6 +66,11 @@ body {
   }
 }
 
+/* Extra bottom padding when the mobile bottom nav is visible */
+.pb-mobile-nav {
+  padding-bottom: max(calc(5rem + env(safe-area-inset-bottom)), 5.5rem);
+}
+
 @media (min-width: 640px) {
   .px-safe {
     padding-left: max(1.5rem, env(safe-area-inset-left));

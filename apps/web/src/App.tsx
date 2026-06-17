@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { lazy, Suspense, useEffect, useRef, type RefObject } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type RefObject } from 'react';
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { fetchHealth, fetchMe } from './api';
 import { prefersReducedMotion } from './lib/motion';
@@ -50,6 +51,156 @@ const iconLinkClassName = ({ isActive }: { isActive: boolean }) =>
 const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
 const THEME_ICON: Record<Theme, string> = { system: '🖥️', light: '☀️', dark: '🌙' };
 const THEME_LABEL: Record<Theme, string> = { system: 'System theme', light: 'Light theme', dark: 'Dark theme' };
+
+function NavSvgIcon({ d, className = '' }: { d: string; className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.75}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`size-[22px] ${className}`}
+      aria-hidden="true"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
+const ICON_DICT = 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253';
+const ICON_COURSES = 'M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.63 48.63 0 0112 20.904a48.63 48.63 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.636 50.636 0 00-2.658-.813A59.906 59.906 0 0112 3.493a59.903 59.903 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.717 50.717 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5';
+const ICON_REVIEW = 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z';
+const ICON_DASHBOARD = 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z';
+const ICON_MORE = 'M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z';
+
+const MORE_PATHS = ['/known-words', '/decks', '/profile', '/status'] as const;
+const MORE_ITEMS = [
+  { to: '/known-words', label: 'Known words', icon: '✓' },
+  { to: '/decks',       label: 'Decks',        icon: '🗂' },
+  { to: '/profile',     label: 'Profile',      icon: '👤' },
+  { to: '/status',      label: 'System status', icon: '●' },
+] as const;
+
+function MorePanel({ onClose }: { onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    gsap.from(ref.current, { y: 10, opacity: 0, duration: 0.2, ease: 'power2.out' });
+  }, { scope: ref });
+
+  const itemClass = (active: boolean) =>
+    `flex items-center gap-2.5 rounded-xl px-3 min-h-11 w-full text-sm font-medium text-left transition-colors ${
+      active ? 'bg-indigo-500/15 text-accent-indigo' : 'text-surface-300 hover:bg-surface-800'
+    }`;
+
+  return (
+    <div
+      ref={ref}
+      aria-label="Additional navigation"
+      className="fixed bottom-20 right-3 z-50 w-48 rounded-2xl border border-surface-700/80 bg-surface-900/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-md"
+    >
+      {MORE_ITEMS.map(({ to, label, icon }) => (
+        <NavLink
+          key={to}
+          to={to}
+          onClick={onClose}
+          className={({ isActive }) => itemClass(isActive)}
+        >
+          <span aria-hidden="true">{icon}</span>
+          {label}
+        </NavLink>
+      ))}
+    </div>
+  );
+}
+
+function MobileBottomNav() {
+  const { pathname } = useLocation();
+  const navRef = useRef<HTMLElement>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+  const dictionaryActive = pathname === '/' || pathname.startsWith('/word/');
+  const moreActive = MORE_PATHS.some((p) => pathname.startsWith(p));
+
+  useGSAP(() => {
+    if (prefersReducedMotion()) return;
+    gsap.from(navRef.current, { y: 80, opacity: 0, duration: 0.5, ease: 'power3.out', delay: 0.15 });
+  }, { scope: navRef });
+
+  useEffect(() => { setMoreOpen(false); }, [pathname]);
+
+  const itemClass = (active: boolean) =>
+    `flex flex-col items-center gap-0.5 px-1 py-2 min-w-12 rounded-xl transition-colors ${
+      active ? 'text-indigo-400' : 'text-surface-500'
+    }`;
+
+  return (
+    <>
+      {moreOpen && (
+        <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setMoreOpen(false)} />
+      )}
+      {moreOpen && <MorePanel onClose={() => setMoreOpen(false)} />}
+
+      <nav
+        ref={navRef}
+        aria-label="Main"
+        className="fixed bottom-0 inset-x-0 z-50 flex items-center justify-around border-t border-surface-800 bg-surface-950/90 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)] md:hidden"
+      >
+        <Link
+          to="/"
+          aria-current={dictionaryActive ? 'page' : undefined}
+          className={itemClass(dictionaryActive)}
+        >
+          <NavSvgIcon d={ICON_DICT} />
+          <span className="text-[10px] font-medium leading-none">Dict</span>
+        </Link>
+
+        <NavLink to="/courses" className={({ isActive }) => itemClass(isActive)}>
+          <NavSvgIcon d={ICON_COURSES} />
+          <span className="text-[10px] font-medium leading-none">Courses</span>
+        </NavLink>
+
+        <NavLink to="/review" aria-label="Start review session" className="flex flex-col items-center gap-0.5 px-1 -mt-4 py-2">
+          {({ isActive }) => (
+            <>
+              <span
+                className={`flex size-12 items-center justify-center rounded-full shadow-lg transition-all ${
+                  isActive
+                    ? 'bg-indigo-400 shadow-indigo-400/40'
+                    : 'bg-indigo-500 shadow-indigo-500/30 hover:bg-indigo-400 hover:shadow-indigo-400/40'
+                }`}
+              >
+                <NavSvgIcon d={ICON_REVIEW} className="text-white" />
+              </span>
+              <span className={`text-[10px] font-medium leading-none ${isActive ? 'text-indigo-400' : 'text-surface-500'}`}>
+                Review
+              </span>
+            </>
+          )}
+        </NavLink>
+
+        <NavLink to="/dashboard" className={({ isActive }) => itemClass(isActive)}>
+          <NavSvgIcon d={ICON_DASHBOARD} />
+          <span className="text-[10px] font-medium leading-none">Stats</span>
+        </NavLink>
+
+        <button
+          type="button"
+          onClick={() => setMoreOpen((o) => !o)}
+          aria-expanded={moreOpen}
+          aria-haspopup="true"
+          aria-label="More navigation options"
+          className={itemClass(moreActive || moreOpen)}
+        >
+          <NavSvgIcon d={ICON_MORE} />
+          <span className="text-[10px] font-medium leading-none">More</span>
+        </button>
+      </nav>
+    </>
+  );
+}
 
 /** Cycles the persisted theme preference (system → light → dark → system). */
 function ThemeToggle() {
@@ -109,7 +260,7 @@ function Nav() {
   return (
     <nav
       aria-label="Main"
-      className="flex w-full max-w-2xl flex-wrap justify-center gap-2 rounded-2xl border border-surface-800 bg-surface-900 p-2 shadow-lg shadow-black/20"
+      className="hidden md:flex w-full max-w-2xl flex-wrap justify-center gap-2 rounded-2xl border border-surface-800 bg-surface-900 p-2 shadow-lg shadow-black/20"
     >
       <Link to="/" className={navLinkClass(dictionaryActive)}>
         Dictionary
@@ -317,7 +468,7 @@ export default function App() {
         id="main"
         ref={mainRef}
         tabIndex={-1}
-        className="flex min-h-dvh flex-col items-center gap-6 bg-surface-950 px-safe pt-safe pb-safe text-surface-100 outline-none"
+        className={`flex min-h-dvh flex-col items-center gap-6 bg-surface-950 px-safe pt-safe ${user ? 'max-md:pb-mobile-nav md:pb-safe' : 'pb-safe'} text-surface-100 outline-none`}
       >
       <header className="flex w-full max-w-2xl items-center justify-between gap-4">
         <div 
@@ -361,6 +512,7 @@ export default function App() {
       {user && (
         <>
           <Nav />
+          <MobileBottomNav />
           <div className="w-full max-w-2xl">
             <Suspense fallback={<RouteLoading />}>
               <Routes>
