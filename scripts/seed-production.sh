@@ -10,8 +10,8 @@ docker compose -f docker-compose.production.yml exec -T api pnpm run ingest:lexi
 ok "ingest-lexicon.ts has completed!"
 
 # 2. Run seed:dictionary --reset
-log "Seeding dictionary (top 5000 lemmas)..."
-docker compose -f docker-compose.production.yml exec -T api pnpm run seed:dictionary --top 5000 --reset
+log "Seeding dictionary (top 10000 lemmas)..."
+docker compose -f docker-compose.production.yml exec -T api pnpm run seed:dictionary --top 10000 --reset
 ok "Dictionary seeded."
 
 # 3. Run seed:course
