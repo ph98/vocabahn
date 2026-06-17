@@ -9,6 +9,9 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Trust reverse proxy (Nginx / Cloudflare) to resolve correct client IPs and enable secure cookies
+  app.getHttpAdapter().getInstance().set('trust proxy', true);
+
   app.use(
     helmet({
       // Allow the web app (same-origin via the dev proxy) to load enrichment audio.
