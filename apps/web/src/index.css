@@ -1,34 +1,35 @@
 @import 'tailwindcss';
 
 @theme {
-  /* Surface/text/border scale: inverted neutral pairing so the existing dark
-     palette (right-hand value) keeps working unchanged, while light mode
-     mirrors it across the neutral scale (50<->950, 100<->900, ...). */
-  --color-surface-950: light-dark(var(--color-neutral-50), var(--color-neutral-950));
-  --color-surface-900: light-dark(var(--color-neutral-100), var(--color-neutral-900));
-  --color-surface-800: light-dark(var(--color-neutral-200), var(--color-neutral-800));
-  --color-surface-700: light-dark(var(--color-neutral-300), var(--color-neutral-700));
-  --color-surface-600: light-dark(var(--color-neutral-400), var(--color-neutral-600));
-  --color-surface-500: light-dark(var(--color-neutral-500), var(--color-neutral-500));
-  --color-surface-400: light-dark(var(--color-neutral-600), var(--color-neutral-400));
-  --color-surface-300: light-dark(var(--color-neutral-700), var(--color-neutral-300));
-  --color-surface-200: light-dark(var(--color-neutral-800), var(--color-neutral-200));
-  --color-surface-100: light-dark(var(--color-neutral-900), var(--color-neutral-100));
+  /* Awwwards Premium Surface Palette */
+  /* Light mode uses elegant warm off-whites, Dark mode uses deep rich blacks */
+  --color-surface-950: light-dark(#FCFBF9, #0C0C0E); /* Main Background */
+  --color-surface-900: light-dark(#FFFFFF, #161619); /* Elevated Cards */
+  --color-surface-800: light-dark(#F3F2EE, #202024); /* Borders, Input Backgrounds */
+  --color-surface-700: light-dark(#E5E4E0, #2C2C32); /* Stronger Borders */
+  --color-surface-600: light-dark(#D4D2CD, #3F3F46); /* Subtle Text / Icons */
+  --color-surface-500: light-dark(#A19F9A, #52525B); /* Muted Text */
+  --color-surface-400: light-dark(#706F6A, #71717A); /* Secondary Text */
+  --color-surface-300: light-dark(#51504C, #A1A1AA); /* Prominent Text */
+  --color-surface-200: light-dark(#373633, #D4D4D8); /* Heavy Accents */
+  --color-surface-100: light-dark(#1A1918, #F4F4F5); /* Primary Text */
+  --color-surface-50: light-dark(#000000, #FFFFFF);
 
-  /* Accent text colors that need a darker shade on light backgrounds to keep
-     >=4.5:1 contrast; dark-mode value matches the existing palette. */
-  --color-accent-red: light-dark(var(--color-red-600), var(--color-red-400));
-  --color-accent-indigo: light-dark(var(--color-indigo-600), var(--color-indigo-400));
-  --color-accent-amber: light-dark(var(--color-amber-700), var(--color-amber-300));
-  --color-accent-emerald: light-dark(var(--color-emerald-700), var(--color-emerald-400));
+  /* Vibrant Accents */
+  --color-accent-red: light-dark(#EF4444, #F87171);
+  --color-accent-indigo: light-dark(#4F46E5, #818CF8);
+  --color-accent-amber: light-dark(#F59E0B, #FBBF24);
+  --color-accent-emerald: light-dark(#10B981, #34D399);
 
   --font-sans: 'Plus Jakarta Sans', sans-serif;
   --font-serif: 'Merriweather', serif;
 
+  /* Glassmorphism / Premium Soft Shadows */
   --shadow-sm: 0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-md: 0 4px 8px rgba(0,0,0,0.02), 0 2px 4px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
-  --shadow-lg: 0 8px 16px rgba(0,0,0,0.02), 0 4px 8px rgba(0,0,0,0.04), 0 2px 4px rgba(0,0,0,0.06);
-  --shadow-xl: 0 16px 32px rgba(0,0,0,0.02), 0 8px 16px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 8px rgba(0,0,0,0.03), 0 2px 4px rgba(0,0,0,0.02);
+  --shadow-lg: 0 12px 24px -4px rgba(0,0,0,0.03), 0 4px 8px -2px rgba(0,0,0,0.02);
+  --shadow-xl: 0 24px 48px -12px rgba(0,0,0,0.05), 0 12px 24px -8px rgba(0,0,0,0.03);
+  --shadow-awwwards: 0 20px 40px -10px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0,0,0,0.02);
 }
 
 :root {
@@ -49,6 +50,12 @@ body {
   background-color: var(--color-surface-950);
   font-family: var(--font-sans);
   transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+  /* Subtle background texture */
+  background-image: light-dark(
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E")
+  );
+  background-attachment: fixed;
 }
 
 @layer utilities {

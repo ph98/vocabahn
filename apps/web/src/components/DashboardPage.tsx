@@ -1,143 +1,131 @@
 import { useQuery } from '@tanstack/react-query';
 import { PullToRefresh } from './PullToRefresh';
 import { Link } from 'react-router-dom';
-import CalendarHeatmap from 'react-calendar-heatmap';
-import 'react-calendar-heatmap/dist/styles.css';
 import { fetchDashboard } from '../api';
 import { ProgressBar } from './ProgressBar';
+import { ActivityHeatmap } from './ActivityHeatmap';
+import { useRef } from 'react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 function StatCard({ label, value, className = '' }: { label: string; value: number, className?: string }) {
   return (
-    <div className={`flex flex-col justify-center rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900 to-surface-950 p-4 text-center shadow-sm ${className}`}>
-      <p className="text-3xl font-semibold">{value}</p>
+    <div className={`dashboard-card flex flex-col justify-center rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-4 text-center shadow-[0_4px_24px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(79,70,229,0.15)] hover:border-indigo-500/30 ${className}`}>
+      <p className="text-3xl font-semibold bg-clip-text text-transparent bg-gradient-to-br from-white to-surface-400">{value}</p>
       <p className="mt-1 text-xs uppercase tracking-wide text-surface-400">{label}</p>
     </div>
   );
 }
 
-function heatmapClassForValue(value?: CalendarHeatmap.ReactCalendarHeatmapValue<string>) {
-  const count = typeof value?.count === 'number' ? value.count : 0;
-  if (count === 0) return 'color-empty';
-  return `color-scale-${Math.min(count, 4)}`;
-}
-
-function heatmapTitleForValue(value?: CalendarHeatmap.ReactCalendarHeatmapValue<string>) {
-  if (!value) return 'No data';
-  const count = typeof value.count === 'number' ? value.count : 0;
-  return `${count} review${count === 1 ? '' : 's'} on ${value.date}`;
-}
-
 export function DashboardPage() {
   const { data, isPending, isError, refetch } = useQuery({ queryKey: ['dashboard'], queryFn: fetchDashboard });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    if (data) {
+      gsap.fromTo(
+        '.dashboard-card',
+        { y: 40, opacity: 0 },
+        {
+          y: 0,
+          opacity: 1,
+          duration: 0.8,
+          ease: 'power3.out',
+          stagger: 0.1,
+          clearProps: 'all', // Ensure GSAP doesn't override hover transforms
+        }
+      );
+    }
+  }, { dependencies: [data], scope: containerRef });
+
   const activeDays = (data?.heatmap ?? []).filter((d) => d.count > 0).reverse();
 
   return (
-    <section aria-label="Dashboard" className="space-y-4">
+    <section aria-label="Dashboard" className="space-y-5" ref={containerRef}>
       <PullToRefresh onRefresh={refetch} />
-      <h2 className="text-sm font-medium uppercase tracking-wide text-surface-400">Dashboard</h2>
-      {isPending && <p aria-live="polite">Loading dashboard…</p>}
-      {isError && <p aria-live="polite" className="text-accent-red">Couldn't load your dashboard.</p>}
+      <h2 className="text-sm font-medium uppercase tracking-wide text-surface-400 pl-1">Dashboard</h2>
+      {isPending && <p aria-live="polite" className="pl-1 text-surface-300">Loading dashboard…</p>}
+      {isError && <p aria-live="polite" className="pl-1 text-accent-red">Couldn't load your dashboard.</p>}
 
       {data && (
-        <>
-          <div className="rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900 to-surface-950 p-6 text-center shadow-sm">
-            <p className="text-5xl font-bold">
-              <span aria-hidden="true">🔥</span> {data.streak}
-            </p>
-            <p className="mt-2 text-sm uppercase tracking-wide text-surface-400">day streak</p>
+        <div className="flex flex-col gap-5">
+          <div className="dashboard-card relative overflow-hidden group rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-8 text-center shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_12px_48px_rgba(251,146,60,0.2)] hover:border-orange-500/40">
+            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-out" />
+            <div className="relative z-10 flex flex-col items-center justify-center">
+              <p className="text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-surface-300 drop-shadow-sm flex items-center justify-center gap-3">
+                <span aria-hidden="true" className="drop-shadow-lg inline-block hover:scale-110 transition-transform duration-300 cursor-default">🔥</span> 
+                {data.streak}
+              </p>
+              <p className="mt-3 text-sm font-semibold uppercase tracking-widest text-surface-400">day streak</p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard className="col-span-2 row-span-2" label="Due today" value={data.stats.dueToday} />
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <StatCard className="col-span-2 row-span-2 p-6" label="Due today" value={data.stats.dueToday} />
             <StatCard label="Reviewed" value={data.stats.reviewedToday} />
             <StatCard label="Known" value={data.stats.totalKnown} />
             <StatCard label="Learning" value={data.stats.totalLearning} />
             <StatCard label="New" value={data.stats.totalNew} />
           </div>
 
-          <div className="overflow-x-auto rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900 to-surface-950 p-6 shadow-sm">
-            <svg width="0" height="0" className="absolute">
-              <defs>
-                <linearGradient id="heatmap-grad-1" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="var(--color-indigo-400)" />
-                  <stop offset="100%" stopColor="var(--color-indigo-700)" />
-                </linearGradient>
-                <linearGradient id="heatmap-grad-2" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="var(--color-indigo-300)" />
-                  <stop offset="100%" stopColor="var(--color-indigo-600)" />
-                </linearGradient>
-                <linearGradient id="heatmap-grad-3" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="var(--color-indigo-200)" />
-                  <stop offset="100%" stopColor="var(--color-indigo-500)" />
-                </linearGradient>
-                <linearGradient id="heatmap-grad-4" x1="0" y1="0" x2="1" y2="1">
-                  <stop offset="0%" stopColor="var(--color-indigo-100)" />
-                  <stop offset="100%" stopColor="var(--color-indigo-400)" />
-                </linearGradient>
-              </defs>
-            </svg>
-            <h3 className="mb-2 text-sm font-medium uppercase tracking-wide text-surface-400">Activity</h3>
-            {/* The heatmap conveys the same data as the list below; hide it
-                from assistive tech rather than relying on per-cell titles,
-                which screen readers handle poorly. */}
-            <div aria-hidden="true">
-              <CalendarHeatmap
-                startDate={data.heatmap[0]?.date}
-                endDate={data.heatmap[data.heatmap.length - 1]?.date}
-                values={data.heatmap}
-                classForValue={heatmapClassForValue}
-                titleForValue={heatmapTitleForValue}
-                showWeekdayLabels
-              />
+          <div className="dashboard-card relative overflow-hidden rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/90 to-surface-950/90 backdrop-blur-xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.25)] transition-all duration-500 hover:border-indigo-500/30">
+            <div className="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full pointer-events-none" />
+            <h3 className="mb-5 text-sm font-semibold uppercase tracking-widest text-surface-400 relative z-10">Activity</h3>
+            
+            <div aria-hidden="true" className="relative z-10">
+              <ActivityHeatmap data={data.heatmap} />
             </div>
-            <details className="mt-2">
-              <summary className="min-h-11 cursor-pointer content-center text-sm text-surface-400 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            
+            <details className="mt-4 relative z-10 group">
+              <summary className="min-h-11 cursor-pointer content-center text-sm font-medium text-surface-400 transition-colors hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white list-none flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-surface-800 flex items-center justify-center text-[10px] group-open:rotate-90 transition-transform">▶</span>
                 View activity as a list
               </summary>
               {activeDays.length > 0 ? (
-                <table className="mt-2 w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-surface-800 text-surface-400">
-                      <th className="py-1 pr-3 font-medium">Date</th>
-                      <th className="py-1 font-medium">Reviews</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeDays.map(({ date, count }) => (
-                      <tr key={date} className="border-b border-surface-900">
-                        <td className="py-1 pr-3">{date}</td>
-                        <td className="py-1">{count}</td>
+                <div className="mt-3 overflow-hidden rounded-2xl border border-surface-800/50 bg-surface-900/30">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-surface-800 text-surface-400 bg-surface-900/50">
+                        <th className="py-2.5 px-4 font-medium">Date</th>
+                        <th className="py-2.5 px-4 font-medium text-right">Reviews</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-surface-800/50">
+                      {activeDays.map(({ date, count }) => (
+                        <tr key={date} className="hover:bg-surface-800/20 transition-colors">
+                          <td className="py-2.5 px-4 text-surface-200">{new Date(date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+                          <td className="py-2.5 px-4 text-right font-medium">{count}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
-                <p className="mt-2 text-sm text-surface-400">No reviews in this period yet.</p>
+                <p className="mt-3 text-sm text-surface-400 pl-6">No reviews in this period yet.</p>
               )}
             </details>
           </div>
 
-          <div className="rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900 to-surface-950 p-6 shadow-sm">
-            <h3 className="mb-3 text-sm font-medium uppercase tracking-wide text-surface-400">Course progress</h3>
+          <div className="dashboard-card rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-6 shadow-[0_4px_24px_rgba(0,0,0,0.2)] transition-all duration-300 hover:border-indigo-500/30">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-widest text-surface-400">Course progress</h3>
             {data.courses.length === 0 && (
               <p className="text-surface-400">
                 You're not enrolled in any courses yet.{' '}
-                <Link to="/courses" className="text-accent-indigo underline-offset-2 hover:underline">
-                  Browse courses
+                <Link to="/courses" className="text-accent-indigo font-medium hover:text-indigo-300 transition-colors">
+                  Browse courses &rarr;
                 </Link>
-                .
               </p>
             )}
             {data.courses.length > 0 && (
-              <ul className="space-y-4">
+              <ul className="space-y-5">
                 {data.courses.map((course) => (
-                  <li key={course.id}>
+                  <li key={course.id} className="group">
                     <div className="flex items-center justify-between gap-4">
-                      <Link to={`/courses/${course.slug}`} className="font-medium hover:underline">
+                      <Link to={`/courses/${course.slug}`} className="font-medium text-surface-100 group-hover:text-indigo-300 transition-colors text-lg">
                         {course.title}
                       </Link>
                     </div>
-                    <div className="mt-2">
+                    <div className="mt-3">
                       <ProgressBar progress={course.progress} wordCount={course.wordCount} />
                     </div>
                   </li>
@@ -145,7 +133,7 @@ export function DashboardPage() {
               </ul>
             )}
           </div>
-        </>
+        </div>
       )}
     </section>
   );
