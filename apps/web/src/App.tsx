@@ -34,10 +34,7 @@ function RouteLoading() {
   return <p aria-live="polite">Loading…</p>;
 }
 
-const iconLinkClassName = ({ isActive }: { isActive: boolean }) =>
-  `flex min-h-11 min-w-11 items-center justify-center rounded-full border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-    isActive ? 'border-indigo-400' : 'border-surface-800 hover:border-surface-600'
-  }`;
+
 
 const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
 const THEME_ICON: Record<Theme, string> = { system: '🖥️', light: '☀️', dark: '🌙' };
@@ -80,6 +77,7 @@ function MorePanel({ onClose, buttonRef }: {
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [style, setStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
+  const [theme, setTheme] = useTheme();
 
   useEffect(() => {
     if (!buttonRef.current) return;
@@ -104,11 +102,13 @@ function MorePanel({ onClose, buttonRef }: {
       active ? 'bg-indigo-500/15 text-accent-indigo' : 'text-surface-300 hover:bg-surface-800'
     }`;
 
+  const nextTheme = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length] ?? 'system';
+
   return (
     <div
       ref={ref}
       aria-label="Additional navigation"
-      className="fixed z-50 w-48 rounded-2xl border border-surface-700/80 bg-surface-900/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-md"
+      className="fixed z-50 w-52 flex flex-col gap-1 rounded-2xl border border-surface-700/80 bg-surface-900/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-md"
       style={style}
     >
       {MORE_ITEMS.map(({ to, label, icon }) => (
@@ -117,6 +117,15 @@ function MorePanel({ onClose, buttonRef }: {
           {label}
         </NavLink>
       ))}
+      <div className="my-1 h-px w-full bg-surface-800/60" aria-hidden="true" />
+      <button
+        type="button"
+        onClick={() => { setTheme(nextTheme); onClose(); }}
+        className={itemClass(false)}
+      >
+        <span aria-hidden="true">{THEME_ICON[theme]}</span>
+        {THEME_LABEL[theme]}
+      </button>
     </div>
   );
 }
@@ -144,11 +153,11 @@ function AppNav() {
   // Mobile: vertical icon+label stack. Desktop: horizontal icon+label pill.
   const itemClass = (active: boolean) =>
     [
-      'flex flex-col items-center gap-0.5 px-1 py-2 min-w-12 rounded-xl transition-colors',
-      'md:flex-row md:gap-2 md:px-4 md:py-2.5 md:min-w-0 md:min-h-11 md:text-sm md:font-medium',
+      'flex flex-col items-center gap-0.5 px-1 py-2 min-w-12 rounded-[1rem] transition-all',
+      'md:flex-row md:gap-2 md:px-5 md:py-2.5 md:min-w-0 md:min-h-12 md:text-sm md:font-bold',
       active
-        ? 'text-indigo-400 md:bg-indigo-500 md:text-white md:shadow-sm md:shadow-indigo-950/50'
-        : 'text-surface-500 md:text-surface-300 md:hover:bg-surface-800',
+        ? 'text-accent-indigo md:bg-surface-100 md:text-surface-950 md:shadow-sm md:-translate-y-0.5'
+        : 'text-surface-500 md:text-surface-300 md:hover:bg-surface-700/50 md:hover:text-surface-100 md:hover:-translate-y-0.5',
     ].join(' ');
 
   const labelClass = 'text-[10px] font-medium leading-none md:text-sm md:leading-normal';
@@ -166,13 +175,25 @@ function AppNav() {
         className={[
           // Mobile: fixed bottom bar
           'fixed bottom-0 inset-x-0 z-50 flex items-center justify-around',
-          'border-t border-surface-800 bg-surface-950/90 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)]',
+          'border-t border-surface-800/40 bg-surface-950/80 backdrop-blur-2xl pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]',
           // Desktop: in-flow pill row
           'md:relative md:bottom-auto md:inset-x-auto md:z-auto md:w-full md:max-w-2xl',
-          'md:justify-start md:gap-1 md:rounded-2xl md:border md:border-surface-800',
-          'md:bg-surface-900 md:p-2 md:shadow-lg md:shadow-black/20 md:backdrop-blur-none md:pb-0',
+          'md:mt-8 md:mb-6 md:justify-start md:gap-2 md:rounded-[1.5rem] md:border md:border-surface-700/50',
+          'md:bg-surface-800/40 md:p-2 md:shadow-premium md:backdrop-blur-xl md:pb-2',
         ].join(' ')}
       >
+        {/* Desktop Branding Icon */}
+        <div className="hidden md:flex items-center pl-2 pr-3 border-r border-surface-800/50 mr-1">
+          <Link 
+            to="/" 
+            aria-label="Vocabahn Home" 
+            className="flex items-center justify-center size-8 rounded-full bg-surface-900 shadow-sm border border-surface-700/50 font-black tracking-tighter select-none group transition-all hover:scale-105 hover:border-accent-indigo/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            <span className="text-transparent bg-clip-text bg-gradient-to-br from-surface-100 to-surface-400">V</span>
+            <span className="text-accent-indigo -ml-0.5">b</span>
+          </Link>
+        </div>
+
         <Link
           to="/"
           aria-current={dictionaryActive ? 'page' : undefined}
@@ -194,24 +215,24 @@ function AppNav() {
           className={({ isActive }) =>
             [
               'flex flex-col items-center gap-0.5 px-1 -mt-4 py-2',
-              'md:mt-0 md:flex-row md:gap-2 md:px-4 md:py-2.5 md:min-h-11 md:rounded-xl',
-              'md:transition-colors md:text-sm md:font-medium',
+              'md:mt-0 md:flex-row md:gap-2 md:px-5 md:py-2.5 md:min-h-12 md:rounded-[1rem]',
+              'md:transition-all md:text-sm md:font-bold',
               isActive
-                ? 'md:bg-indigo-500 md:text-white md:shadow-sm md:shadow-indigo-950/50'
-                : 'md:text-surface-300 md:hover:bg-surface-800',
+                ? 'md:bg-accent-indigo md:text-white md:shadow-md md:-translate-y-0.5'
+                : 'md:text-surface-300 md:hover:bg-surface-700/50 md:hover:text-surface-100 md:hover:-translate-y-0.5',
             ].join(' ')
           }
         >
           {({ isActive }) => (
             <>
               <span className={`md:hidden flex size-12 items-center justify-center rounded-full shadow-lg transition-all ${
-                isActive ? 'bg-indigo-400 shadow-indigo-400/40' : 'bg-indigo-500 shadow-indigo-500/30 hover:bg-indigo-400'
+                isActive ? 'bg-accent-indigo shadow-indigo-400/40' : 'bg-surface-100 shadow-black/10 hover:scale-105'
               }`}>
-                <NavSvgIcon d={ICON_REVIEW} className="text-white" />
+                <NavSvgIcon d={ICON_REVIEW} className={isActive ? 'text-white' : 'text-surface-950'} />
               </span>
               <NavSvgIcon d={ICON_REVIEW} className="hidden md:block" />
-              <span className={`text-[10px] font-medium leading-none md:text-sm md:leading-normal ${
-                isActive ? 'text-indigo-400 md:text-white' : 'text-surface-500 md:text-surface-300'
+              <span className={`text-[10px] font-bold leading-none md:text-sm md:leading-normal ${
+                isActive ? 'text-accent-indigo md:text-white' : 'text-surface-500 md:text-surface-300'
               }`}>Review</span>
             </>
           )}
@@ -239,22 +260,7 @@ function AppNav() {
   );
 }
 
-/** Cycles the persisted theme preference (system → light → dark → system). */
-function ThemeToggle() {
-  const [theme, setTheme] = useTheme();
-  const next = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length] ?? 'system';
 
-  return (
-    <button
-      type="button"
-      onClick={() => setTheme(next)}
-      aria-label={`${THEME_LABEL[theme]} active. Switch to ${THEME_LABEL[next].toLowerCase()}.`}
-      className="flex min-h-11 min-w-11 items-center justify-center rounded-full border border-surface-800 text-lg transition-colors hover:border-surface-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-    >
-      <span aria-hidden="true">{THEME_ICON[theme]}</span>
-    </button>
-  );
-}
 
 /** Maps the current path to a human-readable page name for titles and SPA-navigation announcements. */
 function pageNameForPath(pathname: string): string {
@@ -300,31 +306,15 @@ function StatusLink() {
   const up = !isError && data?.services.database === 'up' && data?.services.redis === 'up';
 
   return (
-    <NavLink to="/status" aria-label="System status" className={iconLinkClassName}>
+    <NavLink to="/status" aria-label="System status" className="flex items-center justify-center p-2 opacity-20 hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded-full" title="System Status">
       <span
         role="img"
         aria-label={up ? 'up' : 'down'}
-        className={`size-2.5 rounded-full ${up ? 'bg-emerald-400' : 'bg-red-400'}`}
+        className={`size-1.5 rounded-full ${up ? 'bg-emerald-400' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]'}`}
       />
     </NavLink>
   );
 }
-
-/** Small avatar (or placeholder) linking to /profile. */
-function ProfileLink() {
-  const { data: user } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
-
-  return (
-    <NavLink to="/profile" aria-label="Profile" className={iconLinkClassName}>
-      {user?.avatarUrl ? (
-        <img src={user.avatarUrl} alt="" referrerPolicy="no-referrer" className="size-full rounded-full" />
-      ) : (
-        <span aria-hidden="true">👤</span>
-      )}
-    </NavLink>
-  );
-}
-
 /**
  * Invisible left-edge detector that triggers navigate(-1) on a right-swipe
  * starting within 24 px of the left edge. Disabled on /review so it doesn't
@@ -404,28 +394,28 @@ const FEATURES = [
 /** Marketing section shown to unauthenticated visitors before they sign in. */
 function LandingPage() {
   return (
-    <div className="relative overflow-hidden w-full max-w-5xl mx-auto rounded-3xl border border-surface-800/60 bg-surface-900 shadow-2xl">
+    <div className="relative overflow-hidden w-full max-w-5xl mx-auto rounded-3xl border border-surface-800/40 bg-surface-900 shadow-premium transition-all">
       {/* Animated Mesh Gradient Background */}
-      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none" aria-hidden="true">
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-500 blur-[100px] animate-[pulse_4s_ease-in-out_infinite]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[70%] h-[70%] rounded-full bg-emerald-500 blur-[120px] animate-[pulse_5s_ease-in-out_infinite]" style={{ animationDelay: '1s' }} />
+      <div className="absolute inset-0 z-0 opacity-40 pointer-events-none mix-blend-screen" aria-hidden="true">
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-accent-indigo blur-[120px] animate-[pulse_6s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[70%] h-[70%] rounded-full bg-accent-emerald blur-[140px] animate-[pulse_8s_ease-in-out_infinite]" style={{ animationDelay: '2s' }} />
       </div>
 
-      <div className="relative z-10 grid gap-12 p-8 md:grid-cols-2 md:items-center md:p-12">
+      <div className="relative z-10 grid gap-12 p-8 md:grid-cols-2 md:items-center md:p-14">
         {/* Left Side: Hero Copy */}
         <section aria-labelledby="hero-heading" className="space-y-8">
-          <IllustrationDictionary className="h-20 w-auto text-indigo-400" />
-          <h2 id="hero-heading" className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-balance">
-            Learn German, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400">word by word.</span>
+          <IllustrationDictionary className="h-24 w-auto text-accent-indigo drop-shadow-lg" />
+          <h2 id="hero-heading" className="text-5xl font-extrabold tracking-tighter sm:text-6xl lg:text-7xl text-balance">
+            Learn German, <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-indigo to-accent-emerald">word by word.</span>
           </h2>
-          <p className="text-lg text-surface-300 max-w-md">
+          <p className="text-xl text-surface-400 max-w-md font-medium">
             Vocabahn is a free, open-source German vocabulary app with an AI-enriched dictionary
             and FSRS spaced-repetition flashcards.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col sm:flex-row gap-4 pt-4">
             <Link
               to="/profile"
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-indigo-500 px-6 py-3 font-medium text-white shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5 hover:bg-indigo-400 hover:shadow-indigo-500/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-accent-indigo px-8 py-4 text-lg font-bold text-white shadow-xl shadow-indigo-500/30 transition-all hover:-translate-y-1 hover:bg-indigo-400 hover:shadow-indigo-500/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
               Get started
             </Link>
@@ -433,21 +423,21 @@ function LandingPage() {
         </section>
 
         {/* Right Side: Features Bento Box */}
-        <section aria-label="Features" className="grid gap-4 sm:grid-cols-2">
+        <section aria-label="Features" className="grid gap-6 sm:grid-cols-2">
           {FEATURES.map(({ Illus, title, desc }, idx) => (
             <div
               key={title}
-              className={`group relative overflow-hidden rounded-3xl border border-surface-700/50 bg-surface-800/30 p-6 backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-indigo-500/30 hover:bg-surface-800/50 hover:shadow-xl hover:shadow-indigo-500/10 ${idx === 0 || idx === 3 ? 'sm:col-span-2' : ''}`}
+              className={`group relative overflow-hidden rounded-[2rem] border border-surface-700/60 bg-surface-800/40 p-8 backdrop-blur-xl transition-all hover:-translate-y-2 hover:border-accent-indigo/50 hover:bg-surface-800/70 hover:shadow-premium ${idx === 0 || idx === 3 ? 'sm:col-span-2' : ''}`}
             >
-              <Illus className="mb-4 h-12 w-auto text-indigo-300 transition-transform group-hover:scale-105" />
-              <h3 className="mb-1.5 font-semibold text-surface-100">{title}</h3>
-              <p className="text-sm text-surface-400">{desc}</p>
+              <Illus className="mb-6 h-14 w-auto text-accent-indigo transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3" />
+              <h3 className="mb-2.5 text-lg font-bold text-surface-100">{title}</h3>
+              <p className="text-base text-surface-400 leading-relaxed">{desc}</p>
             </div>
           ))}
         </section>
       </div>
 
-      <section aria-label="Sign in" className="relative z-10 border-t border-surface-800/50 bg-surface-950/30 p-8 text-center backdrop-blur-md">
+      <section aria-label="Sign in" className="relative z-10 border-t border-surface-800/30 bg-surface-950/40 p-10 text-center backdrop-blur-xl mt-8">
         <div className="mx-auto max-w-sm">
           <ProfilePage />
         </div>
@@ -470,47 +460,29 @@ export default function App() {
       </a>
       <RouteAnnouncer mainRef={mainRef} />
       <EdgeSwipeBack />
+      
+      {/* Global Awwwards-style Backgrounds */}
+      <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden" aria-hidden="true">
+        {/* Subtle Mesh Gradient Blobs */}
+        <div className="absolute top-[-20%] left-[-10%] w-[50vw] h-[50vh] rounded-full bg-accent-indigo/10 blur-[120px]" />
+        <div className="absolute top-[30%] right-[-10%] w-[40vw] h-[40vh] rounded-full bg-accent-emerald/10 blur-[120px]" />
+        <div className="absolute bottom-[-10%] left-[20%] w-[60vw] h-[40vh] rounded-full bg-accent-amber/5 blur-[120px]" />
+        
+        {/* Noise Texture Overlay */}
+        <div 
+          className="absolute inset-0 opacity-[0.03] mix-blend-overlay"
+          style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}
+        />
+      </div>
+
       <main
         id="main"
         ref={mainRef}
         tabIndex={-1}
-        className={`flex min-h-dvh flex-col items-center gap-6 bg-surface-950 px-safe pt-safe ${user ? 'max-md:pb-mobile-nav md:pb-safe' : 'pb-safe'} text-surface-100 outline-none`}
+        className={`flex min-h-dvh flex-col items-center gap-6 ${user ? 'max-md:pb-mobile-nav md:pb-safe' : 'pb-safe'} text-surface-100 outline-none`}
       >
-      <header className="flex w-full max-w-2xl items-center justify-between gap-4">
-        <div 
-          className="group cursor-default" 
-          onMouseEnter={(e) => {
-            const bahn = e.currentTarget.querySelector('.bahn-text');
-            const train = e.currentTarget.querySelector('.train-icon');
-            if (bahn && train) {
-              gsap.timeline()
-                .to(train, { opacity: 1, x: 5, duration: 0.2, ease: "power2.out" })
-                .to(bahn, { x: 5, color: '#818cf8', duration: 0.3, ease: "power2.out" }, "<")
-                .to(train, { x: 0, opacity: 0, duration: 0.2, delay: 0.5 })
-                .to(bahn, { x: 0, color: '#a5b4fc', duration: 0.3 }, "<");
-            }
-          }}
-        >
-          <h1 className="flex items-center text-4xl font-bold tracking-tight">
-            <span>Voca</span>
-            <span className="train-icon opacity-0 -ml-2 mr-1 text-2xl" aria-hidden="true">🚂</span>
-            <span className="bahn-text text-accent-indigo transition-colors">bahn</span>
-          </h1>
-          <p className="mt-2 text-surface-400">
-            German vocabulary, <span lang="de">Wort für Wort</span>.
-          </p>
-        </div>
-        {!isPending && (
-          <div className="flex shrink-0 items-center gap-2">
-            <ThemeToggle />
-            <StatusLink />
-            <ProfileLink />
-          </div>
-        )}
-      </header>
-
       {!isPending && !user && (
-        <div className="w-full max-w-2xl space-y-10">
+        <div className="w-full max-w-2xl space-y-10 mt-8 md:mt-16">
           <LandingPage />
         </div>
       )}
@@ -538,15 +510,16 @@ export default function App() {
         </>
       )}
 
-      <footer className="mt-auto w-full max-w-2xl border-t border-surface-800 pt-4 text-center text-xs text-surface-500">
+      <footer className="mt-auto flex w-full max-w-2xl items-center justify-center gap-3 border-t border-surface-800 pt-4 pb-6 text-xs text-surface-500">
         <a
           href="https://github.com/YOUR_ORG/vocabahn/blob/main/CHANGELOG.md"
           target="_blank"
           rel="noopener noreferrer"
-          className="hover:text-surface-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="hover:text-surface-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-colors"
         >
           v{__APP_VERSION__}
         </a>
+        <StatusLink />
       </footer>
 
       </main>
