@@ -1,9 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { lazy, Suspense, useEffect, useRef, useState, type RefObject } from 'react';
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { fetchHealth, fetchMe } from './api';
+import { fetchHealth, fetchMe, googleOneTapLogin } from './api';
+import { useGoogleOneTap } from './hooks/useGoogleOneTap';
 import { prefersReducedMotion } from './lib/motion';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
 import { IllustrationDictionary, IllustrationFlashcard, IllustrationStreak, IllustrationTrophy } from './components/Illustrations';
@@ -456,12 +457,29 @@ function LandingPage() {
   );
 }
 
+function GoogleOneTapPrompt() {
+  const queryClient = useQueryClient();
+  const mutation = useMutation({
+    mutationFn: googleOneTapLogin,
+    onSuccess: (user) => {
+      queryClient.setQueryData(['me'], user);
+    },
+  });
+
+  useGoogleOneTap({
+    onSuccess: (credential) => mutation.mutate(credential),
+  });
+
+  return null;
+}
+
 export default function App() {
   const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const mainRef = useRef<HTMLElement>(null);
 
   return (
     <>
+      {!isPending && !user && <GoogleOneTapPrompt />}
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-indigo-500 focus:px-4 focus:py-2.5 focus:text-sm focus:font-medium focus:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
