@@ -42,6 +42,13 @@ function useDebounced(value: string, ms: number): string {
   return debounced;
 }
 
+function getArticleColor(article: string) {
+  if (article.includes('der')) return 'text-sky-400';
+  if (article.includes('die')) return 'text-rose-400';
+  if (article.includes('das')) return 'text-emerald-400';
+  return 'text-surface-400';
+}
+
 function EntryDetail({
   word,
   onBack,
@@ -70,7 +77,32 @@ function EntryDetail({
       >
         ← Back to results
       </button>
-      {isPending && <p aria-live="polite">Loading entry…</p>}
+      {isPending && (
+        <div className="animate-pulse" aria-hidden="true">
+          <div className="mb-3 h-4 w-24 rounded skeleton-shimmer" />
+          <header className="mb-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="h-8 w-48 rounded skeleton-shimmer" />
+              <div className="size-11 rounded-full skeleton-shimmer" />
+            </div>
+            <div className="mt-2 flex gap-3">
+              <div className="h-4 w-12 rounded skeleton-shimmer" />
+              <div className="h-4 w-16 rounded skeleton-shimmer" />
+              <div className="h-4 w-20 rounded skeleton-shimmer" />
+            </div>
+            <div className="mt-3 flex gap-2">
+              <div className="h-11 w-32 rounded-xl skeleton-shimmer" />
+              <div className="h-11 w-40 rounded-xl skeleton-shimmer" />
+            </div>
+          </header>
+          <div className="mb-3 h-48 w-full rounded-xl skeleton-shimmer" />
+          <div className="mb-3 h-6 w-3/4 rounded skeleton-shimmer" />
+          <div className="flex gap-1 border-b border-surface-800">
+            <div className="h-11 w-24 rounded-t-lg skeleton-shimmer" />
+            <div className="h-11 w-24 rounded-t-lg skeleton-shimmer" />
+          </div>
+        </div>
+      )}
       {isError && (
         <p aria-live="polite" className="text-accent-red">
           Couldn't load “{word}”.
@@ -816,10 +848,10 @@ export function EntryBody({
       )}
       <header className="mb-3">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-2xl font-bold">
-            {article && <span className="font-normal text-surface-400">{article} </span>}
+          <h3 className="text-2xl font-bold font-serif">
+            {article && <span className={`font-normal font-sans ${getArticleColor(article)}`}>{article} </span>}
             <span lang="de">{entry.word}</span>
-            {entry.emoji && <span aria-hidden="true"> {entry.emoji}</span>}
+            {entry.emoji && <span aria-hidden="true" className="font-sans"> {entry.emoji}</span>}
           </h3>
           {entry.audioUrl && (
             <AudioButton src={entry.audioUrl} label={`Pronounce ${entry.word}`} />
@@ -957,7 +989,7 @@ export function EntryBody({
         {activeTab === 'overview' && (
           <>
             {entry.usageNote && (
-              <section className="mb-4 rounded-lg border border-surface-800 bg-surface-950 px-3 py-2">
+              <section className="mb-4 rounded-2xl border border-surface-800/60 bg-surface-950/80 p-4">
                 <h4 className="mb-0.5 text-xs font-medium uppercase tracking-wide text-surface-500">
                   How to use
                 </h4>
@@ -966,7 +998,7 @@ export function EntryBody({
             )}
 
             {entry.examples.length > 0 && (
-              <section className="mb-4">
+              <section className="mb-4 rounded-2xl border border-surface-800/60 bg-surface-950/80 p-4">
                 <h4 className="mb-2 text-sm font-medium uppercase tracking-wide text-surface-400">
                   Examples
                 </h4>
@@ -1026,6 +1058,7 @@ export function DictionaryCard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') ?? '';
   const debounced = useDebounced(query.trim(), 250);
+  const [isFocused, setIsFocused] = useState(false);
 
   const { data: results, isFetching } = useQuery({
     queryKey: ['dictionary-search', debounced],
@@ -1034,30 +1067,36 @@ export function DictionaryCard() {
   });
 
   return (
-    <section
-      aria-label="Dictionary"
-      className="w-full rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20"
-    >
-      <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-surface-400">
-        Dictionary
-      </h2>
+    <>
+      {isFocused && (
+        <div className="fixed inset-0 z-40 bg-surface-950/60 backdrop-blur-md transition-all duration-300" aria-hidden="true" />
+      )}
+      <section
+        aria-label="Dictionary"
+        className={`w-full rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20 transition-all ${isFocused ? 'relative z-50 ring-2 ring-indigo-500/20' : ''}`}
+      >
+        <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-surface-400">
+          Dictionary
+        </h2>
 
-      <label htmlFor="dict-search" className="sr-only">
-        Search German words
-      </label>
-      <input
-        id="dict-search"
-        type="search"
-        value={query}
-        onChange={(e) => {
-          const value = e.target.value;
-          setSearchParams(value ? { q: value } : {}, { replace: true });
-        }}
-        placeholder="Search German words…"
-        autoComplete="off"
-        lang="de"
-        className="min-h-11 w-full rounded-xl border border-surface-700 bg-surface-950 px-4 text-base placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-      />
+        <label htmlFor="dict-search" className="sr-only">
+          Search German words
+        </label>
+        <input
+          id="dict-search"
+          type="search"
+          value={query}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          onChange={(e) => {
+            const value = e.target.value;
+            setSearchParams(value ? { q: value } : {}, { replace: true });
+          }}
+          placeholder="Search German words…"
+          autoComplete="off"
+          lang="de"
+          className="min-h-14 w-full rounded-2xl border border-surface-700 bg-surface-950 px-6 text-lg placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        />
       <div aria-live="polite" className="mt-3">
         {isFetching && <p className="text-sm text-surface-400">Searching…</p>}
         {results && results.length === 0 && (
@@ -1074,7 +1113,7 @@ export function DictionaryCard() {
                 >
                   <span className="min-w-0">
                     <span lang="de" className="font-medium">
-                      {articleFor(r.gender) ? `${articleFor(r.gender)} ` : ''}
+                      {articleFor(r.gender) ? <span className={getArticleColor(articleFor(r.gender)!)}>{`${articleFor(r.gender)} `}</span> : ''}
                       {r.word}
                     </span>
                     {r.translation && (
@@ -1091,5 +1130,6 @@ export function DictionaryCard() {
         )}
       </div>
     </section>
+    </>
   );
 }

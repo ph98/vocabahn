@@ -247,42 +247,55 @@ const FEATURES = [
 /** Marketing section shown to unauthenticated visitors before they sign in. */
 function LandingPage() {
   return (
-    <>
-      <section aria-labelledby="hero-heading" className="space-y-6 text-center">
-        <IllustrationDictionary className="mx-auto h-32 w-auto text-indigo-400" />
-        <h2 id="hero-heading" className="text-3xl font-bold tracking-tight sm:text-4xl">
-          Learn German, word by word.
-        </h2>
-        <p className="mx-auto max-w-xl text-lg text-surface-400">
-          Vocabahn is a free, open-source German vocabulary app with an AI-enriched dictionary
-          and FSRS spaced-repetition flashcards. No ads, no streaks for streak's sake — just the
-          most effective way to build your German vocabulary.
-        </p>
-        <Link
-          to="/profile"
-          className="inline-flex min-h-12 items-center gap-2 rounded-xl bg-indigo-500 px-6 py-3 font-medium text-white shadow-md shadow-indigo-950/40 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-        >
-          Get started
-        </Link>
-      </section>
+    <div className="relative overflow-hidden w-full max-w-5xl mx-auto rounded-3xl border border-surface-800/60 bg-surface-900 shadow-2xl">
+      {/* Animated Mesh Gradient Background */}
+      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none" aria-hidden="true">
+        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-500 blur-[100px] animate-[pulse_4s_ease-in-out_infinite]" />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[70%] h-[70%] rounded-full bg-emerald-500 blur-[120px] animate-[pulse_5s_ease-in-out_infinite]" style={{ animationDelay: '1s' }} />
+      </div>
 
-      <section aria-label="Features" className="grid gap-4 sm:grid-cols-2">
-        {FEATURES.map(({ Illus, title, desc }) => (
-          <div
-            key={title}
-            className="rounded-2xl border border-surface-800 bg-surface-900 p-5 shadow-sm"
-          >
-            <Illus className="mb-2 h-20 w-auto text-indigo-400" />
-            <h3 className="mb-1 font-semibold">{title}</h3>
-            <p className="text-sm text-surface-400">{desc}</p>
+      <div className="relative z-10 grid gap-12 p-8 md:grid-cols-2 md:items-center md:p-12">
+        {/* Left Side: Hero Copy */}
+        <section aria-labelledby="hero-heading" className="space-y-8">
+          <IllustrationDictionary className="h-20 w-auto text-indigo-400" />
+          <h2 id="hero-heading" className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-balance">
+            Learn German, <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-emerald-400">word by word.</span>
+          </h2>
+          <p className="text-lg text-surface-300 max-w-md">
+            Vocabahn is a free, open-source German vocabulary app with an AI-enriched dictionary
+            and FSRS spaced-repetition flashcards.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Link
+              to="/profile"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-indigo-500 px-6 py-3 font-medium text-white shadow-lg shadow-indigo-500/20 transition-all hover:-translate-y-0.5 hover:bg-indigo-400 hover:shadow-indigo-500/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              Get started
+            </Link>
           </div>
-        ))}
-      </section>
+        </section>
 
-      <section aria-label="Sign in" className="mx-auto max-w-sm">
-        <ProfilePage />
+        {/* Right Side: Features Bento Box */}
+        <section aria-label="Features" className="grid gap-4 sm:grid-cols-2">
+          {FEATURES.map(({ Illus, title, desc }, idx) => (
+            <div
+              key={title}
+              className={`group relative overflow-hidden rounded-3xl border border-surface-700/50 bg-surface-800/30 p-6 backdrop-blur-sm transition-all hover:-translate-y-1 hover:border-indigo-500/30 hover:bg-surface-800/50 hover:shadow-xl hover:shadow-indigo-500/10 ${idx === 0 || idx === 3 ? 'sm:col-span-2' : ''}`}
+            >
+              <Illus className="mb-4 h-12 w-auto text-indigo-300 transition-transform group-hover:scale-105" />
+              <h3 className="mb-1.5 font-semibold text-surface-100">{title}</h3>
+              <p className="text-sm text-surface-400">{desc}</p>
+            </div>
+          ))}
+        </section>
+      </div>
+
+      <section aria-label="Sign in" className="relative z-10 border-t border-surface-800/50 bg-surface-950/30 p-8 text-center backdrop-blur-md">
+        <div className="mx-auto max-w-sm">
+          <ProfilePage />
+        </div>
       </section>
-    </>
+    </div>
   );
 }
 
@@ -307,9 +320,24 @@ export default function App() {
         className="flex min-h-dvh flex-col items-center gap-6 bg-surface-950 px-safe pt-safe pb-safe text-surface-100 outline-none"
       >
       <header className="flex w-full max-w-2xl items-center justify-between gap-4">
-        <div>
-          <h1 className="text-4xl font-bold tracking-tight">
-            Vocab<span className="text-accent-indigo">ahn</span>
+        <div 
+          className="group cursor-default" 
+          onMouseEnter={(e) => {
+            const bahn = e.currentTarget.querySelector('.bahn-text');
+            const train = e.currentTarget.querySelector('.train-icon');
+            if (bahn && train) {
+              gsap.timeline()
+                .to(train, { opacity: 1, x: 5, duration: 0.2, ease: "power2.out" })
+                .to(bahn, { x: 5, color: '#818cf8', duration: 0.3, ease: "power2.out" }, "<")
+                .to(train, { x: 0, opacity: 0, duration: 0.2, delay: 0.5 })
+                .to(bahn, { x: 0, color: '#a5b4fc', duration: 0.3 }, "<");
+            }
+          }}
+        >
+          <h1 className="flex items-center text-4xl font-bold tracking-tight">
+            <span>Voca</span>
+            <span className="train-icon opacity-0 -ml-2 mr-1 text-2xl" aria-hidden="true">🚂</span>
+            <span className="bahn-text text-accent-indigo transition-colors">bahn</span>
           </h1>
           <p className="mt-2 text-surface-400">
             German vocabulary, <span lang="de">Wort für Wort</span>.

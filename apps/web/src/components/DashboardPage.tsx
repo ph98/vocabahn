@@ -6,10 +6,10 @@ import 'react-calendar-heatmap/dist/styles.css';
 import { fetchDashboard } from '../api';
 import { ProgressBar } from './ProgressBar';
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function StatCard({ label, value, className = '' }: { label: string; value: number, className?: string }) {
   return (
-    <div className="rounded-2xl border border-surface-800 bg-surface-900 p-4 text-center shadow-lg shadow-black/20">
-      <p className="text-2xl font-semibold">{value}</p>
+    <div className={`flex flex-col justify-center rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900 to-surface-950 p-4 text-center shadow-sm ${className}`}>
+      <p className="text-3xl font-semibold">{value}</p>
       <p className="mt-1 text-xs uppercase tracking-wide text-surface-400">{label}</p>
     </div>
   );
@@ -40,22 +40,42 @@ export function DashboardPage() {
 
       {data && (
         <>
-          <div className="rounded-2xl border border-surface-800 bg-surface-900 p-6 text-center shadow-lg shadow-black/20">
-            <p className="text-4xl font-bold">
+          <div className="rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900 to-surface-950 p-6 text-center shadow-sm">
+            <p className="text-5xl font-bold">
               <span aria-hidden="true">🔥</span> {data.streak}
             </p>
-            <p className="mt-1 text-sm text-surface-400">day streak</p>
+            <p className="mt-2 text-sm uppercase tracking-wide text-surface-400">day streak</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-            <StatCard label="Due today" value={data.stats.dueToday} />
-            <StatCard label="Reviewed today" value={data.stats.reviewedToday} />
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatCard className="col-span-2 row-span-2" label="Due today" value={data.stats.dueToday} />
+            <StatCard label="Reviewed" value={data.stats.reviewedToday} />
             <StatCard label="Known" value={data.stats.totalKnown} />
             <StatCard label="Learning" value={data.stats.totalLearning} />
             <StatCard label="New" value={data.stats.totalNew} />
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-surface-800 bg-surface-900 p-4 shadow-lg shadow-black/20">
+          <div className="overflow-x-auto rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900 to-surface-950 p-6 shadow-sm">
+            <svg width="0" height="0" className="absolute">
+              <defs>
+                <linearGradient id="heatmap-grad-1" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="var(--color-indigo-400)" />
+                  <stop offset="100%" stopColor="var(--color-indigo-700)" />
+                </linearGradient>
+                <linearGradient id="heatmap-grad-2" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="var(--color-indigo-300)" />
+                  <stop offset="100%" stopColor="var(--color-indigo-600)" />
+                </linearGradient>
+                <linearGradient id="heatmap-grad-3" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="var(--color-indigo-200)" />
+                  <stop offset="100%" stopColor="var(--color-indigo-500)" />
+                </linearGradient>
+                <linearGradient id="heatmap-grad-4" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="var(--color-indigo-100)" />
+                  <stop offset="100%" stopColor="var(--color-indigo-400)" />
+                </linearGradient>
+              </defs>
+            </svg>
             <h3 className="mb-2 text-sm font-medium uppercase tracking-wide text-surface-400">Activity</h3>
             {/* The heatmap conveys the same data as the list below; hide it
                 from assistive tech rather than relying on per-cell titles,
@@ -97,7 +117,7 @@ export function DashboardPage() {
             </details>
           </div>
 
-          <div className="rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20">
+          <div className="rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900 to-surface-950 p-6 shadow-sm">
             <h3 className="mb-3 text-sm font-medium uppercase tracking-wide text-surface-400">Course progress</h3>
             {data.courses.length === 0 && (
               <p className="text-surface-400">
