@@ -34,15 +34,6 @@ function RouteLoading() {
   return <p aria-live="polite">Loading…</p>;
 }
 
-const navLinkClass = (isActive: boolean) =>
-  `min-h-11 rounded-xl px-4 py-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-    isActive
-      ? 'bg-indigo-500 text-white shadow-sm shadow-indigo-950/50'
-      : 'text-surface-300 hover:bg-surface-800'
-  }`;
-
-const navLinkClassName = ({ isActive }: { isActive: boolean }) => navLinkClass(isActive);
-
 const iconLinkClassName = ({ isActive }: { isActive: boolean }) =>
   `flex min-h-11 min-w-11 items-center justify-center rounded-full border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
     isActive ? 'border-indigo-400' : 'border-surface-800 hover:border-surface-600'
@@ -83,13 +74,30 @@ const MORE_ITEMS = [
   { to: '/status',      label: 'System status', icon: '●' },
 ] as const;
 
-function MorePanel({ onClose }: { onClose: () => void }) {
+function MorePanel({ onClose, buttonRef }: {
+  onClose: () => void;
+  buttonRef: RefObject<HTMLButtonElement | null>;
+}) {
   const ref = useRef<HTMLDivElement>(null);
+  const [style, setStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
+
+  useEffect(() => {
+    if (!buttonRef.current) return;
+    const btn = buttonRef.current.getBoundingClientRect();
+    const right = Math.max(window.innerWidth - btn.right, 12);
+    // If button is in the lower half of the viewport (mobile bottom nav), show above it.
+    // Otherwise (desktop inline nav), show below it.
+    setStyle(
+      btn.top > window.innerHeight * 0.6
+        ? { bottom: window.innerHeight - btn.top + 8, right, visibility: 'visible' }
+        : { top: btn.bottom + 8, right, visibility: 'visible' },
+    );
+  }, [buttonRef]);
 
   useGSAP(() => {
-    if (prefersReducedMotion()) return;
+    if (prefersReducedMotion() || style.visibility !== 'visible') return;
     gsap.from(ref.current, { y: 10, opacity: 0, duration: 0.2, ease: 'power2.out' });
-  }, { scope: ref });
+  }, { scope: ref, dependencies: [style.visibility] });
 
   const itemClass = (active: boolean) =>
     `flex items-center gap-2.5 rounded-xl px-3 min-h-11 w-full text-sm font-medium text-left transition-colors ${
@@ -100,15 +108,11 @@ function MorePanel({ onClose }: { onClose: () => void }) {
     <div
       ref={ref}
       aria-label="Additional navigation"
-      className="fixed bottom-20 right-3 z-50 w-48 rounded-2xl border border-surface-700/80 bg-surface-900/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-md"
+      className="fixed z-50 w-48 rounded-2xl border border-surface-700/80 bg-surface-900/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-md"
+      style={style}
     >
       {MORE_ITEMS.map(({ to, label, icon }) => (
-        <NavLink
-          key={to}
-          to={to}
-          onClick={onClose}
-          className={({ isActive }) => itemClass(isActive)}
-        >
+        <NavLink key={to} to={to} onClick={onClose} className={({ isActive }) => itemClass(isActive)}>
           <span aria-hidden="true">{icon}</span>
           {label}
         </NavLink>
@@ -117,36 +121,57 @@ function MorePanel({ onClose }: { onClose: () => void }) {
   );
 }
 
-function MobileBottomNav() {
+/** Single nav that adapts to viewport: fixed bottom bar on mobile, in-flow pill row on desktop. */
+function AppNav() {
   const { pathname } = useLocation();
   const navRef = useRef<HTMLElement>(null);
+  const moreButtonRef = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const dictionaryActive = pathname === '/' || pathname.startsWith('/word/');
   const moreActive = MORE_PATHS.some((p) => pathname.startsWith(p));
 
   useGSAP(() => {
     if (prefersReducedMotion()) return;
-    gsap.from(navRef.current, { y: 80, opacity: 0, duration: 0.5, ease: 'power3.out', delay: 0.15 });
+    gsap.fromTo(
+      navRef.current,
+      { y: 20, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out', delay: 0.15, clearProps: 'y,opacity' },
+    );
   }, { scope: navRef });
 
   useEffect(() => { setMoreOpen(false); }, [pathname]);
 
+  // Mobile: vertical icon+label stack. Desktop: horizontal icon+label pill.
   const itemClass = (active: boolean) =>
-    `flex flex-col items-center gap-0.5 px-1 py-2 min-w-12 rounded-xl transition-colors ${
-      active ? 'text-indigo-400' : 'text-surface-500'
-    }`;
+    [
+      'flex flex-col items-center gap-0.5 px-1 py-2 min-w-12 rounded-xl transition-colors',
+      'md:flex-row md:gap-2 md:px-4 md:py-2.5 md:min-w-0 md:min-h-11 md:text-sm md:font-medium',
+      active
+        ? 'text-indigo-400 md:bg-indigo-500 md:text-white md:shadow-sm md:shadow-indigo-950/50'
+        : 'text-surface-500 md:text-surface-300 md:hover:bg-surface-800',
+    ].join(' ');
+
+  const labelClass = 'text-[10px] font-medium leading-none md:text-sm md:leading-normal';
 
   return (
     <>
       {moreOpen && (
         <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setMoreOpen(false)} />
       )}
-      {moreOpen && <MorePanel onClose={() => setMoreOpen(false)} />}
+      {moreOpen && <MorePanel onClose={() => setMoreOpen(false)} buttonRef={moreButtonRef} />}
 
       <nav
         ref={navRef}
         aria-label="Main"
-        className="fixed bottom-0 inset-x-0 z-50 flex items-center justify-around border-t border-surface-800 bg-surface-950/90 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)] md:hidden"
+        className={[
+          // Mobile: fixed bottom bar
+          'fixed bottom-0 inset-x-0 z-50 flex items-center justify-around',
+          'border-t border-surface-800 bg-surface-950/90 backdrop-blur-md pb-[env(safe-area-inset-bottom,0px)]',
+          // Desktop: in-flow pill row
+          'md:relative md:bottom-auto md:inset-x-auto md:z-auto md:w-full md:max-w-2xl',
+          'md:justify-start md:gap-1 md:rounded-2xl md:border md:border-surface-800',
+          'md:bg-surface-900 md:p-2 md:shadow-lg md:shadow-black/20 md:backdrop-blur-none md:pb-0',
+        ].join(' ')}
       >
         <Link
           to="/"
@@ -154,39 +179,51 @@ function MobileBottomNav() {
           className={itemClass(dictionaryActive)}
         >
           <NavSvgIcon d={ICON_DICT} />
-          <span className="text-[10px] font-medium leading-none">Dict</span>
+          <span className={labelClass}>Dictionary</span>
         </Link>
 
         <NavLink to="/courses" className={({ isActive }) => itemClass(isActive)}>
           <NavSvgIcon d={ICON_COURSES} />
-          <span className="text-[10px] font-medium leading-none">Courses</span>
+          <span className={labelClass}>Courses</span>
         </NavLink>
 
-        <NavLink to="/review" aria-label="Start review session" className="flex flex-col items-center gap-0.5 px-1 -mt-4 py-2">
+        {/* Review — FAB on mobile, icon-pill on desktop */}
+        <NavLink
+          to="/review"
+          aria-label="Start review session"
+          className={({ isActive }) =>
+            [
+              'flex flex-col items-center gap-0.5 px-1 -mt-4 py-2',
+              'md:mt-0 md:flex-row md:gap-2 md:px-4 md:py-2.5 md:min-h-11 md:rounded-xl',
+              'md:transition-colors md:text-sm md:font-medium',
+              isActive
+                ? 'md:bg-indigo-500 md:text-white md:shadow-sm md:shadow-indigo-950/50'
+                : 'md:text-surface-300 md:hover:bg-surface-800',
+            ].join(' ')
+          }
+        >
           {({ isActive }) => (
             <>
-              <span
-                className={`flex size-12 items-center justify-center rounded-full shadow-lg transition-all ${
-                  isActive
-                    ? 'bg-indigo-400 shadow-indigo-400/40'
-                    : 'bg-indigo-500 shadow-indigo-500/30 hover:bg-indigo-400 hover:shadow-indigo-400/40'
-                }`}
-              >
+              <span className={`md:hidden flex size-12 items-center justify-center rounded-full shadow-lg transition-all ${
+                isActive ? 'bg-indigo-400 shadow-indigo-400/40' : 'bg-indigo-500 shadow-indigo-500/30 hover:bg-indigo-400'
+              }`}>
                 <NavSvgIcon d={ICON_REVIEW} className="text-white" />
               </span>
-              <span className={`text-[10px] font-medium leading-none ${isActive ? 'text-indigo-400' : 'text-surface-500'}`}>
-                Review
-              </span>
+              <NavSvgIcon d={ICON_REVIEW} className="hidden md:block" />
+              <span className={`text-[10px] font-medium leading-none md:text-sm md:leading-normal ${
+                isActive ? 'text-indigo-400 md:text-white' : 'text-surface-500 md:text-surface-300'
+              }`}>Review</span>
             </>
           )}
         </NavLink>
 
         <NavLink to="/dashboard" className={({ isActive }) => itemClass(isActive)}>
           <NavSvgIcon d={ICON_DASHBOARD} />
-          <span className="text-[10px] font-medium leading-none">Stats</span>
+          <span className={labelClass}>Dashboard</span>
         </NavLink>
 
         <button
+          ref={moreButtonRef}
           type="button"
           onClick={() => setMoreOpen((o) => !o)}
           aria-expanded={moreOpen}
@@ -195,7 +232,7 @@ function MobileBottomNav() {
           className={itemClass(moreActive || moreOpen)}
         >
           <NavSvgIcon d={ICON_MORE} />
-          <span className="text-[10px] font-medium leading-none">More</span>
+          <span className={labelClass}>More</span>
         </button>
       </nav>
     </>
@@ -250,37 +287,6 @@ function RouteAnnouncer({ mainRef }: { mainRef: RefObject<HTMLElement | null> })
     <p aria-live="polite" className="sr-only">
       {pageName}
     </p>
-  );
-}
-
-function Nav() {
-  const { pathname } = useLocation();
-  const dictionaryActive = pathname === '/' || pathname.startsWith('/word/');
-
-  return (
-    <nav
-      aria-label="Main"
-      className="hidden md:flex w-full max-w-2xl flex-wrap justify-center gap-2 rounded-2xl border border-surface-800 bg-surface-900 p-2 shadow-lg shadow-black/20"
-    >
-      <Link to="/" className={navLinkClass(dictionaryActive)}>
-        Dictionary
-      </Link>
-      <NavLink to="/courses" className={navLinkClassName}>
-        Courses
-      </NavLink>
-      <NavLink to="/review" className={navLinkClassName}>
-        Review
-      </NavLink>
-      <NavLink to="/dashboard" className={navLinkClassName}>
-        Dashboard
-      </NavLink>
-      <NavLink to="/known-words" className={navLinkClassName}>
-        Known words
-      </NavLink>
-      <NavLink to="/decks" className={navLinkClassName}>
-        Decks
-      </NavLink>
-    </nav>
   );
 }
 
@@ -511,8 +517,7 @@ export default function App() {
 
       {user && (
         <>
-          <Nav />
-          <MobileBottomNav />
+          <AppNav />
           <div className="w-full max-w-2xl">
             <Suspense fallback={<RouteLoading />}>
               <Routes>
