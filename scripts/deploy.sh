@@ -41,7 +41,7 @@ if $SETUP_MODE; then
     mkdir -p ssl
     openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
       -keyout ssl/key.pem -out ssl/cert.pem \
-      -subj "/CN=vocabahn" -quiet
+      -subj "/CN=vocabahn"
     ok "Self-signed cert generated at ssl/"
   fi
 
