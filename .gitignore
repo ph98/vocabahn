@@ -28,3 +28,7 @@ coverage/
 
 # AdminJS frontend bundle
 .adminjs/
+
+# Production Deployment
+backups/
+ssl/
