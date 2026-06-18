@@ -57,9 +57,22 @@ function CardFront({ entry }: { entry: CardEntry }) {
         <img src={entry.imageUrl} alt="" loading="lazy" className="mb-2 size-24 rounded-xl object-cover" />
       )}
       {entry.emoji && <span className="text-5xl">{entry.emoji}</span>}
-      <p className="text-2xl font-medium" lang="de">
-        {entry.word}
-      </p>
+      <div className="flex items-center justify-center gap-2">
+        <p className="text-2xl font-medium" lang="de">
+          {entry.word}
+        </p>
+        <Link
+          to={`/word/${encodeURIComponent(entry.word)}`}
+          className="text-surface-400 hover:text-indigo-400 p-1 transition-colors"
+          title="View in dictionary"
+          // Prevent drag on this link
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="size-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </Link>
+      </div>
       {entry.audioUrl && <AudioButton src={entry.audioUrl} label={`Play pronunciation of ${entry.word}`} />}
     </div>
   );

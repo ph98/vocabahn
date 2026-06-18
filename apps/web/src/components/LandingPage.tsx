@@ -106,7 +106,7 @@ export function LandingPage() {
           <SignInOptions />
           
           <p className="mt-8 text-center text-xs text-surface-500 leading-relaxed">
-            By signing in, you agree to our <a href="#" className="underline hover:text-surface-300">Terms of Service</a> and <a href="#" className="underline hover:text-surface-300">Privacy Policy</a>.
+            By signing in, you agree to our <span className="underline hover:text-surface-300 cursor-pointer">Terms of Service</span> and <span className="underline hover:text-surface-300 cursor-pointer">Privacy Policy</span>.
           </p>
         </div>
       </div>

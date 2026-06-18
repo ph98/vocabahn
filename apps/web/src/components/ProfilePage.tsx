@@ -98,7 +98,6 @@ export function ProfilePage() {
     enabled: !!user,
     staleTime: 30_000,
   });
-  });
   const signOut = useMutation({
     mutationFn: logout,
     onSuccess: () => queryClient.setQueryData(['me'], null),

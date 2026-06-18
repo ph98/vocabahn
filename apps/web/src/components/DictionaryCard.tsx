@@ -1058,8 +1058,6 @@ export function DictionaryCard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') ?? '';
   const debounced = useDebounced(query.trim(), 250);
-  const [isFocused, setIsFocused] = useState(false);
-
   const { data: results, isFetching } = useQuery({
     queryKey: ['dictionary-search', debounced],
     queryFn: () => searchDictionary(debounced),
@@ -1068,12 +1066,9 @@ export function DictionaryCard() {
 
   return (
     <>
-      {isFocused && (
-        <div className="fixed inset-0 z-40 bg-surface-950/60 backdrop-blur-md transition-all duration-300" aria-hidden="true" />
-      )}
       <section
         aria-label="Dictionary"
-        className={`w-full rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20 transition-all ${isFocused ? 'relative z-50 ring-2 ring-indigo-500/20' : ''}`}
+        className="w-full rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20 transition-all"
       >
         <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-surface-400">
           Dictionary
@@ -1086,8 +1081,6 @@ export function DictionaryCard() {
           id="dict-search"
           type="search"
           value={query}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
           onChange={(e) => {
             const value = e.target.value;
             setSearchParams(value ? { q: value } : {}, { replace: true });

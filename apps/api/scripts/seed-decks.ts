@@ -126,16 +126,14 @@ const DECKS: DeckSpec[] = [
   },
 ];
 
-async function seedDeck(spec: DeckSpec, topEntries: Array<{ id: string }>) {
-  let wordIds: string[];
-
+async function seedDeck(spec: DeckSpec) {
   // Look up entries by word string; skip any not yet in the dictionary.
   const found = await prisma.dictionaryEntry.findMany({
       where: { word: { in: spec.words } },
       select: { id: true, word: true },
     });
     const foundMap = new Map(found.map((e) => [e.word, e.id]));
-    wordIds = spec.words
+    const wordIds = spec.words
       .map((w) => foundMap.get(w))
       .filter((id): id is string => id !== undefined);
   const missing = spec.words.length - wordIds.length;

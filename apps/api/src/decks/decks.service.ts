@@ -161,7 +161,7 @@ export class DecksService {
         } else {
           failed.push(trimmed);
         }
-      } catch (e) {
+      } catch {
         failed.push(trimmed);
       }
     }

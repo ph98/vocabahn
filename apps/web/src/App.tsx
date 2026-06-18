@@ -2,12 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { lazy, Suspense, useEffect, useRef, useState, type RefObject } from 'react';
-import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { fetchHealth, fetchMe, googleOneTapLogin } from './api';
 import { useGoogleOneTap } from './hooks/useGoogleOneTap';
 import { prefersReducedMotion } from './lib/motion';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
-import { IllustrationDictionary, IllustrationFlashcard, IllustrationStreak, IllustrationTrophy } from './components/Illustrations';
 import { ProfilePage } from './components/ProfilePage';
 import { LandingPage } from './components/LandingPage';
 import { type Theme, useTheme, resolveTheme } from './lib/theme';
@@ -15,7 +14,7 @@ import { type Theme, useTheme, resolveTheme } from './lib/theme';
 const CourseDetailPage = lazy(() =>
   import('./components/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })),
 );
-const CoursesPage = lazy(() => import('./components/CoursesPage').then((m) => ({ default: m.CoursesPage })));
+const LibraryPage = lazy(() => import('./components/LibraryPage').then((m) => ({ default: m.LibraryPage })));
 const DashboardPage = lazy(() =>
   import('./components/DashboardPage').then((m) => ({ default: m.DashboardPage })),
 );
@@ -26,7 +25,6 @@ const ReviewSession = lazy(() =>
   import('./components/ReviewSession').then((m) => ({ default: m.ReviewSession })),
 );
 const StatusPage = lazy(() => import('./components/StatusPage').then((m) => ({ default: m.StatusPage })));
-const DecksPage = lazy(() => import('./components/DecksPage').then((m) => ({ default: m.DecksPage })));
 const DeckDetailPage = lazy(() =>
   import('./components/DecksPage').then((m) => ({ default: m.DeckDetailPage })),
 );
@@ -65,12 +63,10 @@ const ICON_REVIEW = 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z
 const ICON_DASHBOARD = 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z';
 const ICON_MORE = 'M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z';
 
-const MORE_PATHS = ['/known-words', '/decks', '/profile', '/status'] as const;
+const MORE_PATHS = ['/known-words', '/profile'] as const;
 const MORE_ITEMS = [
   { to: '/known-words', label: 'Known words', icon: '✓' },
-  { to: '/decks',       label: 'Decks',        icon: '🗂' },
   { to: '/profile',     label: 'Profile',      icon: '👤' },
-  { to: '/status',      label: 'System status', icon: '●' },
 ] as const;
 
 function MorePanel({ onClose, buttonRef }: {
@@ -138,7 +134,7 @@ function AppNav() {
   const navRef = useRef<HTMLElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const dictionaryActive = pathname === '/' || pathname.startsWith('/word/');
+  const dictionaryActive = pathname === '/' || pathname.startsWith('/word/') || pathname.startsWith('/dictionary');
   const moreActive = MORE_PATHS.some((p) => pathname.startsWith(p));
 
   useGSAP(() => {
@@ -204,9 +200,9 @@ function AppNav() {
           <span className={labelClass}>Dictionary</span>
         </Link>
 
-        <NavLink to="/courses" className={({ isActive }) => itemClass(isActive)}>
+        <NavLink to="/library" className={({ isActive }) => itemClass(isActive)}>
           <NavSvgIcon d={ICON_COURSES} />
-          <span className={labelClass}>Courses</span>
+          <span className={labelClass}>Library</span>
         </NavLink>
 
         {/* Review — FAB on mobile, icon-pill on desktop */}
@@ -466,14 +462,15 @@ export default function App() {
           <div className="w-full max-w-6xl">
             <Suspense fallback={<RouteLoading />}>
               <Routes>
-                <Route path="/" element={<DictionaryCard />} />
+                <Route path="/" element={<DashboardPage />} />
+                <Route path="/dictionary" element={<DictionaryCard />} />
                 <Route path="/word/:word" element={<DictionaryEntryPage />} />
-                <Route path="/courses" element={<CoursesPage />} />
+                <Route path="/library" element={<LibraryPage />} />
+                <Route path="/courses" element={<Navigate to="/library" replace />} />
                 <Route path="/courses/:slug" element={<CourseDetailPage />} />
                 <Route path="/review" element={<ReviewSession />} />
-                <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/known-words" element={<KnownWordsPage />} />
-                <Route path="/decks" element={<DecksPage />} />
+                <Route path="/decks" element={<Navigate to="/library" replace />} />
                 <Route path="/decks/:id" element={<DeckDetailPage />} />
                 <Route path="/profile" element={<div className="mx-auto max-w-sm"><ProfilePage /></div>} />
                 <Route path="/status" element={<div className="mx-auto max-w-sm"><StatusPage /></div>} />

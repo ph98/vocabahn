@@ -1,17 +1,18 @@
 import { useGSAP } from '@gsap/react';
+/* eslint-disable jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import gsap from 'gsap';
 import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { prefersReducedMotion } from '../lib/motion';
 import {
-  addWordToDeck,
   createDeck,
   deleteDeck,
   fetchDeck,
   fetchDecks,
   removeWordFromDeck,
   updateDeck,
+  importWordsToDeck,
 } from '../api';
 import { useStaggerIn } from '../lib/motion';
 import { PullToRefresh } from './PullToRefresh';
@@ -66,10 +67,9 @@ function CreateDeckModal({ onClose }: { onClose: () => void }) {
               required
               maxLength={80}
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="min-h-11 w-full rounded-xl border border-surface-700 bg-surface-950 px-4 text-sm placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              placeholder="My German deck"
+              // eslint-disable-next-line jsx-a11y/no-autofocus
               autoFocus
+              onChange={(e) => setTitle(e.target.value)}
             />
           </div>
           <div>
@@ -252,11 +252,90 @@ export function DecksPage() {
 
 // ── Deck detail page ──────────────────────────────────────────────────────────
 
+function ImportModal({ deckId, onClose }: { deckId: string; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [wordsText, setWordsText] = useState('');
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(
+    () => {
+      if (!panelRef.current || prefersReducedMotion()) return;
+      gsap.from(panelRef.current, { opacity: 0, y: 32, duration: 0.3, ease: 'power3.out' });
+    },
+    { scope: panelRef },
+  );
+
+  const mutation = useMutation({
+    mutationFn: () => {
+      const words = wordsText
+        .split(/[\n,]/)
+        .map(w => w.trim())
+        .filter(w => w.length > 0);
+      return importWordsToDeck(deckId, words);
+    },
+    onSuccess: (data) => {
+      void queryClient.invalidateQueries({ queryKey: ['deck', deckId] });
+      const failedMsg = data.failed.length > 0 ? `\nFailed to find ${data.failed.length} words: ${data.failed.join(', ')}` : '';
+      alert(`Successfully imported ${data.imported} words.${failedMsg}`);
+      onClose();
+    },
+  });
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Import words"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 sm:items-center"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div ref={panelRef} className="w-full max-w-md rounded-2xl border border-surface-700 bg-surface-900 p-6 shadow-2xl">
+        <h2 className="mb-4 text-lg font-semibold">Import words</h2>
+        <form
+          onSubmit={(e) => { e.preventDefault(); mutation.mutate(); }}
+          className="space-y-4"
+        >
+          <div>
+            <label htmlFor="import-words" className="mb-1 block text-sm text-surface-400">
+              Paste words (comma or newline separated)
+            </label>
+            <textarea
+              id="import-words"
+              required
+              rows={8}
+              value={wordsText}
+              onChange={(e) => setWordsText(e.target.value)}
+              className="w-full rounded-xl border border-surface-700 bg-surface-950 px-4 py-2 text-sm transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="min-h-11 rounded-xl px-4 text-sm font-medium transition-colors hover:bg-surface-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={mutation.isPending || !wordsText.trim()}
+              className="min-h-11 rounded-xl bg-indigo-500 px-6 text-sm font-medium text-white transition-colors hover:bg-indigo-400 disabled:opacity-60"
+            >
+              {mutation.isPending ? 'Importing…' : 'Import'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function DeckDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editIsPublic, setEditIsPublic] = useState(false);
@@ -373,13 +452,22 @@ export function DeckDetailPage() {
               <p className="mt-2 text-sm text-surface-500">{deck.wordCount} words</p>
             </div>
             {deck.isOwner && (
-              <button
-                type="button"
-                onClick={startEditing}
-                className="min-h-11 shrink-0 rounded-xl border border-surface-700 px-3 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                Edit
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowImport(true)}
+                  className="min-h-11 shrink-0 rounded-xl border border-surface-700 px-3 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  Import
+                </button>
+                <button
+                  type="button"
+                  onClick={startEditing}
+                  className="min-h-11 shrink-0 rounded-xl border border-surface-700 px-3 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  Edit
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -426,6 +514,8 @@ export function DeckDetailPage() {
           ))}
         </ul>
       )}
+
+      {showImport && <ImportModal deckId={id!} onClose={() => setShowImport(false)} />}
     </section>
   );
 }

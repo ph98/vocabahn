@@ -157,6 +157,11 @@ export async function createDeck(body: CreateDeckBody) {
   return deckSummarySchema.parse(data);
 }
 
+export async function importWordsToDeck(id: string, words: string[]) {
+  const { data } = await api.post(`/decks/${encodeURIComponent(id)}/import`, { words });
+  return data as { imported: number; failed: string[] };
+}
+
 export async function updateDeck(id: string, body: UpdateDeckBody) {
   const { data } = await api.patch(`/decks/${encodeURIComponent(id)}`, body);
   return deckSummarySchema.parse(data);
