@@ -939,7 +939,7 @@ export function EntryBody({
             src={entry.imageUrl}
             alt={`Illustration for ${entry.word}`}
             loading="lazy"
-            className="aspect-square w-full rounded-xl object-cover"
+            className="aspect-square max-w-xs sm:max-w-sm w-full mx-auto rounded-xl object-cover"
           />
           {entry.imageCredit && (
             <figcaption className="mt-1 text-xs text-surface-500">
@@ -975,7 +975,7 @@ export function EntryBody({
               onSelect={() => setActive(tab.id)}
               className={`min-h-11 shrink-0 rounded-t-lg px-3 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
                 activeTab === tab.id
-                  ? 'border-b-2 border-indigo-400 text-white'
+                  ? 'border-b-2 border-indigo-400 text-surface-50'
                   : 'text-surface-400 hover:bg-surface-800'
               }`}
             >

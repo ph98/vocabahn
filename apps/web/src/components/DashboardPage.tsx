@@ -11,7 +11,7 @@ import { useGSAP } from '@gsap/react';
 function StatCard({ label, value, className = '' }: { label: string; value: number, className?: string }) {
   return (
     <div className={`dashboard-card flex flex-col justify-center rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-4 text-center shadow-[0_4px_24px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(79,70,229,0.15)] hover:border-indigo-500/30 ${className}`}>
-      <p className="text-3xl font-semibold bg-clip-text text-transparent bg-gradient-to-br from-white to-surface-400">{value}</p>
+      <p className="text-3xl font-semibold bg-clip-text text-transparent bg-gradient-to-br from-surface-50 to-surface-400">{value}</p>
       <p className="mt-1 text-xs uppercase tracking-wide text-surface-400">{label}</p>
     </div>
   );
@@ -52,7 +52,7 @@ export function DashboardPage() {
           <div className="dashboard-card relative overflow-hidden group rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-8 text-center shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_12px_48px_rgba(251,146,60,0.2)] hover:border-orange-500/40">
             <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-out" />
             <div className="relative z-10 flex flex-col items-center justify-center">
-              <p className="text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-surface-300 drop-shadow-sm flex items-center justify-center gap-3">
+              <p className="text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-surface-50 to-surface-300 drop-shadow-sm flex items-center justify-center gap-3">
                 <span aria-hidden="true" className="drop-shadow-lg inline-block hover:scale-110 transition-transform duration-300 cursor-default">🔥</span> 
                 {data.streak}
               </p>

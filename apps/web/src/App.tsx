@@ -131,6 +131,7 @@ function MorePanel({ onClose, buttonRef }: {
 /** Single nav that adapts to viewport: fixed bottom bar on mobile, in-flow pill row on desktop. */
 function AppNav() {
   const { pathname } = useLocation();
+  const { data: user } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const navRef = useRef<HTMLElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -248,11 +249,15 @@ function AppNav() {
           onClick={() => setMoreOpen((o) => !o)}
           aria-expanded={moreOpen}
           aria-haspopup="true"
-          aria-label="More navigation options"
+          aria-label="Profile navigation options"
           className={itemClass(moreActive || moreOpen)}
         >
-          <NavSvgIcon d={ICON_MORE} />
-          <span className={labelClass}>More</span>
+          {user?.picture ? (
+            <img src={user.picture} alt="" className="size-[22px] rounded-full object-cover shadow-sm border border-surface-700/50" />
+          ) : (
+            <NavSvgIcon d={ICON_MORE} />
+          )}
+          <span className={labelClass}>Profile</span>
         </button>
       </nav>
     </>
