@@ -9,6 +9,7 @@ import { prefersReducedMotion } from './lib/motion';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
 import { IllustrationDictionary, IllustrationFlashcard, IllustrationStreak, IllustrationTrophy } from './components/Illustrations';
 import { ProfilePage } from './components/ProfilePage';
+import { LandingPage } from './components/LandingPage';
 import { type Theme, useTheme } from './lib/theme';
 
 const CourseDetailPage = lazy(() =>
@@ -178,7 +179,7 @@ function AppNav() {
           'fixed bottom-0 inset-x-0 z-50 flex items-center justify-around',
           'border-t border-surface-800/40 bg-surface-950/80 backdrop-blur-2xl pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-10px_40px_rgba(0,0,0,0.05)]',
           // Desktop: in-flow pill row
-          'md:relative md:bottom-auto md:inset-x-auto md:z-auto md:w-full md:max-w-2xl',
+          'md:relative md:bottom-auto md:inset-x-auto md:z-auto md:w-full md:max-w-6xl',
           'md:mt-8 md:mb-6 md:justify-start md:gap-2 md:rounded-[1.5rem] md:border md:border-surface-700/50',
           'md:bg-surface-800/40 md:p-2 md:shadow-premium md:backdrop-blur-xl md:pb-2',
         ].join(' ')}
@@ -385,68 +386,6 @@ function EdgeSwipeBack() {
   );
 }
 
-const FEATURES = [
-  { Illus: IllustrationDictionary, title: 'AI-enriched dictionary', desc: 'Every German word comes with examples, images, audio, memory hooks, and level tags — all generated automatically.' },
-  { Illus: IllustrationFlashcard, title: 'Spaced-repetition flashcards', desc: 'FSRS-powered scheduling surfaces cards at exactly the right moment so you review less and remember more.' },
-  { Illus: IllustrationStreak, title: 'Progress you can see', desc: 'Streaks, a GitHub-style heatmap, and per-course stats keep you motivated on the journey from A1 to C1.' },
-  { Illus: IllustrationTrophy, title: 'Feels native on mobile', desc: 'Install as a PWA. Swipe cards to rate, pull to refresh, study offline — it works like a native app, not a website.' },
-];
-
-/** Marketing section shown to unauthenticated visitors before they sign in. */
-function LandingPage() {
-  return (
-    <div className="relative overflow-hidden w-full max-w-5xl mx-auto rounded-3xl border border-surface-800/40 bg-surface-900 shadow-premium transition-all">
-      {/* Animated Mesh Gradient Background */}
-      <div className="absolute inset-0 z-0 opacity-40 pointer-events-none mix-blend-screen" aria-hidden="true">
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-accent-indigo blur-[120px] animate-[pulse_6s_ease-in-out_infinite]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[70%] h-[70%] rounded-full bg-accent-emerald blur-[140px] animate-[pulse_8s_ease-in-out_infinite]" style={{ animationDelay: '2s' }} />
-      </div>
-
-      <div className="relative z-10 grid gap-12 p-8 md:grid-cols-2 md:items-center md:p-14">
-        {/* Left Side: Hero Copy */}
-        <section aria-labelledby="hero-heading" className="space-y-8">
-          <IllustrationDictionary className="h-24 w-auto text-accent-indigo drop-shadow-lg" />
-          <h2 id="hero-heading" className="text-5xl font-extrabold tracking-tighter sm:text-6xl lg:text-7xl text-balance">
-            Learn German, <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-indigo to-accent-emerald">word by word.</span>
-          </h2>
-          <p className="text-xl text-surface-400 max-w-md font-medium">
-            Vocabahn is a free, open-source German vocabulary app with an AI-enriched dictionary
-            and FSRS spaced-repetition flashcards.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 pt-4">
-            <Link
-              to="/profile"
-              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-accent-indigo px-8 py-4 text-lg font-bold text-white shadow-xl shadow-indigo-500/30 transition-all hover:-translate-y-1 hover:bg-indigo-400 hover:shadow-indigo-500/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              Get started
-            </Link>
-          </div>
-        </section>
-
-        {/* Right Side: Features Bento Box */}
-        <section aria-label="Features" className="grid gap-6 sm:grid-cols-2">
-          {FEATURES.map(({ Illus, title, desc }, idx) => (
-            <div
-              key={title}
-              className={`group relative overflow-hidden rounded-[2rem] border border-surface-700/60 bg-surface-800/40 p-8 backdrop-blur-xl transition-all hover:-translate-y-2 hover:border-accent-indigo/50 hover:bg-surface-800/70 hover:shadow-premium ${idx === 0 || idx === 3 ? 'sm:col-span-2' : ''}`}
-            >
-              <Illus className="mb-6 h-14 w-auto text-accent-indigo transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3" />
-              <h3 className="mb-2.5 text-lg font-bold text-surface-100">{title}</h3>
-              <p className="text-base text-surface-400 leading-relaxed">{desc}</p>
-            </div>
-          ))}
-        </section>
-      </div>
-
-      <section aria-label="Sign in" className="relative z-10 border-t border-surface-800/30 bg-surface-950/40 p-10 text-center backdrop-blur-xl mt-8">
-        <div className="mx-auto max-w-sm">
-          <ProfilePage />
-        </div>
-      </section>
-    </div>
-  );
-}
-
 function GoogleOneTapPrompt() {
   const queryClient = useQueryClient();
   const mutation = useMutation({
@@ -500,7 +439,7 @@ export default function App() {
         className={`flex min-h-dvh flex-col items-center gap-6 ${user ? 'max-md:pb-mobile-nav md:pb-safe' : 'pb-safe'} text-surface-100 outline-none`}
       >
       {!isPending && !user && (
-        <div className="w-full max-w-2xl space-y-10 mt-8 md:mt-16">
+        <div className="w-full max-w-6xl space-y-10 mt-8 md:mt-16 px-4 xl:px-0">
           <LandingPage />
         </div>
       )}
@@ -508,7 +447,7 @@ export default function App() {
       {user && (
         <>
           <AppNav />
-          <div className="w-full max-w-2xl">
+          <div className="w-full max-w-6xl">
             <Suspense fallback={<RouteLoading />}>
               <Routes>
                 <Route path="/" element={<DictionaryCard />} />
@@ -528,7 +467,7 @@ export default function App() {
         </>
       )}
 
-      <footer className="mt-auto flex w-full max-w-2xl items-center justify-center gap-3 border-t border-surface-800 pt-4 pb-6 text-xs text-surface-500">
+      <footer className="mt-auto flex w-full max-w-6xl items-center justify-center gap-3 border-t border-surface-800 pt-4 pb-6 text-xs text-surface-500">
         <a
           href="https://github.com/YOUR_ORG/vocabahn/blob/main/CHANGELOG.md"
           target="_blank"

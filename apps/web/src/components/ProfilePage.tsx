@@ -5,7 +5,7 @@ import { fetchEnrichmentQuota, fetchMe, logout, requestEmailSignIn } from '../ap
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 
-function SignInOptions() {
+export function SignInOptions() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
