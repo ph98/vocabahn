@@ -134,7 +134,7 @@ function AppNav() {
   const navRef = useRef<HTMLElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
-  const dictionaryActive = pathname === '/' || pathname.startsWith('/word/') || pathname.startsWith('/dictionary');
+  const dictionaryActive = pathname.startsWith('/dictionary') || pathname.startsWith('/word/');
   const moreActive = MORE_PATHS.some((p) => pathname.startsWith(p));
 
   useGSAP(() => {
@@ -191,8 +191,13 @@ function AppNav() {
           </Link>
         </div>
 
+        <NavLink to="/" className={({ isActive }) => itemClass(isActive || pathname.startsWith('/dashboard'))}>
+          <NavSvgIcon d={ICON_DASHBOARD} />
+          <span className={labelClass}>Dashboard</span>
+        </NavLink>
+
         <Link
-          to="/"
+          to="/dictionary"
           aria-current={dictionaryActive ? 'page' : undefined}
           className={itemClass(dictionaryActive)}
         >
@@ -235,10 +240,7 @@ function AppNav() {
           )}
         </NavLink>
 
-        <NavLink to="/dashboard" className={({ isActive }) => itemClass(isActive)}>
-          <NavSvgIcon d={ICON_DASHBOARD} />
-          <span className={labelClass}>Dashboard</span>
-        </NavLink>
+
 
         <button
           ref={moreButtonRef}
@@ -261,11 +263,11 @@ function AppNav() {
 
 /** Maps the current path to a human-readable page name for titles and SPA-navigation announcements. */
 function pageNameForPath(pathname: string): string {
-  if (pathname === '/' || pathname.startsWith('/word/')) return 'Dictionary';
+  if (pathname === '/' || pathname.startsWith('/dashboard')) return 'Dashboard';
+  if (pathname.startsWith('/dictionary') || pathname.startsWith('/word/')) return 'Dictionary';
   if (pathname.startsWith('/courses')) return 'Courses';
   if (pathname.startsWith('/decks')) return 'Decks';
   if (pathname.startsWith('/review')) return 'Review';
-  if (pathname.startsWith('/dashboard')) return 'Dashboard';
   if (pathname.startsWith('/known-words')) return 'Known words';
   if (pathname.startsWith('/profile')) return 'Profile';
   if (pathname.startsWith('/status')) return 'System status';
@@ -464,6 +466,7 @@ export default function App() {
               <Routes>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/dictionary" element={<DictionaryCard />} />
+                <Route path="/dashboard" element={<Navigate to="/" replace />} />
                 <Route path="/word/:word" element={<DictionaryEntryPage />} />
                 <Route path="/library" element={<LibraryPage />} />
                 <Route path="/courses" element={<Navigate to="/library" replace />} />
