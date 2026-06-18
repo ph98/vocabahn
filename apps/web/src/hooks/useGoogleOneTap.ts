@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     google?: any;
   }
 }
@@ -29,7 +30,7 @@ export function useGoogleOneTap({ onSuccess, onError }: UseGoogleOneTapProps) {
 
       window.google.accounts.id.initialize({
         client_id: clientId,
-        callback: (response: any) => {
+        callback: (response: { credential?: string }) => {
           if (response.credential) {
             onSuccess(response.credential);
           } else {
@@ -39,7 +40,7 @@ export function useGoogleOneTap({ onSuccess, onError }: UseGoogleOneTapProps) {
         use_fedcm_for_prompt: true, // Use modern FedCM API if available
       });
 
-      window.google.accounts.id.prompt((notification: any) => {
+      window.google.accounts.id.prompt((notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => {
         if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
           // You could handle prompt failure or skipping here
         }

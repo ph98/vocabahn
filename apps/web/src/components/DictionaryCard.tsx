@@ -1093,7 +1093,6 @@ export function DictionaryCard() {
           }}
           placeholder="Search German words…"
           autoComplete="off"
-          autoFocus
           lang="de"
           className="min-h-14 w-full rounded-2xl border border-surface-700 bg-surface-950 px-6 text-lg placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         />

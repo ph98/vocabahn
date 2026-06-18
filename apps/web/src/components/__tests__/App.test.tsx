@@ -86,7 +86,7 @@ describe('App', () => {
 
   it('toggles theme on Ctrl+Shift+L in development mode', async () => {
     const originalDev = import.meta.env.DEV;
-    // @ts-ignore
+    // @ts-expect-error mock env
     import.meta.env.DEV = true;
 
     vi.mocked(fetchMe).mockResolvedValue({
@@ -111,13 +111,13 @@ describe('App', () => {
     expect(localStorage.getItem('vocabahn-theme')).toBe('light');
     expect(document.documentElement.classList).toContain('theme-light');
 
-    // @ts-ignore
+    // @ts-expect-error mock env
     import.meta.env.DEV = originalDev;
   });
 
   it('does not toggle theme on Ctrl+Shift+L in production mode', async () => {
     const originalDev = import.meta.env.DEV;
-    // @ts-ignore
+    // @ts-expect-error mock env
     import.meta.env.DEV = false;
 
     vi.mocked(fetchMe).mockResolvedValue({
@@ -136,7 +136,7 @@ describe('App', () => {
     fireEvent.keyDown(window, { ctrlKey: true, shiftKey: true, key: 'l' });
     expect(localStorage.getItem('vocabahn-theme')).toBeNull();
 
-    // @ts-ignore
+    // @ts-expect-error mock env
     import.meta.env.DEV = originalDev;
   });
 });

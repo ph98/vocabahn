@@ -51,7 +51,6 @@ export function KnownWordsDiscover() {
         (() => {
           const milestones = [10, 25, 50, 100];
           const target = milestones.find(m => selected.size < m) || 100;
-          const prevTarget = milestones[milestones.indexOf(target) - 1] || 0;
           const isMilestoneHit = selected.size > 0 && milestones.includes(selected.size);
           const displayTarget = isMilestoneHit ? selected.size : target;
           const progressPercent = Math.min(100, (selected.size / displayTarget) * 100);
@@ -82,7 +81,7 @@ export function KnownWordsDiscover() {
 
       {suggestions && suggestions.length > 0 && (
         <div className="flex flex-wrap gap-2 pt-2 pb-24">
-          {suggestions.map((w: any) => {
+          {suggestions.map((w: { id: string; emoji: string; word: string; translation: string }) => {
             const isSelected = selected.has(w.id);
             return (
               <button

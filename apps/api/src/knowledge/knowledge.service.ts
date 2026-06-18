@@ -237,7 +237,7 @@ export class KnowledgeService {
       },
       orderBy: { lexiconEntry: { frequencyRank: 'asc' } },
       take: limit,
-    }) as any; // Return raw dictionary entries
+    }) as unknown as DictionaryEntry[]; // Return raw dictionary entries
   }
 
 

@@ -3,7 +3,7 @@ import jsxA11y from 'eslint-plugin-jsx-a11y';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/*.config.*'] },
+  { ignores: ['**/dist/**', '**/node_modules/**', '**/*.config.*', '**/.adminjs/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
