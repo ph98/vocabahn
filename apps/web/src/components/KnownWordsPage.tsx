@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { bulkUndoKnownWords, fetchKnownWords, undoKnownWord } from '../api';
 import { useStaggerIn } from '../lib/motion';
+import { bulkUndoKnownWords, fetchKnownWords, undoKnownWord } from '../api';
 import { IllustrationTrophy } from './Illustrations';
 import { PullToRefresh } from './PullToRefresh';
+import { KnownWordsDiscover } from './KnownWordsDiscover';
 
 export function KnownWordsPage() {
   const queryClient = useQueryClient();
@@ -49,22 +50,47 @@ export function KnownWordsPage() {
 
   const exitSelectMode = () => { setSelectMode(false); setSelected(new Set()); };
 
+  const [activeTab, setActiveTab] = useState<'known' | 'discover'>('discover');
+
   return (
     <section aria-label="Known words" className="space-y-4">
-      <PullToRefresh onRefresh={refetch} />
-
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-surface-400">Known words</h2>
-        {words && words.length > 0 && (
-          <button
-            type="button"
-            onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
-            className="min-h-11 rounded-xl border border-surface-700 px-3 text-sm transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
-            {selectMode ? 'Cancel' : 'Select'}
-          </button>
-        )}
+      <div className="flex items-center gap-2 rounded-xl bg-surface-900 p-1">
+        <button
+          onClick={() => setActiveTab('discover')}
+          className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+            activeTab === 'discover' ? 'bg-surface-800 text-surface-50 shadow-sm' : 'text-surface-400 hover:text-surface-200'
+          }`}
+        >
+          Discover
+        </button>
+        <button
+          onClick={() => setActiveTab('known')}
+          className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+            activeTab === 'known' ? 'bg-surface-800 text-surface-50 shadow-sm' : 'text-surface-400 hover:text-surface-200'
+          }`}
+        >
+          Your Words
+        </button>
       </div>
+
+      {activeTab === 'discover' ? (
+        <KnownWordsDiscover />
+      ) : (
+        <>
+          <PullToRefresh onRefresh={refetch} />
+
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-sm font-medium uppercase tracking-wide text-surface-400">Known words</h2>
+            {words && words.length > 0 && (
+              <button
+                type="button"
+                onClick={() => selectMode ? exitSelectMode() : setSelectMode(true)}
+                className="min-h-11 rounded-xl border border-surface-700 px-3 text-sm transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                {selectMode ? 'Cancel' : 'Select'}
+              </button>
+            )}
+          </div>
 
       <p className="text-sm text-surface-400">
         Words the system has marked as known — they're scheduled far out instead of cluttering your reviews. Undo
@@ -154,6 +180,8 @@ export function KnownWordsPage() {
               </li>
             ))}
           </ul>
+        </>
+      )}
         </>
       )}
     </section>

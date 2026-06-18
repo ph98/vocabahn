@@ -178,3 +178,12 @@ export async function addWordToDeck(deckId: string, entryId: string) {
 export async function removeWordFromDeck(deckId: string, entryId: string) {
   await api.delete(`/decks/${encodeURIComponent(deckId)}/words/${encodeURIComponent(entryId)}`);
 }
+
+export async function fetchKnowledgeSuggestions(limit = 50) {
+  const { data } = await api.get(`/knowledge/suggestions?limit=${limit}`);
+  return data;
+}
+
+export async function bulkMarkKnownWords(dictionaryEntryIds: string[]): Promise<void> {
+  await api.post('/knowledge/bulk-mark-known', { dictionaryEntryIds });
+}

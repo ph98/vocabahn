@@ -37,11 +37,13 @@
 - [ ] Implement user limitations.
 
 ## Additional Tasks (from chat)
-- [ ] We should use a better logo, the text should be removed from the logo.
+- [x] We should use a better logo, the text should be removed from the logo.
 - [x] Fix the page scrolling (currently the scroll doesn't work).
 - [x] Investigate and fix the missing dictionary (dictionary is gone).
-- [ ] Improve the Known Words management section: Provide suggestions so the user can quickly select hundreds of known words. Guess similar words based on selections, or create a new dedicated page with a fast exam/quiz to automatically guess known words.
+- [x] Improve the Known Words management section: Provide suggestions so the user can quickly select hundreds of known words. Guess similar words based on selections, or create a new dedicated page with a fast exam/quiz to automatically guess known words.
 - [x] Limit the width of the image in the review section.
 - [x] Add the user profile to the menu (with a small profile picture). Move the theme toggle and the Known Words section to be submenus under the profile.
 - [x] Change the scrolling behavior to prevent page shake when navigating between pages (scroll should be contained within the page container rather than the whole app).
 - [x] Fix light mode text colors: some text is currently unreadable due to low contrast/coloring issues.
+- [ ] Activity should start from the current time (last part of it).
+

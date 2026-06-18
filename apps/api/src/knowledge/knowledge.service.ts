@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ReviewRating } from '@prisma/client';
+import { ReviewRating, DictionaryEntry } from '@prisma/client';
 import type { AutoGraduation, KnownWord } from '@vocabahn/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -200,6 +200,46 @@ export class KnowledgeService {
       update: { knownState: 'USER_KNOWN', due: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) },
     });
   }
+
+  /** Bulk mark words as USER_KNOWN */
+  async bulkMarkKnown(userId: string, dictionaryEntryIds: string[]): Promise<void> {
+    // Due to Prisma limitations with bulk upserts on composite keys in sqlite/some engines,
+    // we use a transaction over individual upserts.
+    const due = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    const upserts = dictionaryEntryIds.map((dictionaryEntryId) =>
+      this.prisma.card.upsert({
+        where: { userId_dictionaryEntryId: { userId, dictionaryEntryId } },
+        create: {
+          userId,
+          dictionaryEntryId,
+          knownState: 'USER_KNOWN',
+          due,
+          stability: 100,
+          difficulty: 1,
+          elapsedDays: 0,
+          scheduledDays: 365,
+          reps: 0,
+          lapses: 0,
+          state: 'REVIEW',
+        },
+        update: { knownState: 'USER_KNOWN', due },
+      })
+    );
+    await this.prisma.$transaction(upserts);
+  }
+
+  /** Get highly frequent words the user has not started learning yet. */
+  async getSuggestions(userId: string, limit: number): Promise<DictionaryEntry[]> {
+    return this.prisma.dictionaryEntry.findMany({
+      where: {
+        lexiconEntry: { frequencyRank: { not: null } },
+        cards: { none: { userId } },
+      },
+      orderBy: { lexiconEntry: { frequencyRank: 'asc' } },
+      take: limit,
+    }) as any; // Return raw dictionary entries
+  }
+
 
   /** Undo multiple known words in parallel. */
   async bulkUndo(userId: string, cardIds: string[]): Promise<void> {

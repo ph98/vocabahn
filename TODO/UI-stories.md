@@ -103,6 +103,8 @@ Add a subtle inner shadow to the empty/inactive squares on the activity heatmap.
 
 Apply a vibrant, glowing gradient (e.g., scaling from light blue to primary violet based on intensity) to the active squares.
 
+Activity should start from the current time (last part of it).
+
 Story 3.3: Animated Course Progress Indicators
 As a user
 I want to see my course level progress clearly and dynamically

@@ -252,8 +252,8 @@ function AppNav() {
           aria-label="Profile navigation options"
           className={itemClass(moreActive || moreOpen)}
         >
-          {user?.picture ? (
-            <img src={user.picture} alt="" className="size-[22px] rounded-full object-cover shadow-sm border border-surface-700/50" />
+          {user?.avatarUrl ? (
+            <img src={user.avatarUrl} alt="" className="size-[22px] rounded-full object-cover shadow-sm border border-surface-700/50" />
           ) : (
             <NavSvgIcon d={ICON_MORE} />
           )}
