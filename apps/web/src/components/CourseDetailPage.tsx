@@ -93,9 +93,20 @@ export function CourseDetailPage() {
             <tbody>
               {course.words.map((w) => (
                 <tr key={w.dictionaryEntryId} className="border-b border-surface-900">
-                  <td className="py-1.5 pr-3" lang="de">
-                    {w.emoji && <span className="mr-1">{w.emoji}</span>}
-                    {w.word}
+                  <td className="py-1.5 pr-3">
+                    <span lang="de" className="inline-flex items-center gap-1.5">
+                      {w.emoji && <span>{w.emoji}</span>}
+                      {w.word}
+                      <Link
+                        to={`/word/${encodeURIComponent(w.word)}`}
+                        className="inline-flex text-surface-500 hover:text-indigo-400 p-0.5 transition-colors"
+                        title="View in dictionary"
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="size-4">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                      </Link>
+                    </span>
                   </td>
                   <td className="py-1.5 pr-3 text-surface-400">{w.translation ?? '—'}</td>
                   {course.enrolled && (

@@ -917,11 +917,11 @@ export function EntryBody({
       {(entry.enrichmentStatus === 'PENDING' || entry.enrichmentStatus === 'ENRICHING') && (
         <p
           role="status"
-          className="mb-3 flex items-center gap-2 rounded-lg bg-amber-950/60 px-3 py-2 text-sm text-accent-amber"
+          className="mb-3 flex items-center gap-2 rounded-lg bg-accent-amber/10 px-3 py-2 text-sm text-accent-amber"
         >
           <span
             aria-hidden="true"
-            className="size-4 shrink-0 animate-spin motion-reduce:animate-none rounded-full border-2 border-amber-300/30 border-t-amber-300"
+            className="size-4 shrink-0 animate-spin motion-reduce:animate-none rounded-full border-2 border-accent-amber/30 border-t-accent-amber"
           />
           Enriching this entry in the background…
         </p>
@@ -1064,6 +1064,11 @@ export function DictionaryCard() {
     enabled: debounced.length >= 2,
   });
 
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
   return (
     <>
       <section
@@ -1078,6 +1083,7 @@ export function DictionaryCard() {
           Search German words
         </label>
         <input
+          ref={inputRef}
           id="dict-search"
           type="search"
           value={query}
@@ -1087,6 +1093,7 @@ export function DictionaryCard() {
           }}
           placeholder="Search German words…"
           autoComplete="off"
+          autoFocus
           lang="de"
           className="min-h-14 w-full rounded-2xl border border-surface-700 bg-surface-950 px-6 text-lg placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         />

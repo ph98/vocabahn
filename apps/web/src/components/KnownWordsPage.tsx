@@ -58,7 +58,7 @@ export function KnownWordsPage() {
         <button
           onClick={() => setActiveTab('discover')}
           className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-            activeTab === 'discover' ? 'bg-surface-800 text-surface-50 shadow-sm' : 'text-surface-400 hover:text-surface-200'
+            activeTab === 'discover' ? 'bg-surface-800 text-surface-50 shadow-sm' : 'text-surface-300 hover:text-surface-100'
           }`}
         >
           Discover
@@ -66,10 +66,15 @@ export function KnownWordsPage() {
         <button
           onClick={() => setActiveTab('known')}
           className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-            activeTab === 'known' ? 'bg-surface-800 text-surface-50 shadow-sm' : 'text-surface-400 hover:text-surface-200'
+            activeTab === 'known' ? 'bg-surface-800 text-surface-50 shadow-sm' : 'text-surface-300 hover:text-surface-100'
           }`}
         >
           Your Words
+          {words && words.length > 0 && (
+            <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${activeTab === 'known' ? 'bg-surface-700/50 text-surface-100' : 'bg-surface-800/50 text-surface-400'}`}>
+              {words.length}
+            </span>
+          )}
         </button>
       </div>
 

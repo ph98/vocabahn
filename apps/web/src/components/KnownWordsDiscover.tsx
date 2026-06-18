@@ -47,6 +47,37 @@ export function KnownWordsDiscover() {
         Tap the words you already know. We'll skip them in your lessons so you can focus on what's new.
       </p>
 
+      {suggestions && suggestions.length > 0 && (
+        (() => {
+          const milestones = [10, 25, 50, 100];
+          const target = milestones.find(m => selected.size < m) || 100;
+          const prevTarget = milestones[milestones.indexOf(target) - 1] || 0;
+          const isMilestoneHit = selected.size > 0 && milestones.includes(selected.size);
+          const displayTarget = isMilestoneHit ? selected.size : target;
+          const progressPercent = Math.min(100, (selected.size / displayTarget) * 100);
+
+          return (
+            <div className="flex items-center gap-4 rounded-xl bg-surface-900 p-4 border border-surface-700 shadow-sm">
+              <div className="flex-1 space-y-1.5">
+                <div className="flex justify-between text-xs font-medium">
+                  <span className="text-surface-300">Selection Target</span>
+                  <span className="text-accent-indigo">{selected.size} / {displayTarget}</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-surface-800">
+                  <div 
+                    className="h-full bg-accent-indigo transition-all duration-500 ease-out" 
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              </div>
+              <span className={`text-2xl transition-all duration-500 ${isMilestoneHit ? 'scale-125 opacity-100 grayscale-0' : 'scale-100 opacity-50 grayscale'}`}>
+                🎉
+              </span>
+            </div>
+          );
+        })()
+      )}
+
       {isPending && <p aria-live="polite">Loading suggestions…</p>}
 
       {suggestions && suggestions.length > 0 && (
@@ -59,13 +90,13 @@ export function KnownWordsDiscover() {
                 onClick={() => toggle(w.id)}
                 className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-medium transition-all ${
                   isSelected 
-                    ? 'border-indigo-400 bg-indigo-500/20 text-indigo-100 shadow-[0_0_12px_rgba(129,140,248,0.3)]' 
+                    ? 'border-accent-indigo bg-accent-indigo/10 text-accent-indigo shadow-[0_0_12px_rgba(129,140,248,0.2)]' 
                     : 'border-surface-700 bg-surface-900 text-surface-300 hover:border-surface-500 hover:bg-surface-800'
                 }`}
               >
                 {w.emoji && <span>{w.emoji}</span>}
                 <span lang="de">{w.word}</span>
-                <span className="text-xs text-surface-500 max-w-24 truncate">{w.translation}</span>
+                <span className="text-xs text-surface-400 max-w-24 truncate">{w.translation}</span>
               </button>
             );
           })}
@@ -74,12 +105,12 @@ export function KnownWordsDiscover() {
 
       {selected.size > 0 && (
         <div className="fixed bottom-[80px] md:bottom-8 inset-x-0 z-50 flex justify-center p-4 pointer-events-none">
-          <div className="pointer-events-auto flex items-center gap-4 rounded-2xl border border-indigo-500/30 bg-surface-900/90 backdrop-blur-xl p-3 pl-6 shadow-2xl shadow-indigo-900/20">
-            <span className="text-sm font-semibold text-indigo-100">{selected.size} selected</span>
+          <div className="pointer-events-auto flex items-center gap-4 rounded-2xl border border-surface-700 bg-surface-900/90 backdrop-blur-xl p-3 pl-6 shadow-2xl">
+            <span className="text-sm font-semibold text-accent-indigo">{selected.size} selected</span>
             <button
               onClick={markSelected}
               disabled={bulkMarkMutation.isPending}
-              className="rounded-xl bg-indigo-500 px-6 py-2.5 text-sm font-bold text-white transition-colors hover:bg-indigo-400 disabled:opacity-50"
+              className="rounded-xl bg-accent-indigo px-6 py-2.5 text-sm font-bold text-white transition-colors hover:opacity-90 disabled:opacity-50"
             >
               {bulkMarkMutation.isPending ? 'Marking...' : 'Mark as known'}
             </button>

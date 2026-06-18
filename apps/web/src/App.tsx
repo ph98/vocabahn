@@ -221,7 +221,7 @@ function AppNav() {
               'md:mt-0 md:flex-row md:gap-2 md:px-5 md:py-2.5 md:min-h-12 md:rounded-[1rem]',
               'md:transition-all md:text-sm md:font-bold',
               isActive
-                ? 'md:bg-accent-indigo md:text-white md:shadow-md md:-translate-y-0.5'
+                ? 'md:bg-surface-50 md:text-surface-950 md:shadow-md md:-translate-y-0.5'
                 : 'md:text-surface-300 md:hover:bg-surface-700/50 md:hover:text-surface-100 md:hover:-translate-y-0.5',
             ].join(' ')
           }
@@ -229,13 +229,13 @@ function AppNav() {
           {({ isActive }) => (
             <>
               <span className={`md:hidden flex size-12 items-center justify-center rounded-full shadow-lg transition-all ${
-                isActive ? 'bg-accent-indigo shadow-indigo-400/40' : 'bg-surface-100 shadow-black/10 hover:scale-105'
+                isActive ? 'bg-surface-50 shadow-surface-50/40' : 'bg-surface-100 shadow-black/10 hover:scale-105'
               }`}>
-                <NavSvgIcon d={ICON_REVIEW} className={isActive ? 'text-white' : 'text-surface-950'} />
+                <NavSvgIcon d={ICON_REVIEW} className={isActive ? 'text-surface-950' : 'text-surface-950'} />
               </span>
               <NavSvgIcon d={ICON_REVIEW} className="hidden md:block" />
               <span className={`text-[10px] font-bold leading-none md:text-sm md:leading-normal ${
-                isActive ? 'text-accent-indigo md:text-white' : 'text-surface-500 md:text-surface-300'
+                isActive ? 'text-surface-50 md:text-surface-950' : 'text-surface-500 md:text-surface-300'
               }`}>Review</span>
             </>
           )}
