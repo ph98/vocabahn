@@ -9,7 +9,7 @@ import { prefersReducedMotion } from './lib/motion';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
 import { IllustrationDictionary, IllustrationFlashcard, IllustrationStreak, IllustrationTrophy } from './components/Illustrations';
 import { ProfilePage } from './components/ProfilePage';
-import { type Theme, useTheme } from './lib/theme';
+import { type Theme, useTheme, resolveTheme } from './lib/theme';
 
 const CourseDetailPage = lazy(() =>
   import('./components/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })),
@@ -188,10 +188,9 @@ function AppNav() {
           <Link 
             to="/" 
             aria-label="Vocabahn Home" 
-            className="flex items-center justify-center size-8 rounded-full bg-surface-900 shadow-sm border border-surface-700/50 font-black tracking-tighter select-none group transition-all hover:scale-105 hover:border-accent-indigo/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="flex items-center justify-center size-8 rounded-full bg-surface-900 shadow-sm border border-surface-700/50 select-none group transition-all hover:scale-105 hover:border-accent-indigo/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white overflow-hidden"
           >
-            <span className="text-transparent bg-clip-text bg-gradient-to-br from-surface-100 to-surface-400">V</span>
-            <span className="text-accent-indigo -ml-0.5">b</span>
+            <img src="/logo.png" alt="Vocabahn" className="w-full h-full object-cover" />
           </Link>
         </div>
 
@@ -405,7 +404,10 @@ function LandingPage() {
       <div className="relative z-10 grid gap-12 p-8 md:grid-cols-2 md:items-center md:p-14">
         {/* Left Side: Hero Copy */}
         <section aria-labelledby="hero-heading" className="space-y-8">
-          <IllustrationDictionary className="h-24 w-auto text-accent-indigo drop-shadow-lg" />
+          <div className="flex items-center gap-4 mb-4">
+            <img src="/logo.png" alt="Vocabahn" className="h-16 w-auto object-contain rounded-xl shadow-lg" />
+            <IllustrationDictionary className="h-14 w-auto text-accent-indigo drop-shadow-lg hidden sm:block" />
+          </div>
           <h2 id="hero-heading" className="text-5xl font-extrabold tracking-tighter sm:text-6xl lg:text-7xl text-balance">
             Learn German, <span className="text-transparent bg-clip-text bg-gradient-to-r from-accent-indigo to-accent-emerald">word by word.</span>
           </h2>
@@ -438,6 +440,14 @@ function LandingPage() {
         </section>
       </div>
 
+      {/* Hero Graphic Section */}
+      <section className="relative z-10 px-8 pb-8 md:px-14">
+        <div className="w-full rounded-3xl overflow-hidden shadow-2xl border border-surface-700/50 relative">
+          <img src="/hero-bg.png" alt="Accelerate your language journey" className="w-full h-auto object-cover max-h-[500px]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-surface-900/80 to-transparent pointer-events-none" />
+        </div>
+      </section>
+
       <section aria-label="Sign in" className="relative z-10 border-t border-surface-800/30 bg-surface-950/40 p-10 text-center backdrop-blur-xl mt-8">
         <div className="mx-auto max-w-sm">
           <ProfilePage />
@@ -466,6 +476,22 @@ function GoogleOneTapPrompt() {
 export default function App() {
   const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const mainRef = useRef<HTMLElement>(null);
+  const [theme, setTheme] = useTheme();
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        const currentActive = resolveTheme(theme);
+        setTheme(currentActive === 'dark' ? 'light' : 'dark');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [theme, setTheme]);
 
   return (
     <>

@@ -4,12 +4,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from '../../App';
 import { renderWithProviders } from '../../test/test-utils';
 
-vi.mock('../../api', () => ({
-  fetchMe: vi.fn(),
-  fetchHealth: vi.fn().mockResolvedValue({ status: 'ok', services: { database: 'up', redis: 'up' } }),
-  searchDictionary: vi.fn().mockResolvedValue([]),
-  logout: vi.fn(),
-}));
+vi.mock('../../api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../api')>();
+  return {
+    ...actual,
+    fetchMe: vi.fn(),
+    fetchHealth: vi.fn().mockResolvedValue({ status: 'ok', services: { database: 'up', redis: 'up' } }),
+    searchDictionary: vi.fn().mockResolvedValue([]),
+    logout: vi.fn(),
+    googleOneTapLogin: vi.fn(),
+  };
+});
 
 const { fetchMe } = await import('../../api');
 
@@ -54,20 +59,84 @@ describe('App', () => {
     renderWithProviders(<App />);
     await waitFor(() => expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument());
 
-    const toggle = screen.getByRole('button', { name: /active\. switch to/i });
-    expect(toggle).toHaveAttribute('aria-label', expect.stringContaining('System theme active'));
+    const openMorePanel = () => {
+      const moreBtn = screen.getByRole('button', { name: /more navigation options/i });
+      fireEvent.click(moreBtn);
+    };
 
+    openMorePanel();
+    let toggle = screen.getByRole('button', { name: /system theme/i });
     fireEvent.click(toggle);
     expect(localStorage.getItem('vocabahn-theme')).toBe('light');
     expect(document.documentElement.classList).toContain('theme-light');
 
+    openMorePanel();
+    toggle = screen.getByRole('button', { name: /light theme/i });
     fireEvent.click(toggle);
     expect(localStorage.getItem('vocabahn-theme')).toBe('dark');
     expect(document.documentElement.classList).toContain('theme-dark');
 
+    openMorePanel();
+    toggle = screen.getByRole('button', { name: /dark theme/i });
     fireEvent.click(toggle);
     expect(localStorage.getItem('vocabahn-theme')).toBe('system');
     expect(document.documentElement.classList).not.toContain('theme-light');
     expect(document.documentElement.classList).not.toContain('theme-dark');
+  });
+
+  it('toggles theme on Ctrl+Shift+L in development mode', async () => {
+    const originalDev = import.meta.env.DEV;
+    // @ts-ignore
+    import.meta.env.DEV = true;
+
+    vi.mocked(fetchMe).mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+      name: 'Test User',
+      avatarUrl: null,
+      cefrLevel: null,
+    });
+    renderWithProviders(<App />);
+    await waitFor(() => expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument());
+
+    expect(localStorage.getItem('vocabahn-theme')).toBeNull();
+
+    // Trigger Ctrl+Shift+L
+    fireEvent.keyDown(window, { ctrlKey: true, shiftKey: true, key: 'l' });
+    expect(localStorage.getItem('vocabahn-theme')).toBe('dark');
+    expect(document.documentElement.classList).toContain('theme-dark');
+
+    // Trigger Ctrl+Shift+L again
+    fireEvent.keyDown(window, { ctrlKey: true, shiftKey: true, key: 'l' });
+    expect(localStorage.getItem('vocabahn-theme')).toBe('light');
+    expect(document.documentElement.classList).toContain('theme-light');
+
+    // @ts-ignore
+    import.meta.env.DEV = originalDev;
+  });
+
+  it('does not toggle theme on Ctrl+Shift+L in production mode', async () => {
+    const originalDev = import.meta.env.DEV;
+    // @ts-ignore
+    import.meta.env.DEV = false;
+
+    vi.mocked(fetchMe).mockResolvedValue({
+      id: 'user-1',
+      email: 'user@example.com',
+      name: 'Test User',
+      avatarUrl: null,
+      cefrLevel: null,
+    });
+    renderWithProviders(<App />);
+    await waitFor(() => expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument());
+
+    expect(localStorage.getItem('vocabahn-theme')).toBeNull();
+
+    // Trigger Ctrl+Shift+L
+    fireEvent.keyDown(window, { ctrlKey: true, shiftKey: true, key: 'l' });
+    expect(localStorage.getItem('vocabahn-theme')).toBeNull();
+
+    // @ts-ignore
+    import.meta.env.DEV = originalDev;
   });
 });
