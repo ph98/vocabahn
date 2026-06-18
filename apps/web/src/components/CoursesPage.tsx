@@ -75,7 +75,7 @@ export function CoursesPage() {
       {isError && <p aria-live="polite" className="text-accent-red">Couldn't load courses.</p>}
       {data && data.length === 0 && <p className="text-surface-400">No courses available yet.</p>}
       {data && data.length > 0 && (
-        <ul ref={listRef} className="space-y-4">
+        <ul ref={listRef} className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {data.map((course) => (
             <CourseCard key={course.id} course={course} />
           ))}

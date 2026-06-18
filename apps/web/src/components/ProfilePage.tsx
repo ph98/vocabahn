@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { fetchEnrichmentQuota, fetchMe, logout, requestEmailSignIn } from '../api';
-
-import { useEffect, useRef } from 'react';
+import { useSettings } from '../hooks/useSettings';
 import gsap from 'gsap';
 
 export function SignInOptions() {
@@ -99,10 +98,13 @@ export function ProfilePage() {
     enabled: !!user,
     staleTime: 30_000,
   });
+  });
   const signOut = useMutation({
     mutationFn: logout,
     onSuccess: () => queryClient.setQueryData(['me'], null),
   });
+
+  const { settings, updateSettings } = useSettings();
 
   return (
     <section
@@ -169,18 +171,21 @@ export function ProfilePage() {
       {user && (
         <div className="mt-4 border-t border-surface-800 pt-4">
           <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-surface-500">
-            Offline use
+            Preferences
           </p>
-          <p className="mb-2 text-xs text-surface-500">
-            Download the top 1,000 enriched words as a JSON file to use offline or in other tools.
-          </p>
-          <a
-            href="/api/v1/dictionary/offline-pack"
-            download="vocabahn-offline.json"
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-surface-700 px-4 text-sm transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
-            <span aria-hidden="true">⬇</span> Download offline pack
-          </a>
+          <label className="flex items-center gap-3 cursor-pointer group">
+            <div className="relative">
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={settings.autoplayAudio}
+                onChange={(e) => updateSettings({ autoplayAudio: e.target.checked })}
+              />
+              <div className={`block w-10 h-6 rounded-full transition-colors ${settings.autoplayAudio ? 'bg-indigo-500' : 'bg-surface-700 group-hover:bg-surface-600'}`}></div>
+              <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.autoplayAudio ? 'translate-x-4' : ''}`}></div>
+            </div>
+            <span className="text-sm text-surface-300">Autoplay audio during reviews</span>
+          </label>
         </div>
       )}
     </section>
