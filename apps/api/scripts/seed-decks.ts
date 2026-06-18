@@ -22,14 +22,6 @@ interface DeckSpec {
 }
 
 const DECKS: DeckSpec[] = [
-  {
-    slug: 'grundwortschatz-1',
-    title: 'Grundwortschatz 1',
-    description: 'The 100 most frequent German words — the essential foundation for any learner.',
-    cefrLevel: 'A1',
-    order: 0,
-    words: [], // populated from frequency rank below
-  },
 
   {
     slug: 'begruessungen-basics',
@@ -137,12 +129,8 @@ const DECKS: DeckSpec[] = [
 async function seedDeck(spec: DeckSpec, topEntries: Array<{ id: string }>) {
   let wordIds: string[];
 
-  if (spec.slug === 'grundwortschatz-1') {
-    // Use frequency-ranked entries for the foundational deck.
-    wordIds = topEntries.map((e) => e.id);
-  } else {
-    // Look up entries by word string; skip any not yet in the dictionary.
-    const found = await prisma.dictionaryEntry.findMany({
+  // Look up entries by word string; skip any not yet in the dictionary.
+  const found = await prisma.dictionaryEntry.findMany({
       where: { word: { in: spec.words } },
       select: { id: true, word: true },
     });
@@ -150,9 +138,8 @@ async function seedDeck(spec: DeckSpec, topEntries: Array<{ id: string }>) {
     wordIds = spec.words
       .map((w) => foundMap.get(w))
       .filter((id): id is string => id !== undefined);
-    const missing = spec.words.length - wordIds.length;
-    if (missing > 0) console.log(`  ${missing} words not yet in dictionary (will be added as enrichment runs)`);
-  }
+  const missing = spec.words.length - wordIds.length;
+  if (missing > 0) console.log(`  ${missing} words not yet in dictionary (will be added as enrichment runs)`);
 
   const course = await prisma.course.upsert({
     where: { slug: spec.slug },
@@ -178,21 +165,11 @@ async function seedDeck(spec: DeckSpec, topEntries: Array<{ id: string }>) {
 async function main() {
   console.log('Seeding themed decks...\n');
 
-  // Pre-fetch top-100 frequency entries for Grundwortschatz 1.
-  const topEntries = await prisma.dictionaryEntry.findMany({
-    select: { id: true },
-    orderBy: { lexiconEntry: { frequencyRank: 'asc' } },
-    take: 100,
-  });
-
-  if (topEntries.length === 0) {
-    console.warn('⚠ No dictionary entries found. Run seed:dictionary first.');
-    return;
-  }
+  // We no longer pre-fetch frequency entries.
 
   for (const deck of DECKS) {
     process.stdout.write(`Seeding ${deck.title}...\n`);
-    await seedDeck(deck, topEntries);
+    await seedDeck(deck, []);
   }
 
   console.log('\nDone! All decks seeded.');

@@ -56,4 +56,13 @@ export class DecksController {
     await this.decks.removeWord(userId, id, entryId);
     return { removed: true };
   }
+
+  @Post(':id/import')
+  importWords(
+    @Param('id') id: string,
+    @CurrentUserId() userId: string,
+    @Body() body: { words: string[] },
+  ): Promise<{ imported: number, failed: string[] }> {
+    return this.decks.importWords(userId, id, body.words);
+  }
 }

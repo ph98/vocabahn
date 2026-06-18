@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useDrag } from '@use-gesture/react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchDictionaryEntry, fetchDueCards, submitReview } from '../api';
+import { useSettings } from '../hooks/useSettings';
 import { enqueueReview, flushQueue, getQueueCount } from '../offline/queue';
 import { useOnlineStatus } from '../offline/useOnlineStatus';
 import { prefersReducedMotion } from '../lib/motion';
@@ -174,6 +175,7 @@ export function ReviewSession() {
   });
 
   const navigate = useNavigate();
+  const { settings } = useSettings();
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [stats, setStats] = useState<Record<ReviewRating, number>>({ AGAIN: 0, HARD: 0, GOOD: 0, EASY: 0 });
@@ -379,8 +381,10 @@ export function ReviewSession() {
     const el = autoplayRef.current;
     if (!el || !entry?.audioUrl) return;
     el.src = entry.audioUrl;
-    void el.play().catch(() => {});
-  }, [index, entry?.audioUrl]);
+    if (settings.autoplayAudio) {
+      void el.play().catch(() => {});
+    }
+  }, [index, entry?.audioUrl, settings.autoplayAudio]);
 
   // Keyboard shortcuts: Space/Enter reveals the answer; arrow keys rate the
   // card (← Again · → Good · ↑ Easy · ↓ Hard), with or without revealing it.

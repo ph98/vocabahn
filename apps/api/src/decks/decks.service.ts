@@ -1,10 +1,16 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { CreateDeckBody, DeckDetail, DeckListResponse, DeckSummary, UpdateDeckBody } from '@vocabahn/shared';
+import { DictionaryService } from '../dictionary/dictionary.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class DecksService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(DecksService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly dictionary: DictionaryService,
+  ) {}
 
   async listDecks(userId: string): Promise<DeckListResponse> {
     const [myDecks, publicDecks] = await Promise.all([
@@ -131,6 +137,35 @@ export class DecksService {
   async removeWord(userId: string, deckId: string, entryId: string): Promise<void> {
     await this.assertOwner(userId, deckId);
     await this.prisma.userDeckWord.deleteMany({ where: { deckId, dictionaryEntryId: entryId } });
+  }
+
+  async importWords(userId: string, deckId: string, words: string[]): Promise<{ imported: number, failed: string[] }> {
+    await this.assertOwner(userId, deckId);
+    
+    let imported = 0;
+    const failed: string[] = [];
+
+    for (const w of words) {
+      const trimmed = w.trim();
+      if (!trimmed) continue;
+      
+      try {
+        const entry = await this.dictionary.getEntry(trimmed, userId);
+        if (entry && entry.id) {
+          await this.prisma.userDeckWord.upsert({
+            where: { deckId_dictionaryEntryId: { deckId, dictionaryEntryId: entry.id } },
+            create: { deckId, dictionaryEntryId: entry.id },
+            update: {},
+          });
+          imported++;
+        } else {
+          failed.push(trimmed);
+        }
+      } catch (e) {
+        failed.push(trimmed);
+      }
+    }
+    return { imported, failed };
   }
 
   private async assertOwner(userId: string, deckId: string): Promise<void> {
