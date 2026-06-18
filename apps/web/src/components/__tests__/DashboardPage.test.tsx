@@ -45,8 +45,10 @@ describe('DashboardPage', () => {
     expect(list.closest('details')).not.toBeNull();
     // The heatmap SVG is hidden from assistive tech; the list is the
     // accessible alternative and should include the non-zero days.
-    expect(screen.getByText('2026-06-13')).toBeInTheDocument();
-    expect(screen.getByText('2026-06-14')).toBeInTheDocument();
+    const d1 = new Date('2026-06-13').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    const d2 = new Date('2026-06-14').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+    expect(screen.getByText(d1)).toBeInTheDocument();
+    expect(screen.getByText(d2)).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();
   });

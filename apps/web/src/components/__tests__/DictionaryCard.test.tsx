@@ -8,6 +8,7 @@ import { EntryBody } from '../DictionaryCard';
 vi.mock('../../api', () => ({
   fetchFeedback: vi.fn().mockResolvedValue({ vote: null, issues: [], comment: null }),
   submitFeedback: vi.fn(),
+  fetchDecks: vi.fn().mockResolvedValue({ myDecks: [] }),
 }));
 
 const ENTRY: DictionaryEntryDetail = {

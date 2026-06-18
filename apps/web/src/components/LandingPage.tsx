@@ -78,7 +78,7 @@ export function LandingPage() {
                   className="group relative h-full overflow-hidden rounded-[1.5rem] border border-surface-700/50 bg-surface-800/30 p-6 backdrop-blur-xl transition-all duration-500 hover:-translate-y-2 hover:border-accent-indigo/50 hover:bg-surface-800/60 hover:shadow-premium"
                 >
                   <Illus className="mb-5 h-12 w-auto text-accent-indigo transition-transform duration-500 group-hover:scale-110 group-hover:-rotate-3" />
-                  <h3 className="mb-2 text-lg font-bold text-surface-100">{title}</h3>
+                  <h2 className="mb-2 text-lg font-bold text-surface-100">{title}</h2>
                   <p className="text-sm text-surface-400 leading-relaxed">{desc}</p>
                 </div>
               </div>

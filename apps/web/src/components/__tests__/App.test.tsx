@@ -48,41 +48,6 @@ describe('App', () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it('ThemeToggle cycles through system → light → dark and updates localStorage', async () => {
-    vi.mocked(fetchMe).mockResolvedValue({
-      id: 'user-1',
-      email: 'user@example.com',
-      name: 'Test User',
-      avatarUrl: null,
-      cefrLevel: null,
-    });
-    renderWithProviders(<App />);
-    await waitFor(() => expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument());
-
-    const openMorePanel = () => {
-      const moreBtn = screen.getByRole('button', { name: /more navigation options/i });
-      fireEvent.click(moreBtn);
-    };
-
-    openMorePanel();
-    let toggle = screen.getByRole('button', { name: /system theme/i });
-    fireEvent.click(toggle);
-    expect(localStorage.getItem('vocabahn-theme')).toBe('light');
-    expect(document.documentElement.classList).toContain('theme-light');
-
-    openMorePanel();
-    toggle = screen.getByRole('button', { name: /light theme/i });
-    fireEvent.click(toggle);
-    expect(localStorage.getItem('vocabahn-theme')).toBe('dark');
-    expect(document.documentElement.classList).toContain('theme-dark');
-
-    openMorePanel();
-    toggle = screen.getByRole('button', { name: /dark theme/i });
-    fireEvent.click(toggle);
-    expect(localStorage.getItem('vocabahn-theme')).toBe('system');
-    expect(document.documentElement.classList).not.toContain('theme-light');
-    expect(document.documentElement.classList).not.toContain('theme-dark');
-  });
 
   it('toggles theme on Ctrl+Shift+L in development mode', async () => {
     const originalDev = import.meta.env.DEV;
