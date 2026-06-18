@@ -10,7 +10,7 @@ import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard
 import { IllustrationDictionary, IllustrationFlashcard, IllustrationStreak, IllustrationTrophy } from './components/Illustrations';
 import { ProfilePage } from './components/ProfilePage';
 import { LandingPage } from './components/LandingPage';
-import { type Theme, useTheme } from './lib/theme';
+import { type Theme, useTheme, resolveTheme } from './lib/theme';
 
 const CourseDetailPage = lazy(() =>
   import('./components/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })),
@@ -189,10 +189,9 @@ function AppNav() {
           <Link 
             to="/" 
             aria-label="Vocabahn Home" 
-            className="flex items-center justify-center size-8 rounded-full bg-surface-900 shadow-sm border border-surface-700/50 font-black tracking-tighter select-none group transition-all hover:scale-105 hover:border-accent-indigo/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="flex items-center justify-center size-8 rounded-full bg-surface-900 shadow-sm border border-surface-700/50 select-none group transition-all hover:scale-105 hover:border-accent-indigo/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white overflow-hidden"
           >
-            <span className="text-transparent bg-clip-text bg-gradient-to-br from-surface-100 to-surface-400">V</span>
-            <span className="text-accent-indigo -ml-0.5">b</span>
+            <img src="/logo.png" alt="Vocabahn" className="w-full h-full object-cover" />
           </Link>
         </div>
 
@@ -386,6 +385,7 @@ function EdgeSwipeBack() {
   );
 }
 
+
 function GoogleOneTapPrompt() {
   const queryClient = useQueryClient();
   const mutation = useMutation({
@@ -405,6 +405,22 @@ function GoogleOneTapPrompt() {
 export default function App() {
   const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const mainRef = useRef<HTMLElement>(null);
+  const [theme, setTheme] = useTheme();
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        const currentActive = resolveTheme(theme);
+        setTheme(currentActive === 'dark' ? 'light' : 'dark');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [theme, setTheme]);
 
   return (
     <>

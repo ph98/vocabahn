@@ -57,7 +57,10 @@ export function LandingPage() {
       {/* Left Side: Hero & Features */}
       <div className="relative z-10 flex-1 flex flex-col justify-center p-8 lg:p-16 lg:pr-12">
         <div className="max-w-3xl">
-          <IllustrationDictionary className="hero-element mb-8 h-20 w-auto text-accent-indigo drop-shadow-xl hover:scale-110 transition-transform duration-500" />
+          <div className="hero-element flex items-center gap-6 mb-8">
+            <img src="/logo.png" alt="Vocabahn" className="h-20 w-auto object-contain rounded-2xl shadow-xl hover:scale-105 transition-transform duration-500" />
+            <IllustrationDictionary className="h-16 w-auto text-accent-indigo drop-shadow-xl hover:scale-110 transition-transform duration-500 hidden sm:block" />
+          </div>
           
           <h1 className="hero-element text-5xl font-black tracking-tighter sm:text-6xl lg:text-[5rem] lg:leading-[1.1] text-balance mb-6">
             Learn German, <br/>
@@ -81,6 +84,11 @@ export function LandingPage() {
               </div>
             ))}
           </div>
+
+          <div className="hero-element mt-12 w-full rounded-3xl overflow-hidden shadow-2xl border border-surface-700/50 relative">
+            <img src="/hero-bg.png" alt="Accelerate your language journey" className="w-full h-auto object-cover max-h-[300px]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-surface-900/90 to-transparent pointer-events-none" />
+          </div>
         </div>
       </div>
 
@@ -88,9 +96,8 @@ export function LandingPage() {
       <div className="auth-panel relative z-20 w-full lg:w-[420px] shrink-0 border-t lg:border-t-0 lg:border-l border-surface-800/50 bg-surface-950/80 backdrop-blur-2xl p-8 lg:p-12 flex flex-col justify-center">
         <div className="w-full max-w-sm mx-auto">
           <div className="mb-10 text-center">
-            <div className="inline-flex items-center justify-center size-14 rounded-2xl bg-surface-900 shadow-sm border border-surface-700/50 font-black tracking-tighter mb-6">
-              <span className="text-2xl text-transparent bg-clip-text bg-gradient-to-br from-surface-100 to-surface-400">V</span>
-              <span className="text-2xl text-accent-indigo -ml-0.5">b</span>
+            <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-surface-900 shadow-md border border-surface-700/50 overflow-hidden mb-6">
+              <img src="/icon-192.png" alt="Vocabahn Logo" className="w-full h-full object-cover" />
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-white">Join Vocabahn</h2>
             <p className="mt-2 text-surface-400 text-sm">Start your German learning journey today</p>
