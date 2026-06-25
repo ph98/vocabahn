@@ -1,5 +1,5 @@
 # Production deployment — all four services on a single VPS.
-# Usage: see DEPLOYMENT.md and scripts/deploy.sh
+# Usage: see docs/operations.md and scripts/deploy.sh
 services:
   db:
     image: postgres:16-alpine
@@ -63,7 +63,7 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./ssl:/etc/nginx/ssl:ro         # TLS certs (see DEPLOYMENT.md §SSL)
+      - ./ssl:/etc/nginx/ssl:ro         # TLS certs (see docs/operations.md §SSL)
       - ./apps/web/nginx.production.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - api

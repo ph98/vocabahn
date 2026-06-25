@@ -1,2 +1,0 @@
-the current implementation is useless, remove the current one.
-we need a way to know what user already knows without pain, search the internet for the most practical way in this matter and document it so we have some User stories to implement.

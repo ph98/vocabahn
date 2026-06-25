@@ -37,7 +37,7 @@ if $SETUP_MODE; then
   # SSL certs
   if [[ ! -f ssl/cert.pem || ! -f ssl/key.pem ]]; then
     log "No SSL certs found at ssl/. Generating self-signed certs for now."
-    log "Replace with Let's Encrypt certs for production: see DEPLOYMENT.md §SSL"
+    log "Replace with Let's Encrypt certs for production: see docs/operations.md §SSL"
     mkdir -p ssl
     openssl req -x509 -nodes -newkey rsa:2048 -days 365 \
       -keyout ssl/key.pem -out ssl/cert.pem \

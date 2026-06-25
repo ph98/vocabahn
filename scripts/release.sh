@@ -74,15 +74,15 @@ OTHER="$(git log "$RANGE" --pretty=format:'- %s' | grep -vE '^- (feat|fix):' | g
 [[ -n "$FIXES" ]]    && CHANGELOG_ENTRY+="### Bug Fixes\n$FIXES\n\n"
 [[ -n "$OTHER" ]]    && CHANGELOG_ENTRY+="### Other\n$OTHER\n\n"
 
-# Prepend to CHANGELOG.md
+# Prepend to docs/changelog.md
 EXISTING=""
-[[ -f CHANGELOG.md ]] && EXISTING="$(cat CHANGELOG.md)"
-printf "# Changelog\n\n%b%s" "$CHANGELOG_ENTRY" "${EXISTING#*$'\n\n'}" > CHANGELOG.md
+[[ -f docs/changelog.md ]] && EXISTING="$(cat docs/changelog.md)"
+printf "# Changelog\n\n%b%s" "$CHANGELOG_ENTRY" "${EXISTING#*$'\n\n'}" > docs/changelog.md
 
-ok "Updated CHANGELOG.md"
+ok "Updated docs/changelog.md"
 
 # Commit and tag
-git add package.json apps/web/package.json apps/api/package.json CHANGELOG.md
+git add package.json apps/web/package.json apps/api/package.json docs/changelog.md
 git commit -m "chore(release): v$NEXT_VERSION"
 git tag -a "v$NEXT_VERSION" -m "Release v$NEXT_VERSION"
 
