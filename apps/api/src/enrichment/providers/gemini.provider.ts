@@ -111,7 +111,7 @@ export class GeminiProvider {
     ].join('\n');
 
     const res = await this.client.models.generateContent({
-      model: input.betterModel ? 'gemini-2.0-flash' : MODEL,
+      model: input.betterModel ? 'gemini-2.5-flash' : MODEL,
       contents: prompt,
       config: {
         temperature: 0.4,
