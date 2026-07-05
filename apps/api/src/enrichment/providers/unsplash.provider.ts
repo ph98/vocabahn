@@ -39,6 +39,7 @@ export class UnsplashProvider {
 
     const res = await fetch(url, {
       headers: { Authorization: `Client-ID ${this.accessKey}` },
+      signal: AbortSignal.timeout(10000), // 10 seconds timeout
     });
     if (!res.ok) {
       throw new Error(`Unsplash search failed: ${res.status} ${res.statusText}`);
