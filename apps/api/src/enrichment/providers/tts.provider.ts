@@ -87,6 +87,7 @@ export class TtsProvider {
           similarity_boost: 0.75,
         },
       }),
+      signal: AbortSignal.timeout(10000), // 10 seconds timeout
     });
 
     if (!response.ok) {
