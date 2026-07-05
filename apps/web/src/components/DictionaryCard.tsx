@@ -14,6 +14,7 @@ import {
   type VerbConjugation,
 } from '@vocabahn/shared';
 import gsap from 'gsap';
+import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { addWordToDeck, fetchDecks, fetchDictionaryEntry, fetchFeedback, markWordKnown, searchDictionary, submitFeedback } from '../api';
@@ -695,26 +696,26 @@ function FeedbackWidget({ word }: { word: string }) {
           aria-pressed={vote === 'UP'}
           onClick={() => toggleVote('UP')}
           aria-label="This entry is helpful"
-          className={`min-h-11 min-w-11 rounded-xl border px-3 text-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+          className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border px-3 transition-[background-color,border-color,transform] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
             vote === 'UP'
-              ? 'border-emerald-400/60 bg-emerald-400/10'
-              : 'border-surface-700 hover:bg-surface-800'
+              ? 'border-emerald-400/60 bg-emerald-400/10 text-accent-emerald'
+              : 'border-surface-700 text-surface-400 hover:bg-surface-800'
           }`}
         >
-          👍
+          <ThumbsUp aria-hidden className="size-4" />
         </button>
         <button
           type="button"
           aria-pressed={vote === 'DOWN'}
           onClick={() => toggleVote('DOWN')}
           aria-label="This entry has a problem"
-          className={`min-h-11 min-w-11 rounded-xl border px-3 text-lg transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+          className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border px-3 transition-[background-color,border-color,transform] active:scale-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
             vote === 'DOWN'
-              ? 'border-red-400/60 bg-red-400/10'
-              : 'border-surface-700 hover:bg-surface-800'
+              ? 'border-red-400/60 bg-red-400/10 text-accent-red'
+              : 'border-surface-700 text-surface-400 hover:bg-surface-800'
           }`}
         >
-          👎
+          <ThumbsDown aria-hidden className="size-4" />
         </button>
         <button
           type="button"

@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import type { DictionaryEntryDetail, ReviewCard } from '@vocabahn/shared';
 import { axe } from 'jest-axe';
 import { describe, expect, it, vi } from 'vitest';
@@ -10,6 +10,12 @@ vi.mock('../../api', () => ({
   fetchDictionaryEntry: vi.fn(),
   submitReview: vi.fn(),
   syncReviews: vi.fn(),
+  // Revealing the answer renders the full EntryBody, which loads these.
+  fetchFeedback: vi.fn().mockResolvedValue({ vote: null, issues: [], comment: null }),
+  fetchDecks: vi.fn().mockResolvedValue({ myDecks: [] }),
+  markWordKnown: vi.fn(),
+  addWordToDeck: vi.fn(),
+  submitFeedback: vi.fn(),
 }));
 
 const { fetchDueCards, fetchDictionaryEntry } = await import('../../api');
@@ -81,9 +87,13 @@ describe('ReviewSession', () => {
     const { container } = renderWithProviders(<ReviewSession />);
 
     await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: 'Show answer' })).toBeInTheDocument();
+    // Rating controls stay hidden until the answer is revealed — one primary
+    // action at a time (swipe and arrow keys still rate without revealing).
+    const showAnswer = screen.getByRole('button', { name: 'Show answer' });
+    expect(showAnswer).toBeInTheDocument();
+    fireEvent.click(showAnswer);
     for (const label of ['Again', 'Hard', 'Good', 'Easy']) {
-      expect(screen.getByRole('button', { name: label })).toBeInTheDocument();
+      expect(await screen.findByRole('button', { name: label })).toBeInTheDocument();
     }
 
     expect(await axe(container)).toHaveNoViolations();

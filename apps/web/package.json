@@ -17,6 +17,8 @@
     "@vocabahn/shared": "workspace:*",
     "axios": "^1.9.0",
     "gsap": "^3.15.0",
+    "lucide-react": "^1.23.0",
+    "motion": "^12.42.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.17.0"

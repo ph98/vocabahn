@@ -4,15 +4,39 @@ import { Link } from 'react-router-dom';
 import { fetchDashboard } from '../api';
 import { ProgressBar } from './ProgressBar';
 import { ActivityHeatmap } from './ActivityHeatmap';
-import { useRef } from 'react';
+import { CountUp } from './CountUp';
+import { useRef, type ComponentType } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import {
+  ArrowRight,
+  BadgeCheck,
+  Brain,
+  CheckCheck,
+  ChevronRight,
+  Flame,
+  PartyPopper,
+  Sparkles,
+} from 'lucide-react';
 
-function StatCard({ label, value, className = '' }: { label: string; value: number, className?: string }) {
+function StatCard({
+  label,
+  value,
+  icon: Icon,
+  accent,
+  className = '',
+}: {
+  label: string;
+  value: number;
+  icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+  accent: string;
+  className?: string;
+}) {
   return (
-    <div className={`dashboard-card flex flex-col justify-center rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-4 text-center shadow-[0_4px_24px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(79,70,229,0.15)] hover:border-indigo-500/30 ${className}`}>
-      <p className="text-3xl font-semibold bg-clip-text text-transparent bg-gradient-to-br from-surface-50 to-surface-400">{value}</p>
-      <p className="mt-1 text-xs uppercase tracking-wide text-surface-400">{label}</p>
+    <div className={`dashboard-card flex flex-col items-center justify-center gap-1.5 rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-4 text-center shadow-[0_4px_24px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(79,70,229,0.15)] hover:border-indigo-500/30 ${className}`}>
+      <Icon aria-hidden className={`size-4 ${accent}`} />
+      <CountUp value={value} className="text-3xl font-semibold tabular-nums text-surface-100" />
+      <p className="text-xs uppercase tracking-wide text-surface-400">{label}</p>
     </div>
   );
 }
@@ -49,23 +73,53 @@ export function DashboardPage() {
 
       {data && (
         <div className="flex flex-col gap-5">
-          <div className="dashboard-card relative overflow-hidden group rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-8 text-center shadow-[0_8px_32px_rgba(0,0,0,0.3)] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_12px_48px_rgba(251,146,60,0.2)] hover:border-orange-500/40">
-            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 ease-out" />
-            <div className="relative z-10 flex flex-col items-center justify-center">
-              <p className="text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-surface-50 to-surface-300 drop-shadow-sm flex items-center justify-center gap-3">
-                <span aria-hidden="true" className="drop-shadow-lg inline-block hover:scale-110 transition-transform duration-300 cursor-default">🔥</span> 
-                {data.streak}
-              </p>
-              <p className="mt-3 text-sm font-semibold uppercase tracking-widest text-surface-400">day streak</p>
+          <div className="dashboard-card relative overflow-hidden rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-20 left-1/2 size-72 -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl"
+            />
+            <div className="relative z-10 flex flex-col items-center gap-6 text-center">
+              {data.streak > 0 ? (
+                <div>
+                  <p className="flex items-center justify-center gap-3 text-6xl font-extrabold tracking-tight text-surface-100">
+                    <Flame aria-hidden className="size-12 text-accent-amber" fill="currentColor" />
+                    <CountUp value={data.streak} className="tabular-nums" />
+                  </p>
+                  <p className="mt-3 text-sm font-semibold uppercase tracking-widest text-surface-400">day streak</p>
+                </div>
+              ) : (
+                <div>
+                  <Flame aria-hidden className="mx-auto size-10 text-surface-600" />
+                  <p className="mt-3 text-2xl font-bold tracking-tight text-surface-100">Start your streak today</p>
+                  <p className="mt-1 text-surface-400">One review session is all it takes.</p>
+                </div>
+              )}
+
+              {data.stats.dueToday > 0 ? (
+                <Link
+                  to="/review"
+                  className="group inline-flex min-h-12 items-center gap-3 rounded-2xl bg-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 transition-[background-color,transform] hover:bg-indigo-400 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  Start review
+                  <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-sm tabular-nums">
+                    {data.stats.dueToday.toLocaleString()} due
+                  </span>
+                  <ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              ) : (
+                <p className="inline-flex items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-2.5 text-sm font-medium text-accent-emerald">
+                  <PartyPopper aria-hidden className="size-4" />
+                  All caught up — nothing due today
+                </p>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <StatCard className="col-span-2 row-span-2 p-6" label="Due today" value={data.stats.dueToday} />
-            <StatCard label="Reviewed" value={data.stats.reviewedToday} />
-            <StatCard label="Known" value={data.stats.totalKnown} />
-            <StatCard label="Learning" value={data.stats.totalLearning} />
-            <StatCard label="New" value={data.stats.totalNew} />
+            <StatCard label="Reviewed today" value={data.stats.reviewedToday} icon={CheckCheck} accent="text-accent-sky" />
+            <StatCard label="Known" value={data.stats.totalKnown} icon={BadgeCheck} accent="text-accent-emerald" />
+            <StatCard label="Learning" value={data.stats.totalLearning} icon={Brain} accent="text-accent-amber" />
+            <StatCard label="New" value={data.stats.totalNew} icon={Sparkles} accent="text-accent-indigo" />
           </div>
 
           <div className="dashboard-card relative overflow-hidden rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/90 to-surface-950/90 backdrop-blur-xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.25)] transition-all duration-500 hover:border-indigo-500/30">
@@ -78,7 +132,9 @@ export function DashboardPage() {
             
             <details className="mt-4 relative z-10 group">
               <summary className="min-h-11 cursor-pointer content-center text-sm font-medium text-surface-400 transition-colors hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white list-none flex items-center gap-2">
-                <span className="w-4 h-4 rounded-full bg-surface-800 flex items-center justify-center text-[10px] group-open:rotate-90 transition-transform">▶</span>
+                <span className="w-4 h-4 rounded-full bg-surface-800 flex items-center justify-center group-open:rotate-90 transition-transform">
+                  <ChevronRight aria-hidden className="size-3" />
+                </span>
                 View activity as a list
               </summary>
               {activeDays.length > 0 ? (

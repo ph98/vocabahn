@@ -1,11 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { lazy, Suspense, useEffect, useRef, useState, type RefObject } from 'react';
+import { BadgeCheck, CircleUserRound, Monitor, Moon, Sun } from 'lucide-react';
+import { MotionConfig, motion } from 'motion/react';
+import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type RefObject } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { fetchHealth, fetchMe, googleOneTapLogin } from './api';
 import { useGoogleOneTap } from './hooks/useGoogleOneTap';
-import { prefersReducedMotion } from './lib/motion';
+import { prefersReducedMotion, springSnappy } from './lib/motion';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
 import { ProfilePage } from './components/ProfilePage';
 import { LandingPage } from './components/LandingPage';
@@ -37,7 +39,11 @@ function RouteLoading() {
 
 
 const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
-const THEME_ICON: Record<Theme, string> = { system: '🖥️', light: '☀️', dark: '🌙' };
+const THEME_ICON: Record<Theme, ComponentType<{ className?: string; 'aria-hidden'?: boolean }>> = {
+  system: Monitor,
+  light: Sun,
+  dark: Moon,
+};
 const THEME_LABEL: Record<Theme, string> = { system: 'System theme', light: 'Light theme', dark: 'Dark theme' };
 
 function NavSvgIcon({ d, className = '' }: { d: string; className?: string }) {
@@ -65,8 +71,8 @@ const ICON_MORE = 'M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 
 
 const MORE_PATHS = ['/known-words', '/profile'] as const;
 const MORE_ITEMS = [
-  { to: '/known-words', label: 'Known words', icon: '✓' },
-  { to: '/profile',     label: 'Profile',      icon: '👤' },
+  { to: '/known-words', label: 'Known words', icon: BadgeCheck },
+  { to: '/profile',     label: 'Profile',      icon: CircleUserRound },
 ] as const;
 
 function MorePanel({ onClose, buttonRef }: {
@@ -109,9 +115,9 @@ function MorePanel({ onClose, buttonRef }: {
       className="fixed z-50 w-52 flex flex-col gap-1 rounded-2xl border border-surface-700/80 bg-surface-900/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-md"
       style={style}
     >
-      {MORE_ITEMS.map(({ to, label, icon }) => (
+      {MORE_ITEMS.map(({ to, label, icon: Icon }) => (
         <NavLink key={to} to={to} onClick={onClose} className={({ isActive }) => itemClass(isActive)}>
-          <span aria-hidden="true">{icon}</span>
+          <Icon aria-hidden className="size-4" />
           {label}
         </NavLink>
       ))}
@@ -121,7 +127,7 @@ function MorePanel({ onClose, buttonRef }: {
         onClick={() => { setTheme(nextTheme); onClose(); }}
         className={itemClass(false)}
       >
-        <span aria-hidden="true">{THEME_ICON[theme]}</span>
+        {(() => { const ThemeIcon = THEME_ICON[theme]; return <ThemeIcon aria-hidden className="size-4" />; })()}
         {THEME_LABEL[theme]}
       </button>
     </div>
@@ -131,7 +137,7 @@ function MorePanel({ onClose, buttonRef }: {
 /** Single nav that adapts to viewport: fixed bottom bar on mobile, in-flow pill row on desktop. */
 function AppNav() {
   const { pathname } = useLocation();
-  const { data: user } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
+  const { data: user } = useQuery({ queryKey: ['me'], queryFn: fetchMe, retry: false });
   const navRef = useRef<HTMLElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
@@ -152,7 +158,7 @@ function AppNav() {
   // Mobile: vertical icon+label stack. Desktop: horizontal icon+label pill.
   const itemClass = (active: boolean) =>
     [
-      'flex flex-col items-center gap-0.5 px-1 py-2 min-w-12 rounded-[1rem] transition-all',
+      'relative flex flex-col items-center gap-0.5 px-1 py-2 min-w-12 rounded-[1rem] transition-all active:scale-95 md:active:scale-100',
       'md:flex-row md:gap-2 md:px-5 md:py-2.5 md:min-w-0 md:min-h-12 md:text-sm md:font-bold',
       active
         ? 'text-accent-indigo md:bg-surface-100 md:text-surface-950 md:shadow-sm md:-translate-y-0.5'
@@ -161,8 +167,19 @@ function AppNav() {
 
   const labelClass = 'text-[10px] font-medium leading-none md:text-sm md:leading-normal';
 
+  // Slides between the active tab's slot on mobile (hidden on desktop, where
+  // the pill background communicates the active state instead).
+  const activeIndicator = (
+    <motion.span
+      layoutId="mobile-nav-indicator"
+      transition={springSnappy}
+      aria-hidden="true"
+      className="absolute -top-px left-0 right-0 mx-auto h-0.5 w-8 rounded-full bg-accent-indigo md:hidden"
+    />
+  );
+
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       {moreOpen && (
         <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setMoreOpen(false)} />
       )}
@@ -183,9 +200,9 @@ function AppNav() {
       >
         {/* Desktop Branding Icon */}
         <div className="hidden md:flex items-center pl-2 pr-3 border-r border-surface-800/50 mr-1">
-          <Link 
-            to="/" 
-            aria-label="Vocabahn Home" 
+          <Link
+            to="/"
+            aria-label="Vocabahn Home"
             className="flex items-center justify-center size-8 rounded-full bg-surface-900 shadow-sm border border-surface-700/50 select-none group transition-all hover:scale-105 hover:border-accent-indigo/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white overflow-hidden"
           >
             <img src="/logo.png" alt="Vocabahn" className="w-full h-full object-cover" />
@@ -193,8 +210,13 @@ function AppNav() {
         </div>
 
         <NavLink to="/" className={({ isActive }) => itemClass(isActive || pathname.startsWith('/dashboard'))}>
-          <NavSvgIcon d={ICON_DASHBOARD} />
-          <span className={labelClass}>Dashboard</span>
+          {({ isActive }) => (
+            <>
+              {(isActive || pathname.startsWith('/dashboard')) && activeIndicator}
+              <NavSvgIcon d={ICON_DASHBOARD} />
+              <span className={labelClass}>Dashboard</span>
+            </>
+          )}
         </NavLink>
 
         <Link
@@ -202,46 +224,56 @@ function AppNav() {
           aria-current={dictionaryActive ? 'page' : undefined}
           className={itemClass(dictionaryActive)}
         >
+          {dictionaryActive && activeIndicator}
           <NavSvgIcon d={ICON_DICT} />
           <span className={labelClass}>Dictionary</span>
         </Link>
 
-        <NavLink to="/library" className={({ isActive }) => itemClass(isActive)}>
-          <NavSvgIcon d={ICON_COURSES} />
-          <span className={labelClass}>Library</span>
-        </NavLink>
-
-        {/* Review — FAB on mobile, icon-pill on desktop */}
+        {/* Review — centered FAB on mobile, icon-pill on desktop */}
         <NavLink
           to="/review"
           aria-label="Start review session"
           className={({ isActive }) =>
             [
-              'flex flex-col items-center gap-0.5 px-1 -mt-4 py-2',
-              'md:mt-0 md:flex-row md:gap-2 md:px-5 md:py-2.5 md:min-h-12 md:rounded-[1rem]',
+              'relative flex flex-col items-center gap-1 px-1 -mt-5 py-2 min-w-12 active:scale-95 md:active:scale-100',
+              'md:mt-0 md:flex-row md:gap-2 md:px-5 md:py-2.5 md:min-h-12 md:min-w-0 md:rounded-[1rem]',
               'md:transition-all md:text-sm md:font-bold',
               isActive
-                ? 'md:bg-surface-50 md:text-surface-950 md:shadow-md md:-translate-y-0.5'
+                ? 'md:bg-surface-100 md:text-surface-950 md:shadow-sm md:-translate-y-0.5'
                 : 'md:text-surface-300 md:hover:bg-surface-700/50 md:hover:text-surface-100 md:hover:-translate-y-0.5',
             ].join(' ')
           }
         >
           {({ isActive }) => (
             <>
-              <span className={`md:hidden flex size-12 items-center justify-center rounded-full shadow-lg transition-all ${
-                isActive ? 'bg-surface-50 shadow-surface-50/40' : 'bg-surface-100 shadow-black/10 hover:scale-105'
-              }`}>
-                <NavSvgIcon d={ICON_REVIEW} className={isActive ? 'text-surface-950' : 'text-surface-950'} />
+              <span
+                className={`md:hidden flex size-13 items-center justify-center rounded-full text-white shadow-lg shadow-indigo-500/30 ring-4 ring-surface-950/80 transition-colors ${
+                  isActive ? 'bg-indigo-400' : 'bg-indigo-500'
+                }`}
+              >
+                <NavSvgIcon d={ICON_REVIEW} />
               </span>
               <NavSvgIcon d={ICON_REVIEW} className="hidden md:block" />
-              <span className={`text-[10px] font-bold leading-none md:text-sm md:leading-normal ${
-                isActive ? 'text-surface-50 md:text-surface-950' : 'text-surface-500 md:text-surface-300'
-              }`}>Review</span>
+              <span
+                className={`${labelClass} md:font-bold ${
+                  isActive ? 'text-accent-indigo md:text-surface-950' : 'text-surface-500 md:text-surface-300'
+                }`}
+              >
+                Review
+              </span>
             </>
           )}
         </NavLink>
 
-
+        <NavLink to="/library" className={({ isActive }) => itemClass(isActive)}>
+          {({ isActive }) => (
+            <>
+              {isActive && activeIndicator}
+              <NavSvgIcon d={ICON_COURSES} />
+              <span className={labelClass}>Library</span>
+            </>
+          )}
+        </NavLink>
 
         <button
           ref={moreButtonRef}
@@ -252,6 +284,7 @@ function AppNav() {
           aria-label="Profile navigation options"
           className={itemClass(moreActive || moreOpen)}
         >
+          {moreActive && activeIndicator}
           {user?.avatarUrl ? (
             <img src={user.avatarUrl} alt="" className="size-[22px] rounded-full object-cover shadow-sm border border-surface-700/50" />
           ) : (
@@ -260,7 +293,7 @@ function AppNav() {
           <span className={labelClass}>Profile</span>
         </button>
       </nav>
-    </>
+    </MotionConfig>
   );
 }
 
@@ -406,7 +439,7 @@ function GoogleOneTapPrompt() {
 }
 
 export default function App() {
-  const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
+  const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe, retry: false });
   const mainRef = useRef<HTMLElement>(null);
   const [theme, setTheme] = useTheme();
 

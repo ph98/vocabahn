@@ -2,6 +2,7 @@ import { useGSAP } from '@gsap/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { DictionaryEntryDetail, ReviewCard, ReviewRating } from '@vocabahn/shared';
 import gsap from 'gsap';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { useDrag } from '@use-gesture/react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
@@ -9,8 +10,9 @@ import { fetchDictionaryEntry, fetchDueCards, submitReview } from '../api';
 import { useSettings } from '../hooks/useSettings';
 import { enqueueReview, flushQueue, getQueueCount } from '../offline/queue';
 import { useOnlineStatus } from '../offline/useOnlineStatus';
-import { prefersReducedMotion } from '../lib/motion';
+import { prefersReducedMotion, spring, springSnappy } from '../lib/motion';
 import { AudioButton, EntryBody } from './DictionaryCard';
+import { CountUp } from './CountUp';
 
 /** Card entry merged with the full dictionary entry once it's fetched. */
 type CardEntry = ReviewCard['entry'] & Partial<DictionaryEntryDetail>;
@@ -25,17 +27,25 @@ const RATING_LABELS: Record<ReviewRating, string> = {
 };
 
 const RATING_COLORS: Record<ReviewRating, string> = {
-  AGAIN: 'border-red-400/40 text-accent-red hover:bg-red-400/10',
-  HARD: 'border-amber-300/40 text-accent-amber hover:bg-amber-300/10',
-  GOOD: 'border-emerald-400/40 text-accent-emerald hover:bg-emerald-400/10',
-  EASY: 'border-sky-400/40 text-sky-400 hover:bg-sky-400/10',
+  AGAIN: 'border-red-400/40 bg-red-500/10 text-accent-red hover:bg-red-500/15',
+  HARD: 'border-amber-400/40 bg-amber-400/10 text-accent-amber hover:bg-amber-400/15',
+  GOOD: 'border-emerald-400/40 bg-emerald-500/10 text-accent-emerald hover:bg-emerald-500/15',
+  EASY: 'border-sky-400/40 bg-sky-500/10 text-accent-sky hover:bg-sky-500/15',
 };
 
 const RATING_BADGE_COLORS: Record<ReviewRating, string> = {
   AGAIN: 'border border-red-400/40 bg-red-400/20 text-accent-red',
   HARD: 'border border-amber-300/40 bg-amber-300/20 text-accent-amber',
   GOOD: 'border border-emerald-400/40 bg-emerald-400/20 text-accent-emerald',
-  EASY: 'border border-sky-400/40 bg-sky-400/20 text-sky-400',
+  EASY: 'border border-sky-400/40 bg-sky-400/20 text-accent-sky',
+};
+
+/** Keyboard/swipe direction hint shown inside each rating button. */
+const RATING_KEY_HINTS: Record<ReviewRating, string> = {
+  AGAIN: '←',
+  HARD: '↓',
+  GOOD: '→',
+  EASY: '↑',
 };
 
 // Swipe direction each rating flies off toward (used for both the drag
@@ -50,14 +60,19 @@ const RATING_OFFSET: Record<ReviewRating, { x: number; y: number }> = {
 const SWIPE_THRESHOLD = 100;
 const FLY_DISTANCE = 500;
 
-function CardFront({ entry }: { entry: CardEntry }) {
+function CardFront({ entry, revealed }: { entry: CardEntry; revealed: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-3 py-12 text-center">
-      <div className="flex items-center justify-center gap-2">
-        <p className="text-2xl font-medium" lang="de">
-          {entry.word}
-        </p>
-      </div>
+    <div
+      className={`flex flex-col items-center justify-center gap-4 text-center transition-[padding] duration-300 ${revealed ? 'py-10' : 'py-16 sm:py-20'}`}
+    >
+      {entry.pos && (
+        <span className="rounded-full border border-surface-800 bg-surface-950/60 px-3 py-1 text-xs font-medium uppercase tracking-widest text-surface-400">
+          {entry.pos}
+        </span>
+      )}
+      <p className="text-4xl font-semibold tracking-tight text-surface-100 sm:text-5xl" lang="de">
+        {entry.word}
+      </p>
       {entry.audioUrl && <AudioButton src={entry.audioUrl} label={`Play pronunciation of ${entry.word}`} />}
     </div>
   );
@@ -114,55 +129,80 @@ function SessionSummary({
   onReviewMore: () => void;
 }) {
   const total = RATINGS.reduce((sum, r) => sum + stats[r], 0);
-  const ref = useRef<HTMLElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
-
-  useGSAP(
-    () => {
-      if (!ref.current || prefersReducedMotion()) return;
-      gsap.from(ref.current, { opacity: 0, scale: 0.92, duration: 0.35, ease: 'back.out(1.6)' });
-      if (listRef.current) {
-        gsap.from(listRef.current.querySelectorAll('li'), {
-          opacity: 0,
-          y: 12,
-          duration: 0.25,
-          stagger: 0.06,
-          ease: 'power2.out',
-          delay: 0.2,
-        });
-      }
-    },
-    { scope: ref },
-  );
+  const recalled = stats.GOOD + stats.EASY;
+  const accuracy = total > 0 ? Math.round((recalled / total) * 100) : 0;
 
   return (
-    <section ref={ref} aria-label="Session summary" className="rounded-2xl border border-surface-800 bg-surface-900 p-6 text-center shadow-lg shadow-black/20">
-      <h2 className="text-lg font-medium">Session complete</h2>
-      <p className="mt-1 text-surface-400">{total} card{total === 1 ? '' : 's'} reviewed</p>
-      <ul ref={listRef} className="mt-4 grid grid-cols-4 gap-2 text-sm">
-        {RATINGS.map((r) => (
-          <li key={r} className={`rounded-xl border px-2 py-3 ${RATING_COLORS[r]}`}>
-            <p className="text-lg font-semibold">{stats[r]}</p>
-            <p>{RATING_LABELS[r]}</p>
-          </li>
+    <motion.section
+      initial={{ opacity: 0, scale: 0.94, y: 16 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={spring}
+      aria-label="Session summary"
+      className="relative overflow-hidden rounded-3xl border border-surface-800 bg-surface-900 p-8 text-center shadow-xl"
+    >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 left-1/2 size-64 -translate-x-1/2 rounded-full bg-emerald-400/10 blur-3xl"
+      />
+      <svg viewBox="0 0 52 52" aria-hidden="true" className="mx-auto size-16 text-accent-emerald">
+        <motion.circle
+          cx="26"
+          cy="26"
+          r="23"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.5, ease: 'easeOut' }}
+        />
+        <motion.path
+          d="M15.5 27.5l7 7 14-15"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.35, delay: 0.4, ease: 'easeOut' }}
+        />
+      </svg>
+      <h2 className="mt-4 text-2xl font-semibold tracking-tight">Session complete</h2>
+      <p className="mt-1 text-surface-400">
+        <CountUp value={total} className="font-semibold text-surface-200" /> card{total === 1 ? '' : 's'} reviewed
+        {total > 0 && <> · {accuracy}% recalled</>}
+      </p>
+      <ul className="mt-6 grid grid-cols-4 gap-2 text-sm">
+        {RATINGS.map((r, i) => (
+          <motion.li
+            key={r}
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springSnappy, delay: 0.25 + i * 0.06 }}
+            className={`rounded-2xl border px-2 py-3 ${RATING_COLORS[r]}`}
+          >
+            <p className="text-xl font-semibold tabular-nums">{stats[r]}</p>
+            <p className="text-xs font-medium uppercase tracking-wide opacity-80">{RATING_LABELS[r]}</p>
+          </motion.li>
         ))}
       </ul>
-      <div className="mt-6 flex justify-center gap-2">
+      <div className="mt-8 flex justify-center gap-2">
         <Link
           to="/courses"
-          className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-11 content-center rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           Back to courses
         </Link>
         <button
           type="button"
           onClick={onReviewMore}
-          className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-11 rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-950/50 transition-[background-color,transform] hover:bg-indigo-400 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           Review more
         </button>
       </div>
-    </section>
+    </motion.section>
   );
 }
 
@@ -183,7 +223,6 @@ export function ReviewSession() {
   const [stats, setStats] = useState<Record<ReviewRating, number>>({ AGAIN: 0, HARD: 0, GOOD: 0, EASY: 0 });
   const revealedAt = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const cardBackRef = useRef<HTMLDivElement>(null);
   const autoplayRef = useRef<HTMLAudioElement>(null);
   const hintRefs = useRef<Partial<Record<ReviewRating, HTMLDivElement | null>>>({});
 
@@ -256,15 +295,6 @@ export function ReviewSession() {
       }
     },
     { dependencies: [index], scope: cardRef },
-  );
-
-  // Reveal slide-in: CardBack appears from below when answer is shown.
-  useGSAP(
-    () => {
-      if (!revealed || !cardBackRef.current || prefersReducedMotion()) return;
-      gsap.from(cardBackRef.current, { opacity: 0, y: 10, duration: 0.2, ease: 'power2.out' });
-    },
-    { dependencies: [revealed] },
   );
 
   const advance = (rating: ReviewRating, current: ReviewCard) => {
@@ -423,6 +453,7 @@ export function ReviewSession() {
   }, [card, revealed]);
 
   return (
+    <MotionConfig reducedMotion="user">
     <section aria-label="Review session" className="space-y-4">
       <h2 className="text-sm font-medium uppercase tracking-wide text-surface-400">Review</h2>
 
@@ -473,7 +504,7 @@ export function ReviewSession() {
       {isError && <p aria-live="polite" className="text-accent-red">Couldn't load due cards.</p>}
 
       {queue && queue.length === 0 && (
-        <div className="rounded-2xl border border-surface-800 bg-surface-900 p-6 text-center shadow-lg shadow-black/20">
+        <div className="rounded-3xl border border-surface-800 bg-surface-900 p-8 text-center shadow-xl">
           <p>All caught up — nothing due right now.</p>
           <Link
             to="/courses"
@@ -497,9 +528,19 @@ export function ReviewSession() {
 
       {queue && card && entry && (
         <>
-          <p className="text-center text-sm text-surface-500">
-            {index + 1} / {queue.length}
-          </p>
+          <div className="flex items-center gap-3 px-1">
+            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-800" aria-hidden="true">
+              <motion.div
+                className="h-full rounded-full bg-indigo-500"
+                initial={false}
+                animate={{ width: `${(index / queue.length) * 100}%` }}
+                transition={spring}
+              />
+            </div>
+            <p className="text-xs font-medium tabular-nums text-surface-400">
+              {index + 1} / {queue.length}
+            </p>
+          </div>
 
           {(entry.enrichmentStatus === 'PENDING' || entry.enrichmentStatus === 'ENRICHING') && (
             <p
@@ -522,64 +563,93 @@ export function ReviewSession() {
             ref={cardRef}
             role="group"
             aria-label="Flashcard"
-            className="relative touch-none select-none rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20"
+            className="relative touch-none select-none overflow-hidden rounded-3xl border border-surface-800 bg-surface-900 p-6 shadow-xl"
           >
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent"
+            />
             {RATINGS.map((r) => (
               <div
                 key={r}
                 ref={(el) => { hintRefs.current[r] = el; }}
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl opacity-0"
+                className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-3xl opacity-0"
               >
-                <span className={`rounded-xl px-5 py-2 text-2xl font-bold ${RATING_BADGE_COLORS[r]}`}>
+                <span className={`rounded-xl px-5 py-2 text-2xl font-bold backdrop-blur-sm ${RATING_BADGE_COLORS[r]}`}>
                   {RATING_LABELS[r]}
                 </span>
               </div>
             ))}
-            <CardFront entry={entry} />
+            <CardFront entry={entry} revealed={revealed} />
             {revealed && (
-              <div ref={cardBackRef}>
+              <motion.div
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={spring}
+              >
                 <CardBack
                   entry={entry}
                   detail={detail}
                   onSelectWord={(w) => navigate(`/word/${encodeURIComponent(w)}`)}
                 />
-              </div>
+              </motion.div>
             )}
           </div>
 
-          {!revealed && (
-            <button
-              type="button"
-              onClick={reveal}
-              className="min-h-11 w-full rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              Show answer
-            </button>
-          )}
-
-          {!revealed && (
-            <p className="text-center text-xs text-surface-500">Press Space or Enter to reveal</p>
-          )}
-
-          <div className="grid grid-cols-4 gap-2">
-            {RATINGS.map((r) => (
-              <button
-                key={r}
-                type="button"
-                onClick={() => rate(r)}
-                className={`min-h-11 rounded-xl border px-2 py-2.5 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${RATING_COLORS[r]}`}
-              >
-                {RATING_LABELS[r]}
-              </button>
-            ))}
+          <div className="min-h-[4.75rem]">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {!revealed ? (
+                <motion.div
+                  key="show-answer"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={springSnappy}
+                  className="space-y-2"
+                >
+                  <motion.button
+                    type="button"
+                    onClick={reveal}
+                    whileTap={{ scale: 0.97 }}
+                    className="min-h-12 w-full rounded-2xl bg-indigo-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  >
+                    Show answer
+                  </motion.button>
+                  <p className="text-center text-xs text-surface-500">Press Space or Enter to reveal</p>
+                </motion.div>
+              ) : (
+                <motion.div key="ratings" className="space-y-2">
+                  <div className="grid grid-cols-4 gap-2">
+                    {RATINGS.map((r, i) => (
+                      <motion.button
+                        key={r}
+                        type="button"
+                        onClick={() => rate(r)}
+                        initial={{ opacity: 0, y: 14, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ ...springSnappy, delay: i * 0.045 }}
+                        whileTap={{ scale: 0.93 }}
+                        className={`flex min-h-12 flex-col items-center justify-center rounded-2xl border px-2 py-2 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${RATING_COLORS[r]}`}
+                      >
+                        {RATING_LABELS[r]}
+                        <span aria-hidden="true" className="mt-0.5 hidden text-[10px] font-normal opacity-60 sm:block">
+                          {RATING_KEY_HINTS[r]}
+                        </span>
+                      </motion.button>
+                    ))}
+                  </div>
+                  <p className="text-center text-xs text-surface-500">
+                    Swipe or press arrow keys: ← Again · → Good · ↑ Easy · ↓ Hard
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-
-          <p className="text-center text-xs text-surface-500">
-            Swipe or press arrow keys: ← Again · → Good · ↑ Easy · ↓ Hard
-          </p>
         </>
       )}
     </section>
+    </MotionConfig>
   );
 }

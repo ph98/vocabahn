@@ -109,13 +109,3 @@ FROM "WordForm" wf JOIN "LexiconEntry" le ON le.id = wf."entryId"
 WHERE wf.form = 'Häuser';
 ```
 
----
-
-## 6. AI Agent Guidelines (CLAUDE.md guidelines)
-
-When working as an AI developer in this repository:
-- **PRD as Source of Truth**: The [PRD](prd.md) captures approved requirements. Refer to it rather than re-deriving features.
-- **Large Dataset Safety**: Never load or print the entirety of the 938 MB `kaikki.org-dictionary-German-words.jsonl` file directly. Read it streaming or parse short samples (e.g. `head -n 5`).
-- **Shared Package Contract**: Ensure any changes to API inputs or outputs are reflected in the Zod schemas located in `packages/shared/` before updating endpoints.
-- **GSAP and Gestures**: Maintain a strict focus on mobile-first interaction. Ensure all swipe gestures have equivalent standard button alternatives, and animations are bypassed if `prefers-reduced-motion` is enabled.
-- **Environment Boundaries**: Ensure `.env` and `service-account.json` are excluded from git.

@@ -18,8 +18,9 @@
   /* Vibrant Accents */
   --color-accent-red: light-dark(#EF4444, #F87171);
   --color-accent-indigo: light-dark(#4F46E5, #818CF8);
-  --color-accent-amber: light-dark(#F59E0B, #FBBF24);
-  --color-accent-emerald: light-dark(#10B981, #34D399);
+  --color-accent-amber: light-dark(#D97706, #FBBF24);
+  --color-accent-emerald: light-dark(#059669, #34D399);
+  --color-accent-sky: light-dark(#0284C7, #38BDF8);
 
   --font-sans: 'Plus Jakarta Sans', sans-serif;
   --font-serif: 'Merriweather', serif;

@@ -37,7 +37,12 @@ export async function fetchMe(): Promise<User | null> {
     const { data } = await api.get('/auth/me');
     return userSchema.parse(data);
   } catch (error) {
-    if (!isAxiosError(error) || error.response?.status !== 401) throw error;
+    if (!isAxiosError(error) || error.response?.status !== 401) {
+      // Rate-limited or transient failure: settle into the signed-out state
+      // instead of throwing — a throw makes react-query retry, and stacked
+      // retries across remounts can storm the API into its throttler.
+      return null;
+    }
   }
 
   try {

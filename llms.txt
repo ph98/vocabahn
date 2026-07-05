@@ -1,0 +1,22 @@
+# Vocabahn
+
+German vocabulary learning app: a shared AI-enriched dictionary, FSRS spaced-repetition flashcards, and curated courses — built as a mobile-first PWA.
+
+## About this Project
+Vocabahn is an "AI-first" language learning platform. It combines traditional spaced-repetition algorithms (FSRS) with deep LLM enrichment to provide a seamless learning experience.
+
+## Tech Stack
+- Backend: NestJS 11, Prisma, PostgreSQL, Redis, BullMQ
+- Frontend: React 19, Vite, Tailwind CSS 4, TanStack Query, GSAP
+- Shared: Zod schemas (`packages/shared/`)
+
+## Documentation
+- Product Requirements (PRD): `docs/prd.md`
+- Developer Guide: `docs/development.md`
+- Operations Guide: `docs/operations.md`
+- AI & Knowledge Architecture: `docs/ai_architecture.md`
+- Model Context Protocol (MCP): `docs/mcp_integration.md`
+- Project Backlog: `docs/backlog.md`
+
+## Notes for AI Assistants
+Please refer to `.agents/AGENTS.md` for specific development rules regarding safety, architecture, and UI/UX conventions.

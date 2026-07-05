@@ -30,10 +30,14 @@ pnpm dev                      # Spin up backend (3000) and frontend (5173) in wa
 
 ## Documentation Index
 
-Detailed documentation files have been consolidated into the `docs/` folder:
+Detailed documentation files have been consolidated into the `docs/` folder, structured around our AI-first approach:
 
 *   **[Product Requirements (PRD)](docs/prd.md)**: Product goals, detailed feature specifications, user stories, and target stack decisions.
-*   **[Developer & Contributor Guide](docs/development.md)**: Setup workflows, local diagnostic tools, database seeding/ingestion commands, and AI agent instructions.
-*   **[Operations & Infrastructure Guide](docs/operations.md)**: Server deployment guidelines, environment variables reference, custom domain TLS configuration, backups setup, and system monitoring.
+*   **[AI & Knowledge Architecture](docs/ai_architecture.md)**: How the custom knowledge model interacts with FSRS flashcards and LLM-driven enrichment.
+*   **[Model Context Protocol (MCP)](docs/mcp_integration.md)**: Specifications for how external AI agents and assistants integrate with Vocabahn.
+*   **[Developer & Contributor Guide](docs/development.md)**: Local setup workflows, diagnostic tools, and database seeding commands.
+*   **[Operations & Infrastructure Guide](docs/operations.md)**: Server deployment guidelines, environment variables, TLS, and monitoring.
 *   **[Project Backlog & Roadmap](docs/backlog.md)**: Feature backlog, task roadmap, UI stories, and completed delivery history.
 *   **[Changelog](docs/changelog.md)**: Detailed historical versioning details.
+
+> **AI Assistants**: Please refer to `llms.txt` and `.agents/AGENTS.md` for context and codebase rules before writing code or running commands.

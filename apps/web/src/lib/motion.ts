@@ -7,6 +7,11 @@ export function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+/** Shared spring presets so Motion animations feel consistent app-wide. */
+export const spring = { type: 'spring', stiffness: 380, damping: 30 } as const;
+export const springSoft = { type: 'spring', stiffness: 170, damping: 26 } as const;
+export const springSnappy = { type: 'spring', stiffness: 500, damping: 32 } as const;
+
 /** Fades and slides an element in on mount/dependency change. No-op under prefers-reduced-motion. */
 export function useFadeIn(ref: RefObject<HTMLElement | null>, deps: unknown[] = []) {
   useGSAP(
