@@ -2,6 +2,10 @@
 
 This document serves as the single source of truth for the Vocabahn roadmap, organizing pending tasks, detailed UI user stories, and completed development history.
 
+> **Note (2026-07):** The AI-first re-architecture is planned separately in
+> [ai_first_replan.md](./ai_first_replan.md) (with `/CONTEXT.md` and
+> `docs/adr/`). Items below may be superseded by its phases.
+
 ---
 
 ## 1. Active Backlog
