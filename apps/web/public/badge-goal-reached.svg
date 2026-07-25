@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none">
+  <circle cx="80" cy="80" r="70" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="4" />
+  <path d="M 80 35 L 93 62 L 123 66 L 101 87 L 106 117 L 80 103 L 54 117 L 59 87 L 37 66 L 67 62 Z" fill="#10b981" />
+  <path d="M 68 80 L 76 88 L 94 70" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <text x="80" y="140" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="12" font-weight="800" fill="#34d399" letter-spacing="1">GOAL COMPLETE</text>
+</svg>

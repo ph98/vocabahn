@@ -2,14 +2,17 @@ import { useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { IllustrationDictionary, IllustrationFlashcard, IllustrationStreak, IllustrationTrophy } from './Illustrations';
+import { CEFRBadge } from './CEFRBadge';
 import { SignInOptions } from './ProfilePage';
 
 const FEATURES = [
   { Illus: IllustrationDictionary, title: 'AI-enriched dictionary', desc: 'Every German word comes with examples, images, audio, memory hooks, and level tags — all generated automatically.' },
   { Illus: IllustrationFlashcard, title: 'Spaced-repetition flashcards', desc: 'FSRS-powered scheduling surfaces cards at exactly the right moment so you review less and remember more.' },
-  { Illus: IllustrationStreak, title: 'Progress you can see', desc: 'Streaks, a GitHub-style heatmap, and per-course stats keep you motivated on the journey from A1 to C1.' },
+  { Illus: IllustrationStreak, title: 'Progress you can see', desc: 'Streaks, a GitHub-style heatmap, and per-course stats keep you motivated on the journey from A1 to C2.' },
   { Illus: IllustrationTrophy, title: 'Feels native on mobile', desc: 'Install as a PWA. Swipe cards to rate, pull to refresh, study offline — it works like a native app, not a website.' },
 ];
+
+const CEFR_LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
 
 export function LandingPage() {
   const container = useRef<HTMLDivElement>(null);
@@ -58,7 +61,10 @@ export function LandingPage() {
       <div className="relative z-10 flex-1 flex flex-col justify-center p-8 lg:p-16 lg:pr-12">
         <div className="max-w-3xl">
           <div className="hero-element flex items-center gap-6 mb-8">
-            <img src="/logo.png" alt="Vocabahn" className="h-20 w-auto object-contain rounded-2xl shadow-xl hover:scale-105 transition-transform duration-500" />
+            <picture>
+              <source srcSet="/logo-dark.svg" type="image/svg+xml" />
+              <img src="/logo.png" alt="Vocabahn" className="h-20 w-auto object-contain rounded-2xl shadow-xl hover:scale-105 transition-transform duration-500" />
+            </picture>
             <IllustrationDictionary className="h-16 w-auto text-accent-indigo drop-shadow-xl hover:scale-110 transition-transform duration-500 hidden sm:block" />
           </div>
           
@@ -67,9 +73,17 @@ export function LandingPage() {
             <span className="text-transparent bg-clip-text bg-gradient-to-br from-accent-indigo via-indigo-400 to-accent-emerald">word by word.</span>
           </h1>
           
-          <p className="hero-element text-xl text-surface-300 max-w-xl font-medium leading-relaxed mb-12">
+          <p className="hero-element text-xl text-surface-300 max-w-xl font-medium leading-relaxed mb-8">
             Vocabahn is a free, open-source German vocabulary app with an AI-enriched dictionary and FSRS spaced-repetition flashcards.
           </p>
+
+          {/* CEFR Level Badges */}
+          <div className="hero-element flex flex-wrap items-center gap-3 mb-10">
+            <span className="text-xs font-bold uppercase tracking-wider text-surface-400 mr-2">CEFR Levels:</span>
+            {CEFR_LEVELS.map((level) => (
+              <CEFRBadge key={level} level={level} size="sm" />
+            ))}
+          </div>
 
           <div className="grid gap-6 sm:grid-cols-2">
             {FEATURES.map(({ Illus, title, desc }) => (
@@ -85,8 +99,12 @@ export function LandingPage() {
             ))}
           </div>
 
+          {/* Hero Illustration with WebP / PNG fallback */}
           <div className="hero-element mt-12 w-full rounded-3xl overflow-hidden shadow-2xl border border-surface-700/50 relative">
-            <img src="/hero-bg.png" alt="Accelerate your language journey" className="w-full h-auto object-cover max-h-[300px]" />
+            <picture>
+              <source srcSet="/hero-bg.webp" type="image/webp" />
+              <img src="/hero-bg.png" alt="Accelerate your language journey" className="w-full h-auto object-cover max-h-[300px]" />
+            </picture>
             <div className="absolute inset-0 bg-gradient-to-t from-surface-900/90 to-transparent pointer-events-none" />
           </div>
         </div>
@@ -97,7 +115,10 @@ export function LandingPage() {
         <div className="w-full max-w-sm mx-auto">
           <div className="mb-10 text-center">
             <div className="inline-flex items-center justify-center size-16 rounded-2xl bg-surface-900 shadow-md border border-surface-700/50 overflow-hidden mb-6">
-              <img src="/icon-192.png" alt="Vocabahn Logo" className="w-full h-full object-cover" />
+              <picture>
+                <source srcSet="/icon-192.png" type="image/png" />
+                <img src="/icon-192.png" alt="Vocabahn Logo" className="w-full h-full object-cover" />
+              </picture>
             </div>
             <h2 className="text-2xl font-bold tracking-tight text-white">Join Vocabahn</h2>
             <p className="mt-2 text-surface-400 text-sm">Start your German learning journey today</p>

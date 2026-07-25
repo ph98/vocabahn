@@ -1,4 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#0a0a0a"/>
-  <path d="M166 176 L256 352 L346 176" fill="none" stroke="#6366f1" stroke-width="56" stroke-linecap="round" stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <rect width="512" height="512" fill="#090d16" />
+  <g transform="translate(64, 64) scale(0.75)">
+    <path d="M 112 144 L 236 392 C 244 408 268 408 276 392 L 400 144 C 408 128 392 112 374 124 L 256 280 L 138 124 C 120 112 104 128 112 144 Z" fill="url(#maskGrad)" />
+    <circle cx="384" cy="128" r="24" fill="#10b981" />
+  </g>
+  <defs>
+    <linearGradient id="maskGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+  </defs>
 </svg>
