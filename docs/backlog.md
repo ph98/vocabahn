@@ -1,14 +1,29 @@
 # Project Backlog & Roadmap
 
-This document serves as the single source of truth for the Vocabahn roadmap, organizing pending tasks, detailed UI user stories, and completed development history.
-
-> **Note (2026-07):** The AI-first re-architecture is planned separately in
-> [ai_first_replan.md](./ai_first_replan.md) (with `/CONTEXT.md` and
-> `docs/adr/`). Items below may be superseded by its phases.
+This document serves as the single source of truth for the Vocabahn roadmap, organizing active epics, detailed UI user stories, and completed development history.
 
 ---
 
 ## 1. Active Backlog
+
+### CEFR Alignment & Smart Prior Knowledge Estimation
+- [ ] **1.1 Complete CEFR A1–C2 Vocabulary Dataset**
+  - Populate complete canonical word lists for all CEFR levels (`A1`, `A2`, `B1`, `B2`, `C1`, `C2`) using `kaikki.org` dictionary and `de_full.txt` frequency ranks.
+  - Ensure every word entry includes lemma, part-of-speech (POS), CEFR tag, frequency rank, and English translation stub.
+  - Update Zod schemas in `packages/shared/` and Prisma models to support explicit CEFR level tagging (`A1`–`C2`) and frequency score priors.
+- [ ] **1.2 Onboarding & Prior Knowledge Calibration**
+  - Prompt new users on login to select their self-assessed German proficiency (`A1` to `C2`) and primary study goal.
+  - Implement an adaptive 2–3 minute diagnostic quiz sampling words across frequency bands to pinpoint the learner's actual vocabulary frontier.
+  - Initialize the per-user Knowledge Ledger with `Assumed Known` state for vocabulary below the calibrated frontier.
+  - Provide a fast tap/select interface allowing users to review, confirm, or bulk-mark familiar words.
+- [ ] **1.3 Smart Knowledge Engine & Anti-Spam Relevancy Filtering**
+  - Filter out `Assumed Known` and `Evidenced Known` words from daily card queues, micro-stories, and drills, presenting only **Frontier Words** and **Due** items.
+  - Self-healing demotion: if a user triggers a negative signal on an `Assumed Known` word, immediately demote it into active study.
+  - Seed initial FSRS memory parameters based on frequency rank and estimated familiarity.
+- [ ] **1.4 Personalised Dashboard & Re-calibration UX**
+  - Display personalized frontier words and recommended learning activities tailored strictly to estimated proficiency.
+  - Render dynamic progress bars showing breakdown across A1–C2 levels, distinguishing between estimated known words and evidenced masteries.
+  - Allow users to retake the Calibration Quiz or manually adjust their starting CEFR level in settings at any time.
 
 ### Decks & Courses
 - [ ] **Seamless Course Overview**: Allow users to browse and view their progress in course structures without requiring an explicit "enrollment" action, leveraging overlap logic.
@@ -132,9 +147,10 @@ This document serves as the single source of truth for the Vocabahn roadmap, org
 
 ---
 
-## 3. Completed Backlog History
+## 3. Completed Development History
 
 The following items represent previously completed requirements and are logged here for archive purposes:
+- **Documentation Restructure & Cleanup**: Consolidated fragmented PRD files into `docs/prd.md`, architecture docs into `docs/architecture.md`, operations/export guides into `docs/operations.md`, and domain terms into `docs/domain.md`. Single compose standard `docker-compose.prod.yml`.
 - **Server Deployment**: Configured one-step deployment pipelines, production-ready SSL termination, backup policies, and logs.
 - **Multilayer Backup System**: Delivered automated pre-deploy dumps, daily chron-scheduled backups, and S3-compatible remote sync tasks.
 - **Auto-Versioning**: Configured release tag scripts and a user-visible changelog page.

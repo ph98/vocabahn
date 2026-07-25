@@ -1,6 +1,6 @@
 # Operations & Infrastructure Guide
 
-This document covers production deployment setup, domain configuration, monitoring, and database backup architectures.
+This document covers production deployment setup, domain configuration, monitoring, multi-layer backups, and database export/import procedures.
 
 ---
 
@@ -127,17 +127,17 @@ The following environment variables are configured in the `.env` file at the rep
    0 3 * * * certbot renew --quiet && \
      cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem ~/vocabahn/ssl/cert.pem && \
      cp /etc/letsencrypt/live/yourdomain.com/privkey.pem ~/vocabahn/ssl/key.pem && \
-     docker compose -f ~/vocabahn/docker-compose.production.yml restart web
+     docker compose -f ~/vocabahn/docker-compose.prod.yml restart web
    ```
 
 ---
 
 ## 5. Post-Deploy Database Ingestion
 
-Once the containers are running in production for the first time, execute the seeding pipeline:
+Once containers are running in production for the first time, execute the seeding pipeline via `scripts/seed-production.sh` or manually:
 ```bash
 # Exec into the NestJS API container
-docker compose -f docker-compose.production.yml exec api sh
+docker compose -f docker-compose.prod.yml exec api sh
 
 # Inside container run:
 pnpm run ingest:lexicon     # Parses and stores Wiktextract dump (takes ~20-30 min)
@@ -155,7 +155,7 @@ Vocabahn utilizes a 3-layer approach to safeguard database information:
 ```
 Layer 1: Pre-Deploy Snapshot ──→ Triggered automatically by scripts/deploy.sh
 Layer 2: Daily Scheduled Dump ─→ Configured via Server Cron (running scripts/backup.sh)
-Layer 3: Offsite S3 Sync ──────→ Optional; synced to clouds (S3/R2/B2)
+Layer 3: Offsite S3 Sync ──────→ Optional; synced to cloud buckets (S3/R2/B2)
 ```
 
 ### Coverage Scope
@@ -163,10 +163,9 @@ Layer 3: Offsite S3 Sync ──────→ Optional; synced to clouds (S3/R2
 - **Redis (Optional)**: BullMQ queues are backed up using `BGSAVE` to `./backups/*.rdb`. (Failing over to a fresh cache is acceptable since queues are ephemeral-safe).
 - **Excluded Items**: Static sources (938 MB Wiktextract) and generated asset links are not backed up. They can be re-downloaded or regenerated.
 
-### Layer 2 Setup (Daily Scheduled Dumps)
+### Daily Scheduled Dumps (Layer 2)
 Configure a daily cron script on the server:
 ```bash
-# Open crontab:
 crontab -e
 
 # Run at 2 AM daily and write to logs:
@@ -174,55 +173,95 @@ crontab -e
 ```
 *Note: Backups older than `BACKUP_KEEP_DAYS` (default: 14) are automatically pruned by the script.*
 
-### Layer 3 Setup (S3 Compatible Storage Sync)
+### Cloud Storage Sync (Layer 3)
 1. Set the destination bucket name in `.env`:
    ```env
    BACKUP_S3_BUCKET=your-backup-bucket
    ```
-2. Install and configure the AWS CLI on the host server (`aws configure`), providing keys and regions.
-3. Once configured, `scripts/backup.sh` will upload newly generated archive packages to the remote storage.
+2. Install and configure the AWS CLI on the host server (`aws configure`).
+3. Once configured, `scripts/backup.sh` will upload newly generated archive packages to remote storage.
 
 ---
 
-## 7. Recovery Procedures
+## 7. Database Export, Import & Migration Guide
 
-*For detailed instructions on exporting/importing databases between different host environments (e.g. Local ↔ VPS, VPS ↔ VPS), see the dedicated [Database Export & Import Guide](database_export_import.md).*
+### 7.1 Exporting the Database
+- **Via Vocabahn Script (Docker / VPS)**:
+  ```bash
+  bash scripts/backup.sh my_export
+  ```
+  Generates `backups/my_export_postgres.sql.gz`.
+
+- **Manual `pg_dump` in Docker**:
+  ```bash
+  docker compose -f docker-compose.prod.yml exec -T db sh -c 'pg_dump -U vocabahn -d vocabahn' | gzip > vocabahn_backup.sql.gz
+  ```
+
+- **Manual `pg_dump` (Standalone PostgreSQL)**:
+  ```bash
+  pg_dump -h localhost -p 5432 -U vocabahn -F c -b -v -f vocabahn_backup.dump vocabahn
+  ```
+
+### 7.2 Transferring Dumps
+- **Via `scp`**:
+  ```bash
+  scp backups/my_export_postgres.sql.gz user@target-server-ip:~/vocabahn/backups/
+  ```
+- **Via AWS S3**:
+  ```bash
+  aws s3 cp backups/my_export_postgres.sql.gz s3://your-backup-bucket/backups/
+  ```
+
+### 7.3 Importing the Database into Target System
+> [!WARNING]
+> Importing a database dump will **overwrite existing tables and data** in the target `vocabahn` database. Ensure you have backed up any critical data beforehand.
+
+- **Via Vocabahn Restore Script (Docker Target)**:
+  ```bash
+  bash scripts/restore.sh backups/my_export_postgres.sql.gz
+  ```
+  The script automatically stops API traffic, drops/recreates `vocabahn`, streams the gzipped SQL dump into PostgreSQL, runs pending Prisma migrations (`prisma migrate deploy`), and restarts services.
+
+- **Manual Import in Docker**:
+  ```bash
+  docker compose -f docker-compose.prod.yml stop api
+  docker compose -f docker-compose.prod.yml exec -T db psql -U vocabahn -d postgres -c "DROP DATABASE IF EXISTS vocabahn;"
+  docker compose -f docker-compose.prod.yml exec -T db psql -U vocabahn -d postgres -c "CREATE DATABASE vocabahn OWNER vocabahn;"
+  gunzip -c backups/my_export_postgres.sql.gz | docker compose -f docker-compose.prod.yml exec -T db psql -U vocabahn -d vocabahn
+  docker compose -f docker-compose.prod.yml start api
+  docker compose -f docker-compose.prod.yml exec -T api pnpm exec prisma migrate deploy
+  docker compose -f docker-compose.prod.yml up -d
+  ```
+
+### 7.4 Troubleshooting Empty Dump Files
+A **20-byte file** indicates an empty `.gz` header caused by database user mismatch (e.g. `pg_dump -U vocabahn` run against a DB configured with `POSTGRES_USER=postgres`). `scripts/backup.sh` and `scripts/restore.sh` set `set -eo pipefail` and auto-detect `$POSTGRES_USER` to guarantee non-zero valid dumps.
+
+---
+
+## 8. Recovery Procedures
 
 ### Restore Database to Pre-Deploy State
-If a container deploy goes wrong, revert the code state and roll back the DB in minutes:
+If a container deployment requires rollback:
 ```bash
 git revert HEAD
 bash scripts/restore.sh backups/pre-deploy_postgres.sql.gz
 bash scripts/deploy.sh
 ```
 
-### General Database Restore
-To overwrite the active production database with an archived snapshot:
-```bash
-bash scripts/restore.sh backups/2026-06-16_02-00_postgres.sql.gz
-```
-The script stops incoming API traffic, drops and recreates the target database, streams the gzipped backup SQL, applies Prisma migrations, and restarts the backend process.
-
-### Download Backup from Cloud Storage
-```bash
-aws s3 cp s3://your-backup-bucket/backups/2026-06-16_02-00_postgres.sql.gz backups/
-```
-
 ### Verification
-Run tests monthly to ensure that database backup files are readable:
+Verify database backup stream integrity:
 ```bash
-# Verify the gzip stream header parses correctly:
 LATEST=$(ls -t backups/*_postgres.sql.gz | head -1)
 gunzip -c "$LATEST" | head -100 # Should output standard PostgreSQL DDL statements
 ```
 
 ---
 
-## 8. Infrastructure Monitoring
+## 9. Infrastructure Monitoring
 
-| Target | command | Description |
+| Target | Command | Description |
 | :--- | :--- | :--- |
 | **API health checks** | `curl https://yourdomain.com/api/v1/health` | Verifies Redis and DB statuses |
-| **Log streams** | `docker compose -f docker-compose.production.yml logs -f api` | Tail logs of the API container |
+| **Log streams** | `docker compose -f docker-compose.prod.yml logs -f api` | Tail logs of the API container |
 | **Admin Panel** | Connect to `https://yourdomain.com:3001/admin` | Web view of models and failures |
-| **Postgres counts** | `docker compose exec db psql -U vocabahn -c "SELECT count(*) FROM \"DictionaryEntry\";"` | Confirm record counts |
+| **Postgres counts** | `docker compose -f docker-compose.prod.yml exec db psql -U vocabahn -c "SELECT count(*) FROM \"DictionaryEntry\";"` | Confirm record counts |

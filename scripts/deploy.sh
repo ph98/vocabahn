@@ -5,7 +5,7 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE="docker compose -f $REPO_DIR/docker-compose.production.yml"
+COMPOSE="docker compose -f $REPO_DIR/docker-compose.prod.yml"
 SETUP_MODE=false
 
 for arg in "$@"; do

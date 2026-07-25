@@ -1,24 +1,20 @@
 # Product Requirements Document (PRD)
 
 **Status:** Approved for Implementation  
-**Latest Update:** 2026-06-25  
+**Latest Update:** 2026-07-25  
 
-Vocabahn is a German vocabulary learning application combining a community-shared dictionary, spaced-repetition flashcards, and curated course modules. This document defines the comprehensive product requirements, design criteria, and architectural decisions.
-
-> **Note (2026-07):** This document describes the app as built. The AI-first
-> re-architecture ([ai_first_replan.md](./ai_first_replan.md)) has its own
-> per-feature PRDs under [docs/prd/](./prd/).
+Vocabahn is a German vocabulary learning application combining a community-shared dictionary, spaced-repetition flashcards, curated course modules, and an AI-first learning experience (comprehensible input micro-stories, production drills, and an adaptive deterministic planner). This document serves as the single canonical Product Requirements Document and source of truth for all product specifications and feature designs.
 
 ---
 
 ## 1. Executive Summary
 
-Vocabahn is built upon three core pillars:
+Vocabahn is built upon three core pillars and an AI-first architecture:
 1. **Community-Shared Dictionary**: Every German word looked up by any user is enriched exactly once (translations, grammar, example sentences, emoji, image, audio) and cached centrally, preventing redundant external API calls.
-2. **Spaced-Repetition Flashcards**: Users study vocabulary using flashcards powered by the **FSRS (Free Spaced Repetition Scheduler)** algorithm.
-3. **Curated Courses**: Structured word lists organized by CEFR levels (A1–B2) and thematic topics seed cards into user decks.
+2. **Spaced-Repetition & Knowledge Model**: Users study vocabulary using flashcards and AI experiences powered by the **FSRS (Free Spaced Repetition Scheduler)** algorithm operating below a higher-level **Knowledge Model** that tracks per-user knowledge items and eliminates unnecessary reviews of familiar words.
+3. **Curated Courses & AI-First Experiences**: Structured word lists organized by CEFR levels (A1–B2) seed cards, while AI-generated Micro-Stories (comprehensible input) and Production Drills serve as primary review mechanisms.
 
-This version is a **rebuild** focused on clean monorepo architecture, lower operational cost, showcase-grade frontend polish (gestures, animations, accessibility), and a custom **knowledge model** to bypass reviewing words a learner already knows.
+This application is built with a clean monorepo architecture, low operational cost, showcase-grade frontend polish (gestures, animations, accessibility), and a custom **knowledge model** as its architectural hub.
 
 ---
 
@@ -31,16 +27,18 @@ This version is a **rebuild** focused on clean monorepo architecture, lower oper
 
 ### Goals
 - **G1 — Native-Quality PWA**: Smooth transitions, touch gestures, standalone display, and offline capabilities to make the app feel indistinguishable from a native mobile application.
-- **G2 — Feature Parity & Improvements**: Ensure all functionality from the original app exists in the rebuilt stack alongside structural improvements.
+- **G2 — Feature Parity & Improvements**: Ensure all core vocabulary functionality exists alongside structural AI-first improvements.
 - **G3 — Efficient Ingestion & Caching**: Cache all AI enrichments, images, and Text-to-Speech audio so they are generated once and stored forever.
 - **G4 — Clean, Unified Contract**: End-to-end type safety with shared Zod schemas between NestJS and React.
 - **G5 — Smart Review Scheduling**: Skip or graduate cards automatically using a derived knowledge model, maximizing learning efficiency.
+- **G6 — AI-First Review & Planning**: Service review items through generated Micro-Stories and Production Drills, guided by a deterministic Planner and conversational goal surface.
 
 ### Non-Goals
-- Native app stores (App Store/Play Store) in v1; the API remains token-based and client-agnostic so a native wrapper (React Native) can be developed later.
+- Native app stores (App Store/Play Store) in v1; the API remains token-based and client-agnostic so a native wrapper can be developed later.
 - Subscriptions, payment gateways, or analytic tools.
 - Multi-language support (German to English only).
 - Multi-provider credentials (only Google OAuth and Email OTP magic links are supported).
+- Open-ended unstructured tutor chat or real-time voice synthesis in v1.
 
 ---
 
@@ -66,26 +64,63 @@ The frontend is the primary showcase. Visual polish and responsiveness are core 
 ### 3.3 The Shared Dictionary
 *   **Fuzzy Search**: Instant search over existing dictionary entries using Fuse.js.
 *   **Rich Dictionary Entries**: Includes lemma, part of speech (POS), CEFR estimate, gender (with article color cues), IPA pronunciation, etymology, emoji, examples with highlights, Unsplash image, and Cloud TTS audio.
-*   **On-Demand Enrichment**: Searching an unknown word inserts a stub and triggers a background BullMQ task. The web client polls or listens to SSE, rendering a skeleton shimmer loading state until the word is ready.
+*   **On-Demand Enrichment**: Searching an unknown word inserts a stub and triggers a background BullMQ task. The web client subscribes via SSE, rendering a skeleton shimmer loading state until the word is ready.
 
-### 3.4 Spaced Repetition (FSRS)
+### 3.4 Spaced Repetition (FSRS) & Knowledge Model
 *   **FSRS Integration**: Standard scheduling via `ts-fsrs`.
 *   **Review Session**: Standard flashcard layout with options to flip, review translation/usage, and rate recall (Again, Hard, Good, Easy).
 *   **Listening Mode**: Audio-only prompts where the learner hears the TTS audio first, guesses, and reveals the word.
 *   **Offline Support**: Syncs reviews made while offline. The API reconciles FSRS scheduling sequentially using timestamps from `ReviewLog`.
-
-### 3.5 Spaced Repetition vs. Knowledge Model
-A custom knowledge model sits above FSRS to prevent users from grinding through words they already know:
 *   **Score Prior**: Estimates starting scores using CEFR levels and frequency ranks from `de_full.txt`.
 *   **Auto-Graduation**: Consistently fast, positive answers automatically graduate cards as "known".
 *   **Undo Action**: A dedicated "Known Words" interface lists auto-graduated vocabulary, allowing single-click reversal.
 
 ---
 
-## 4. Technical Architecture
+## 4. AI-First Core Capabilities & Feature Specifications
 
-### Directory Layout
-Vocabahn is structured as a `pnpm` monorepo:
+### 4.1 Evidence Ledger & Evidence Policy (Phase A)
+*   **Immutable Evidence Events**: Every learning signal in the system is recorded as an immutable Evidence Event before updating scheduling state. Events record: user, Knowledge Item (word), source Experience type, evidence kind, outcome, response latency, session ID, and timestamp.
+*   **Evidence Kinds & Strengths**:
+    *   `production-graded` (Production Drill verdict) → **strong**
+    *   `recall-check` (Micro-Check answer) → **medium**
+    *   `card-self-grade` (classic card rating) → **medium (self-reported)**
+    *   `story-tap` (Tap-to-Reveal on Target Word) → **negative only**
+    *   `prior-assumption` (Calibration Quiz / bulk marking) → **prior (not evidence)**
+*   **Policy Rules**: The Evidence Policy aggregates events *per Knowledge Item per Session* into at most one FSRS rating update.
+    *   **Failure Dominance**: Any negative event in a session caps the session rating at `Again`.
+    *   **Graduation Guard**: Auto-Graduation to `Known` requires at least one strong-kind success event (`production-graded`); weak/medium evidence alone can never graduate an item.
+
+### 4.2 Production Drill (Phase B)
+*   **Targeted Production**: Learners demonstrate knowledge by writing German rather than self-grading.
+*   **Drill Exercises**:
+    1. **Translation**: Prompt in EN → type the German word/phrase in context (and DE → EN).
+    2. **Contextual Production**: "Write a sentence using *<word>*" with the word sense pinned.
+*   **Grading Contract**: Graded via the LLM Gateway returning structured verdict `{ verdict: correct | partial | wrong, targetWordOk: boolean, feedback: string }`.
+    *   Scheduling evaluates strictly `targetWordOk` (target word usage/meaning). Ancillary grammar errors (e.g. wrong article or word order elsewhere) are noted in `feedback` coaching without penalizing target word recall.
+*   **Latency & Fallback**: Target grading latency $\le 2\text{s}$ (p90). If grading times out (> 5s), the drill falls back to self-grade and records a `card-self-grade` event.
+
+### 4.3 Micro-Story: Comprehensible Input (Phase B)
+*   **Personalized German Reading**: Generated short German texts (~90–150 words) calibrated to ~95% known vocabulary (Known + Assumed Known), weaving in Due and Frontier words as Target Words.
+*   **Span Validation**: Generated stories self-annotate Target Word spans `{ surfaceForm, offset, lemma, knowledgeItemId }`. Spans are strictly validated against text content before rendering.
+*   **Pre-Generation**: Following session completion, a BullMQ job pre-generates the next session's story.
+*   **Reader UI & Micro-Check**:
+    *   **Tap-to-Reveal**: Tapping a Target Word displays its contextual gloss and emits a `story-tap` (negative) event. Tapping background words performs dictionary lookup without emitting evidence.
+    *   **Micro-Check**: Story ends with 2–4 recall check questions. Correct answers emit `recall-check` (medium) evidence. Reading without completing the Micro-Check produces zero positive evidence.
+
+### 4.4 Deterministic Planner & Goal Dashboard (Phase C)
+*   **Deterministic Core**: A pure function taking due-item count, frontier size, learner time budget, and mix weights to produce the exact session composition (Micro-Story, Production Drill block, residual flashcards). Same inputs always produce identical plans.
+*   **Conversational Surface**:
+    *   **Goal Parsing**: Free-text goal input ("pass Goethe B1 by March") parsed into target level, deadline, and daily time budget.
+    *   **"Today's Plan" Dashboard Card**: Leads the dashboard with plan composition, progress, and a one-line LLM explanation of *why* this plan was chosen.
+    *   **Negotiation**: Quick chips ("I have 5 min", "More stories") and free-text inputs adjust planner core parameters and regenerate the plan instantly.
+*   **Onboarding Additions**: Sequenced flow: Declared CEFR level → Free-text Goal → Interest topics → Adaptive Calibration Quiz (sampling frequency bands to seed `Assumed Known` state).
+
+---
+
+## 5. Technical Architecture
+
+### Monorepo Structure
 ```
 vocabahn/
 ├── apps/
@@ -94,25 +129,25 @@ vocabahn/
 │   └── web/        # React 19 Frontend + Vite
 ├── packages/
 │   └── shared/     # Zod schemas, TypeScript types, API contracts
-└── docs/           # Documentation
+└── docs/           # Consolidated Documentation
 ```
 
-### Stack Components
+### Technology Stack
 *   **Backend**: NestJS 11, Prisma ORM, PostgreSQL.
 *   **Task Queue**: Redis and BullMQ.
 *   **Frontend**: React 19, Tailwind CSS 4, shadcn/ui (Radix primitives), GSAP.
 *   **Data Sources**:
     *   `kaikki.org-dictionary-German-words.jsonl` (~938 MB German Wiktionary dump).
     *   `de_full.txt` (17 MB German corpus frequency list).
-*   **Third-Party APIs**:
-    *   Google Gemini (`gemini-flash-lite-latest` or `gemini-2.0-flash` for re-enrichment).
+*   **AI & External APIs**:
+    *   Google Gemini (`gemini-flash-lite-latest` / `gemini-2.0-flash`) via unified LLM Gateway.
     *   Google Cloud Text-to-Speech (cached locally as `.mp3`).
     *   Unsplash API (cached images with attribution).
 *   **Admin Panel**: Standalone AdminJS server.
 
 ---
 
-## 5. Security Architecture
+## 6. Security Architecture
 *   **Rate Limiting**: Enforced via `@nestjs/throttler` with specific rules for auth and API-intensive endpoints.
 *   **Captcha Validation**: Google reCAPTCHA protects contact forms and high-cost routes.
 *   **HTTP Hardening**: Helmet configuration, strict CORS allowlist, and secure HTTP-only cookies.

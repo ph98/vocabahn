@@ -29,6 +29,10 @@ coverage/
 # AdminJS frontend bundle
 .adminjs/
 
+# Test Reports & Ephemeral Artifacts
+playwright-report/
+test-results/
+
 # Production Deployment
 backups/
 ssl/
