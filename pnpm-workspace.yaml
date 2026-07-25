@@ -2,12 +2,6 @@ packages:
   - apps/*
   - packages/*
 
-overrides:
-  tinymce: '^7.9.3'
-  brace-expansion: '^5.0.8'
-  react-router: '^8.3.0'
-
-
 onlyBuiltDependencies:
   - '@google/genai'
   - '@prisma/client'
@@ -16,3 +10,11 @@ onlyBuiltDependencies:
   - msgpackr-extract
   - prisma
   - protobufjs
+
+overrides:
+  brace-expansion: ^5.0.8
+  react-router: ^8.3.0
+  tinymce: ^7.9.3
+
+patchedDependencies:
+  brace-expansion@5.0.8: patches/brace-expansion@5.0.8.patch
