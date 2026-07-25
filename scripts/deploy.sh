@@ -86,7 +86,7 @@ done
 $COMPOSE ps db | grep -q "healthy" || err "DB did not become healthy in time"
 
 log "Running database migrations..."
-$COMPOSE exec -T api sh -c "pnpm exec prisma migrate deploy" 2>&1 || true
+$COMPOSE exec -T api sh -c "pnpm exec prisma migrate deploy"
 
 log "Checking API health..."
 for i in {1..20}; do
