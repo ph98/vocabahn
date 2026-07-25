@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" rx="20" fill="none" />
+  <rect x="140" y="80" width="120" height="90" rx="16" fill="#f59e0b" opacity="0.15" stroke="#fbbf24" stroke-width="3" />
+  <path d="M 185 125 L 215 125 M 200 110 L 200 140" stroke="#fbbf24" stroke-width="4" stroke-linecap="round" />
+  <text x="200" y="220" text-anchor="middle" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="24" font-weight="800" fill="#ffffff">Start a New Course</text>
+  <text x="200" y="250" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="500" fill="#94a3b8">Explore curated vocabulary decks from A1 to C2.</text>
+</svg>

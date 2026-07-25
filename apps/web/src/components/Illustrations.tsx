@@ -1,4 +1,4 @@
-/** Inline SVG illustrations that respect the current color-scheme via currentColor. */
+/** Inline SVG illustrations and icons that respect the current color-scheme via currentColor or theme variables. */
 
 export function IllustrationDictionary({ className }: { className?: string }) {
   return (
@@ -94,15 +94,45 @@ export function IllustrationEmpty({ className }: { className?: string }) {
       className={className}
       fill="none"
     >
-      {/* Box outline */}
       <rect x="50" y="50" width="100" height="80" rx="8" stroke="currentColor" strokeWidth="2" opacity=".2" strokeDasharray="6 4" />
-      {/* Dotted lines inside */}
       <rect x="68" y="70" width="64" height="8" rx="4" fill="currentColor" opacity=".1" />
       <rect x="68" y="86" width="44" height="8" rx="4" fill="currentColor" opacity=".08" />
-      {/* Plus icon */}
       <circle cx="100" cy="35" r="14" fill="currentColor" opacity=".1" />
       <line x1="100" y1="28" x2="100" y2="42" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" opacity=".4" />
       <line x1="93" y1="35" x2="107" y2="35" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" opacity=".4" />
+    </svg>
+  );
+}
+
+export function IllustrationEmptyQueue({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160" aria-hidden="true" className={className} fill="none">
+      <circle cx="100" cy="70" r="45" fill="currentColor" opacity=".08" />
+      <circle cx="100" cy="70" r="32" stroke="currentColor" strokeWidth="3" opacity=".2" strokeDasharray="4 4" />
+      <path d="M 85 70 L 95 80 L 115 58" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" opacity=".6" />
+      <text x="100" y="135" textAnchor="middle" fontSize="14" fontWeight="700" fill="currentColor" opacity=".5">Queue Clear!</text>
+    </svg>
+  );
+}
+
+export function IllustrationEmptySearch({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160" aria-hidden="true" className={className} fill="none">
+      <circle cx="90" cy="65" r="28" fill="currentColor" opacity=".08" />
+      <circle cx="90" cy="65" r="22" stroke="currentColor" strokeWidth="3" opacity=".3" />
+      <line x1="106" y1="81" x2="124" y2="99" stroke="currentColor" strokeWidth="4" strokeLinecap="round" opacity=".4" />
+      <text x="100" y="135" textAnchor="middle" fontSize="14" fontWeight="700" fill="currentColor" opacity=".5">No Results</text>
+    </svg>
+  );
+}
+
+export function IllustrationEmptyCourse({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 160" aria-hidden="true" className={className} fill="none">
+      <rect x="50" y="35" width="100" height="75" rx="10" fill="currentColor" opacity=".08" stroke="currentColor" strokeWidth="2" />
+      <line x1="100" y1="60" x2="100" y2="85" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity=".4" />
+      <line x1="87.5" y1="72.5" x2="112.5" y2="72.5" stroke="currentColor" strokeWidth="3" strokeLinecap="round" opacity=".4" />
+      <text x="100" y="135" textAnchor="middle" fontSize="14" fontWeight="700" fill="currentColor" opacity=".5">Start Course</text>
     </svg>
   );
 }
@@ -116,7 +146,6 @@ export function IllustrationStreak({ className }: { className?: string }) {
       className={className}
       fill="none"
     >
-      {/* Flame shape */}
       <path
         d="M100 20 C120 40 135 60 125 80 C120 70 110 68 108 75 C106 68 96 65 92 75 C85 60 80 45 100 20 Z"
         fill="currentColor"
@@ -127,7 +156,6 @@ export function IllustrationStreak({ className }: { className?: string }) {
         fill="currentColor"
         opacity=".35"
       />
-      {/* Calendar grid below */}
       {[0, 1, 2, 3, 4, 5, 6].map((i) => (
         <rect
           key={i}
@@ -140,7 +168,42 @@ export function IllustrationStreak({ className }: { className?: string }) {
           opacity={i < 5 ? 0.3 : 0.1}
         />
       ))}
-      {/* Numbers (omitted for simplicity) */}
+    </svg>
+  );
+}
+
+/* Custom Unified UI Icons */
+export function ModeIconFlashcards({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="2" y="6" width="16" height="12" rx="2" opacity="0.4" />
+      <rect x="6" y="10" width="16" height="12" rx="2" />
+    </svg>
+  );
+}
+
+export function ModeIconWriting({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+    </svg>
+  );
+}
+
+export function ModeIconDiagnostics({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M3 3v18h18" />
+      <path d="m19 9-5 5-4-4-3 3" />
+    </svg>
+  );
+}
+
+export function ModeIconDictionary({ className }: { className?: string }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" />
     </svg>
   );
 }

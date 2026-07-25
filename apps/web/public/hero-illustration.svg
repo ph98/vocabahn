@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 600" fill="none">
+  <defs>
+    <linearGradient id="heroBgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="glowIndigo" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#a855f7" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="1000" height="600" rx="32" fill="url(#heroBgGrad)" />
+  
+  <!-- Autobahn motion path -->
+  <path d="M -50 450 Q 350 200 1050 480" stroke="url(#glowIndigo)" stroke-width="12" stroke-linecap="round" fill="none" opacity="0.8" />
+  <path d="M -50 470 Q 350 220 1050 500" stroke="#10b981" stroke-width="6" stroke-linecap="round" stroke-dasharray="24 16" fill="none" opacity="0.6" />
+
+  <!-- Card Stack 1: German Article Card -->
+  <g transform="translate(180, 140) rotate(-6)">
+    <rect width="280" height="180" rx="20" fill="#1e293b" stroke="#334155" stroke-width="3" />
+    <rect x="24" y="24" width="50" height="24" rx="6" fill="#ef4444" opacity="0.2" />
+    <text x="49" y="41" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="800" fill="#f87171">die</text>
+    <text x="24" y="90" font-family="sans-serif" font-size="28" font-weight="800" fill="#ffffff">Geschwindigkeit</text>
+    <text x="24" y="120" font-family="sans-serif" font-size="16" font-weight="500" fill="#94a3b8">speed, velocity</text>
+    <rect x="24" y="140" width="100" height="18" rx="9" fill="#10b981" opacity="0.2" />
+    <text x="74" y="153" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#34d399">Mastered • FSRS</text>
+  </g>
+
+  <!-- Card Stack 2: Main Active Card -->
+  <g transform="translate(480, 180) rotate(4)">
+    <rect width="320" height="210" rx="24" fill="#0f172a" stroke="#6366f1" stroke-width="4" />
+    <rect x="28" y="24" width="56" height="26" rx="6" fill="#3b82f6" opacity="0.2" />
+    <text x="56" y="42" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="800" fill="#60a5fa">der</text>
+    <text x="28" y="98" font-family="sans-serif" font-size="32" font-weight="900" fill="#ffffff">Durchbruch</text>
+    <text x="28" y="132" font-family="sans-serif" font-size="18" font-weight="500" fill="#cbd5e1">breakthrough, advance</text>
+    <rect x="28" y="155" width="264" height="32" rx="8" fill="#1e293b" />
+    <text x="40" y="176" font-family="sans-serif" font-size="13" font-style="italic" fill="#a7f3d0">"Ein echter Durchbruch beim Lernen!"</text>
+  </g>
+  
+  <!-- Floating CEFR Badges -->
+  <g transform="translate(100, 360)">
+    <circle cx="30" cy="30" r="30" fill="#0ea5e9" opacity="0.2" stroke="#38bdf8" stroke-width="2" />
+    <text x="30" y="37" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="800" fill="#38bdf8">A1</text>
+  </g>
+  <g transform="translate(380, 420)">
+    <circle cx="30" cy="30" r="30" fill="#10b981" opacity="0.2" stroke="#34d399" stroke-width="2" />
+    <text x="30" y="37" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="800" fill="#34d399">B1</text>
+  </g>
+  <g transform="translate(820, 360)">
+    <circle cx="30" cy="30" r="30" fill="#f59e0b" opacity="0.2" stroke="#fbbf24" stroke-width="2" />
+    <text x="30" y="37" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="800" fill="#fbbf24">C1</text>
+  </g>
+</svg>

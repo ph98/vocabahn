@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" fill="none">
+  <rect width="800" height="500" rx="24" fill="#0f172a" stroke="#1e293b" stroke-width="4" />
+  
+  <text x="40" y="60" font-family="sans-serif" font-size="28" font-weight="800" fill="#ffffff">FSRS Spaced Repetition Algorithm</text>
+  <text x="40" y="90" font-family="sans-serif" font-size="16" font-weight="500" fill="#94a3b8">Optimized review intervals for 90%+ long-term retention</text>
+  
+  <!-- Graph axes -->
+  <line x1="80" y1="400" x2="720" y2="400" stroke="#334155" stroke-width="3" />
+  <line x1="80" y1="150" x2="80" y2="400" stroke="#334155" stroke-width="3" />
+  <text x="40" y="160" font-family="sans-serif" font-size="14" font-weight="700" fill="#94a3b8">100%</text>
+  <text x="45" y="405" font-family="sans-serif" font-size="14" font-weight="700" fill="#94a3b8">0%</text>
+  
+  <!-- Intervals -->
+  <text x="180" y="430" font-family="sans-serif" font-size="14" font-weight="600" fill="#64748b">Day 1</text>
+  <text x="320" y="430" font-family="sans-serif" font-size="14" font-weight="600" fill="#64748b">Day 3</text>
+  <text x="480" y="430" font-family="sans-serif" font-size="14" font-weight="600" fill="#64748b">Day 10</text>
+  <text x="640" y="430" font-family="sans-serif" font-size="14" font-weight="600" fill="#64748b">Day 30</text>
+
+  <!-- Retention Decay & Review Curves -->
+  <!-- Curve 1 -->
+  <path d="M 80 160 Q 130 360 180 370" stroke="#ef4444" stroke-width="3" stroke-dasharray="6 4" fill="none" opacity="0.6" />
+  <!-- Review 1 boost -->
+  <path d="M 180 160 Q 250 290 320 310" stroke="#f59e0b" stroke-width="3" stroke-dasharray="6 4" fill="none" opacity="0.7" />
+  <!-- Review 2 boost -->
+  <path d="M 320 160 Q 400 220 480 230" stroke="#6366f1" stroke-width="3" stroke-dasharray="6 4" fill="none" opacity="0.8" />
+  <!-- Review 3 boost (FSRS curve) -->
+  <path d="M 480 160 Q 560 180 680 190" stroke="#10b981" stroke-width="4" fill="none" />
+
+  <!-- Node points -->
+  <circle cx="180" cy="160" r="10" fill="#ef4444" />
+  <circle cx="320" cy="160" r="10" fill="#f59e0b" />
+  <circle cx="480" cy="160" r="10" fill="#6366f1" />
+  <circle cx="680" cy="160" r="12" fill="#10b981" />
+  
+  <text x="680" y="130" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="800" fill="#34d399">Permanent Memory</text>
+</svg>

@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 240" fill="none">
+  <g transform="translate(20, 20) scale(0.39)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0f172a" />
@@ -40,4 +42,12 @@
   
   <!-- Fast-lane speed dot -->
   <circle cx="384" cy="128" r="20" fill="#10b981" />
+</svg>
+  </g>
+  <text x="240" y="145" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="96" font-weight="900" letter-spacing="-2" fill="#ffffff">
+    Vocab<tspan fill="#6366f1">ahn</tspan>
+  </text>
+  <text x="245" y="185" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="24" font-weight="600" letter-spacing="4" fill="#94a3b8">
+    GERMAN IN THE FAST LANE
+  </text>
 </svg>

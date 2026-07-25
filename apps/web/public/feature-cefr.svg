@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" fill="none">
+  <rect width="800" height="500" rx="24" fill="#0f172a" stroke="#1e293b" stroke-width="4" />
+
+  <text x="40" y="60" font-family="sans-serif" font-size="28" font-weight="800" fill="#ffffff">CEFR Level Progression (A1 → C2)</text>
+  <text x="40" y="90" font-family="sans-serif" font-size="16" font-weight="500" fill="#94a3b8">Structured roadmap from beginner to native-like fluency</text>
+
+  <!-- Level Stairs/Pillars -->
+  <!-- A1 -->
+  <g transform="translate(80, 280)">
+    <rect width="90" height="120" rx="12" fill="#0ea5e9" opacity="0.2" stroke="#38bdf8" stroke-width="2" />
+    <text x="45" y="50" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="800" fill="#38bdf8">A1</text>
+    <text x="45" y="80" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#94a3b8">Breakthrough</text>
+  </g>
+  <!-- A2 -->
+  <g transform="translate(190, 240)">
+    <rect width="90" height="160" rx="12" fill="#06b6d4" opacity="0.2" stroke="#22d3ee" stroke-width="2" />
+    <text x="45" y="50" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="800" fill="#22d3ee">A2</text>
+    <text x="45" y="80" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#94a3b8">Waystage</text>
+  </g>
+  <!-- B1 -->
+  <g transform="translate(300, 200)">
+    <rect width="90" height="200" rx="12" fill="#10b981" opacity="0.2" stroke="#34d399" stroke-width="2" />
+    <text x="45" y="50" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="800" fill="#34d399">B1</text>
+    <text x="45" y="80" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#94a3b8">Threshold</text>
+  </g>
+  <!-- B2 -->
+  <g transform="translate(410, 160)">
+    <rect width="90" height="240" rx="12" fill="#f59e0b" opacity="0.2" stroke="#fbbf24" stroke-width="2" />
+    <text x="45" y="50" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="800" fill="#fbbf24">B2</text>
+    <text x="45" y="80" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#94a3b8">Vantage</text>
+  </g>
+  <!-- C1 -->
+  <g transform="translate(520, 120)">
+    <rect width="90" height="280" rx="12" fill="#8b5cf6" opacity="0.2" stroke="#a78bfa" stroke-width="2" />
+    <text x="45" y="50" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="800" fill="#a78bfa">C1</text>
+    <text x="45" y="80" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#94a3b8">Effective</text>
+  </g>
+  <!-- C2 -->
+  <g transform="translate(630, 80)">
+    <rect width="90" height="320" rx="12" fill="#ec4899" opacity="0.2" stroke="#f472b6" stroke-width="2" />
+    <text x="45" y="50" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="800" fill="#f472b6">C2</text>
+    <text x="45" y="80" text-anchor="middle" font-family="sans-serif" font-size="12" font-weight="600" fill="#94a3b8">Mastery</text>
+  </g>
+
+  <!-- Progression Curve Arrow -->
+  <path d="M 125 270 Q 350 180 675 70" stroke="#ffffff" stroke-width="4" stroke-linecap="round" fill="none" stroke-dasharray="8 6" opacity="0.7" />
+</svg>
