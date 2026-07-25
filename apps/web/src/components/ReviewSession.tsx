@@ -341,47 +341,41 @@ export function ReviewSession() {
   };
 
   const bindDrag = useDrag(
-    ({ down, movement: [mx, my], velocity: [vx, vy], last, cancel }) => {
+    ({ down, movement: [mx], velocity: [vx], last, cancel }) => {
       if (!cardRef.current) return;
       if (!down) {
         const absX = Math.abs(mx);
-        const absY = Math.abs(my);
         // Trigger on threshold distance OR on fast flick (velocity > 0.5 px/ms).
-        const fastFlick = Math.max(Math.abs(vx), Math.abs(vy)) > 0.5;
-        if (last && (absX > SWIPE_THRESHOLD || absY > SWIPE_THRESHOLD || fastFlick)) {
-          const rating: ReviewRating = absX > absY ? (mx < 0 ? 'AGAIN' : 'GOOD') : my < 0 ? 'EASY' : 'HARD';
+        const fastFlick = Math.abs(vx) > 0.5;
+        if (last && (absX > SWIPE_THRESHOLD || fastFlick)) {
+          const rating: ReviewRating = mx < 0 ? 'AGAIN' : 'GOOD';
           cancel?.();
           clearHints(false);
           rate(rating);
           return;
         }
         // Spring back with duration proportional to how far the card traveled.
-        const distance = Math.sqrt(mx * mx + my * my);
-        const springDuration = prefersReducedMotion() ? 0 : Math.min(0.15 + distance / 600, 0.4);
+        const springDuration = prefersReducedMotion() ? 0 : Math.min(0.15 + absX / 600, 0.4);
         gsap.to(cardRef.current, { x: 0, y: 0, rotation: 0, duration: springDuration, ease: 'back.out(1.4)' });
         clearHints();
         return;
       }
       if (prefersReducedMotion()) return;
-      gsap.set(cardRef.current, { x: mx, y: my, rotation: mx / 20 });
+      gsap.set(cardRef.current, { x: mx, y: 0, rotation: mx / 20 });
 
-      // Show directional affordance hint.
+      // Show directional affordance hint (AGAIN for left drag, GOOD for right drag).
       const absX = Math.abs(mx);
-      const absY = Math.abs(my);
-      const distance = Math.max(absX, absY);
-      const hintRating: ReviewRating = absX > absY ? (mx < 0 ? 'AGAIN' : 'GOOD') : my < 0 ? 'EASY' : 'HARD';
-      const hintOpacity = Math.min(Math.max((distance - 20) / (SWIPE_THRESHOLD - 20), 0), 0.92);
+      const hintRating: ReviewRating = mx < 0 ? 'AGAIN' : 'GOOD';
+      const hintOpacity = Math.min(Math.max((absX - 20) / (SWIPE_THRESHOLD - 20), 0), 0.92);
       RATINGS.forEach((r) => {
         const el = hintRefs.current[r];
         if (!el) return;
-        gsap.set(el, { opacity: r === hintRating && distance > 20 ? hintOpacity : 0 });
+        gsap.set(el, { opacity: r === hintRating && absX > 20 ? hintOpacity : 0 });
       });
     },
     {
-      // Without this, touch browsers treat the drag as a page scroll
-      // gesture alongside (or instead of) the card's own movement.
-      eventOptions: { passive: false },
-      preventScroll: true,
+      axis: 'x',
+      touchAction: 'pan-y',
     },
   );
 
@@ -563,7 +557,7 @@ export function ReviewSession() {
             ref={cardRef}
             role="group"
             aria-label="Flashcard"
-            className="relative touch-none select-none overflow-hidden rounded-3xl border border-surface-800 bg-surface-900 p-6 shadow-xl"
+            className="relative touch-pan-y select-none rounded-3xl border border-surface-800 bg-surface-900 p-6 shadow-xl"
           >
             <div
               aria-hidden="true"

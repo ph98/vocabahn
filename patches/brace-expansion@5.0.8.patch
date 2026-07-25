@@ -1,0 +1,15 @@
+diff --git a/dist/commonjs/index.js b/dist/commonjs/index.js
+index be9df86be09c7655787a65c55ae6da01858894c3..eedb5e08d60dbd82c51cbc6ff6230304c11ec173 100644
+--- a/dist/commonjs/index.js
++++ b/dist/commonjs/index.js
+@@ -1,7 +1,9 @@
+ "use strict";
+ Object.defineProperty(exports, "__esModule", { value: true });
+ exports.EXPANSION_MAX_LENGTH = exports.EXPANSION_MAX = void 0;
+-exports.expand = expand;
++module.exports = expand;
++module.exports.expand = expand;
++module.exports.default = expand;
+ const balanced_match_1 = require("balanced-match");
+ const escSlash = '\0SLASH' + Math.random() + '\0';
+ const escOpen = '\0OPEN' + Math.random() + '\0';

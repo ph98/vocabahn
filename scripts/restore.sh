@@ -4,7 +4,12 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE="docker compose -f $REPO_DIR/docker-compose.production.yml"
+if docker compose -f "$REPO_DIR/docker-compose.production.yml" ps --services 2>/dev/null | grep -q "^db$"; then
+  COMPOSE="docker compose -f $REPO_DIR/docker-compose.production.yml"
+else
+  COMPOSE="docker compose"
+fi
+
 BACKUP_FILE="${1:?Usage: $0 <path-to-backup.sql.gz>}"
 
 [[ -f "$BACKUP_FILE" ]] || { echo "File not found: $BACKUP_FILE"; exit 1; }
@@ -18,14 +23,15 @@ read -rp "Type 'yes' to continue: " confirm
 [[ "$confirm" == "yes" ]] || { echo "Aborted."; exit 0; }
 
 log "Stopping api to prevent writes..."
-$COMPOSE stop api || true
+$COMPOSE stop api 2>/dev/null || true
 
 log "Dropping and recreating database..."
 $COMPOSE exec -T db \
-  psql -U vocabahn postgres -c "DROP DATABASE IF EXISTS vocabahn; CREATE DATABASE vocabahn OWNER vocabahn;"
+  sh -c 'USER="${POSTGRES_USER:-postgres}"; DB="${POSTGRES_DB:-vocabahn}"; psql -U "$USER" postgres -c "DROP DATABASE IF EXISTS $DB; CREATE DATABASE $DB OWNER $USER;"'
 
 log "Restoring from $BACKUP_FILE..."
-gunzip -c "$BACKUP_FILE" | $COMPOSE exec -T db psql -U vocabahn vocabahn
+$COMPOSE exec -T db \
+  sh -c 'set -eo pipefail; USER="${POSTGRES_USER:-postgres}"; DB="${POSTGRES_DB:-vocabahn}"; gunzip | psql -U "$USER" "$DB"' < "$BACKUP_FILE"
 
 log "Running pending migrations (if any)..."
 $COMPOSE start api

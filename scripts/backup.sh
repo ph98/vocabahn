@@ -7,7 +7,12 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-COMPOSE="docker compose -f $REPO_DIR/docker-compose.production.yml"
+if docker compose -f "$REPO_DIR/docker-compose.production.yml" ps --services 2>/dev/null | grep -q "^db$"; then
+  COMPOSE="docker compose -f $REPO_DIR/docker-compose.production.yml"
+else
+  COMPOSE="docker compose"
+fi
+
 BACKUP_DIR="$REPO_DIR/backups"
 LABEL="${1:-$(date +%Y-%m-%d_%H-%M)}"
 PG_FILE="$BACKUP_DIR/${LABEL}_postgres.sql.gz"
@@ -22,7 +27,7 @@ mkdir -p "$BACKUP_DIR"
 # ── 1. Postgres dump ──────────────────────────────────────────────────────────
 log "Dumping Postgres → $PG_FILE"
 $COMPOSE exec -T db \
-  sh -c 'pg_dump -U vocabahn vocabahn | gzip' \
+  sh -c 'set -eo pipefail; USER="${POSTGRES_USER:-postgres}"; DB="${POSTGRES_DB:-vocabahn}"; pg_dump -U "$USER" "$DB" | gzip' \
   > "$PG_FILE"
 ok "Postgres dump: $(du -sh "$PG_FILE" | cut -f1)"
 

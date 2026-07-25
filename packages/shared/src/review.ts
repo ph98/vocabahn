@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { autoGraduationSchema } from './knowledge';
+import { autoGraduationSchema } from './knowledge.js';
 
 export const fsrsStateSchema = z.enum(['NEW', 'LEARNING', 'REVIEW', 'RELEARNING']);
 export type FsrsState = z.infer<typeof fsrsStateSchema>;

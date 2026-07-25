@@ -523,7 +523,7 @@ export default function App() {
 
       <footer className="mt-auto flex w-full max-w-6xl items-center justify-center gap-3 border-t border-surface-800 pt-4 pb-6 text-xs text-surface-500">
         <a
-          href="https://github.com/YOUR_ORG/vocabahn/blob/main/docs/changelog.md"
+          href="https://github.com/ph98/vocabahn/blob/main/docs/changelog.md"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-surface-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-colors"

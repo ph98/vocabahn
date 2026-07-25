@@ -37,6 +37,7 @@ Detailed documentation files have been consolidated into the `docs/` folder, str
 *   **[Model Context Protocol (MCP)](docs/mcp_integration.md)**: Specifications for how external AI agents and assistants integrate with Vocabahn.
 *   **[Developer & Contributor Guide](docs/development.md)**: Local setup workflows, diagnostic tools, and database seeding commands.
 *   **[Operations & Infrastructure Guide](docs/operations.md)**: Server deployment guidelines, environment variables, TLS, and monitoring.
+*   **[Database Export & Import Guide](docs/database_export_import.md)**: Step-by-step procedures for dumping, transferring, and restoring PostgreSQL data across systems.
 *   **[Project Backlog & Roadmap](docs/backlog.md)**: Feature backlog, task roadmap, UI stories, and completed delivery history.
 *   **[Changelog](docs/changelog.md)**: Detailed historical versioning details.
 

@@ -5,6 +5,10 @@
 
 Vocabahn is a German vocabulary learning application combining a community-shared dictionary, spaced-repetition flashcards, and curated course modules. This document defines the comprehensive product requirements, design criteria, and architectural decisions.
 
+> **Note (2026-07):** This document describes the app as built. The AI-first
+> re-architecture ([ai_first_replan.md](./ai_first_replan.md)) has its own
+> per-feature PRDs under [docs/prd/](./prd/).
+
 ---
 
 ## 1. Executive Summary

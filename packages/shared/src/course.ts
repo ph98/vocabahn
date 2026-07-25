@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { fsrsStateSchema } from './review';
+import { fsrsStateSchema } from './review.js';
 
 export const courseProgressSchema = z.object({
   learned: z.number(),
