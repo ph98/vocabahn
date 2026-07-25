@@ -7,8 +7,8 @@
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-if docker compose -f "$REPO_DIR/docker-compose.production.yml" ps --services 2>/dev/null | grep -q "^db$"; then
-  COMPOSE="docker compose -f $REPO_DIR/docker-compose.production.yml"
+if docker compose -f "$REPO_DIR/docker-compose.prod.yml" ps --services 2>/dev/null | grep -q "^db$"; then
+  COMPOSE="docker compose -f $REPO_DIR/docker-compose.prod.yml"
 else
   COMPOSE="docker compose"
 fi
