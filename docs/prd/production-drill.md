@@ -7,7 +7,7 @@
 
 ## 1. Summary
 
-An Experience where the learner *produces* German and an LLM grades it. This
+An experience where the learner *produces* German and an LLM grades it. This
 is the system's only source of strong evidence in v1 — the evidence kind that
 can graduate a word to Known — and replaces self-grading as the trustworthy
 signal in the loop.
