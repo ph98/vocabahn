@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { courseSummarySchema } from './course';
+import { courseSummarySchema } from './course.js';
 
 export const heatmapEntrySchema = z.object({
   date: z.string(),
