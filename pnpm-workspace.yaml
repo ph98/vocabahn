@@ -3,9 +3,10 @@ packages:
   - packages/*
 
 onlyBuiltDependencies:
+  - '@google/genai'
   - '@prisma/client'
   - '@prisma/engines'
   - esbuild
+  - msgpackr-extract
   - prisma
-
-
+  - protobufjs
