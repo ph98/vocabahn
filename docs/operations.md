@@ -34,7 +34,7 @@ Only the Nginx container (ports 80/443) exposes sockets directly to the host mac
    ```
 3. **Clone Repository & Configure Files**:
    ```bash
-   git clone https://github.com/YOUR_ORG/vocabahn.git
+   git clone https://github.com/ph98/vocabahn.git
    cd vocabahn
    cp .env.example .env
    nano .env # configure values (see variables table below)
@@ -185,6 +185,8 @@ crontab -e
 ---
 
 ## 7. Recovery Procedures
+
+*For detailed instructions on exporting/importing databases between different host environments (e.g. Local ↔ VPS, VPS ↔ VPS), see the dedicated [Database Export & Import Guide](database_export_import.md).*
 
 ### Restore Database to Pre-Deploy State
 If a container deploy goes wrong, revert the code state and roll back the DB in minutes:
