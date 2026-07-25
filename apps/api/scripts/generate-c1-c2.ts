@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
@@ -42,8 +42,8 @@ ${words.join(', ')}`;
       });
       const text = res.text || '{}';
       return JSON.parse(text);
-    } catch (err: any) {
-      console.error('API Error, retrying...', err.message);
+    } catch (err: unknown) {
+      console.error('API Error, retrying...', err instanceof Error ? err.message : err);
       retries--;
       await delay(2000);
     }
@@ -60,7 +60,7 @@ async function main() {
   let existingList: Array<{ word: string, rate: number, level: string, rank: number }> = [];
   try {
     existingList = JSON.parse(readFileSync(JSON_OUT_PATH, 'utf-8'));
-  } catch(e) {
+  } catch {
     console.error('Could not read existing JSON, starting fresh');
   }
   
