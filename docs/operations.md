@@ -52,8 +52,22 @@ Only the Nginx container (ports 80/443) exposes sockets directly to the host mac
    bash scripts/deploy.sh
    ```
 
-### Subsequent Updates
-To push fresh code changes, execute:
+### Subsequent Updates (Automated & Manual)
+
+#### Automated CI/CD Deployment (GitHub Actions)
+Whenever a pull request or commit is merged into `main`, GitHub Actions automatically runs the `ci` pipeline (tests, linting, build verification, security audit). Upon success, the `deploy` job triggers via SSH and runs `scripts/deploy.sh` on the VPS.
+
+**Required GitHub Repository Secrets** (`Settings` -> `Secrets and variables` -> `Actions`):
+- `VPS_HOST`: Public IP or hostname of your VPS server.
+- `VPS_USERNAME`: SSH username on the VPS (e.g., `ubuntu` or `root`).
+- `VPS_SSH_KEY`: Private SSH key authorized on the server.
+- `VPS_WORK_DIR` *(optional)*: Remote working directory path (defaults to `~/vocabahn`).
+- `VPS_PORT` *(optional)*: SSH port (defaults to `22`).
+
+*Note for Fork Pull Requests*: CI checks run automatically on fork PRs without exposing secrets or triggering deployments. Deployment is only triggered when code is merged into `main` in the primary repository.
+
+#### Manual Updates
+To manually trigger a deployment on the server, execute:
 ```bash
 ssh user@your-server-ip
 cd vocabahn
