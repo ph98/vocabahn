@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 import { fetchEnrichmentQuota, fetchMe, logout, requestEmailSignIn } from '../api';
 import { useSettings } from '../hooks/useSettings';
 import { trackEvent } from '../lib/telemetry';
+import { prefersReducedMotion } from '../lib/motion';
+import { ShieldCheck, Mail } from 'lucide-react';
 import gsap from 'gsap';
 
 export function SignInOptions() {
@@ -19,7 +21,7 @@ export function SignInOptions() {
   });
 
   useEffect(() => {
-    if (containerRef.current) {
+    if (containerRef.current && !prefersReducedMotion()) {
       gsap.fromTo(
         containerRef.current.children,
         { opacity: 0, y: 15 },
@@ -29,16 +31,20 @@ export function SignInOptions() {
   }, []);
 
   return (
-    <div ref={containerRef} className="flex flex-col gap-5">
-      <div className="text-center">
-        <h3 className="text-xl font-semibold">Welcome back</h3>
-        <p className="mt-1 text-sm text-surface-400">Sign in to sync your progress</p>
+    <div ref={containerRef} className="flex flex-col gap-5 rounded-3xl border border-surface-700/60 bg-surface-900/80 p-6 sm:p-7 shadow-xl backdrop-blur-xl">
+      <div className="text-center space-y-1">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-accent-indigo">
+          <ShieldCheck aria-hidden className="size-3.5" />
+          Secure & Passwordless
+        </div>
+        <h3 className="text-xl font-bold text-surface-100 pt-1">Welcome back</h3>
+        <p className="text-xs text-surface-400">Sign in to sync your cards, progress & streaks</p>
       </div>
 
       <a
         href="/api/v1/auth/google"
         onClick={() => trackEvent('login', { method: 'google' })}
-        className="flex min-h-11 w-full items-center justify-center gap-3 rounded-xl bg-white px-4 py-2.5 font-medium text-gray-900 shadow-sm transition-all hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
+        className="flex min-h-12 w-full items-center justify-center gap-3 rounded-2xl bg-white px-4 py-3 font-semibold text-gray-900 shadow-md transition-all hover:bg-gray-100 hover:shadow-lg hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
       >
         <svg viewBox="0 0 24 24" className="size-5 shrink-0" aria-hidden="true">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -51,42 +57,45 @@ export function SignInOptions() {
 
       <div className="flex items-center gap-3">
         <hr className="flex-1 border-surface-800" />
-        <span className="text-xs font-medium uppercase tracking-wider text-surface-500">or</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-surface-500">or</span>
         <hr className="flex-1 border-surface-800" />
       </div>
 
       {sent ? (
-        <p aria-live="polite" className="rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm text-accent-emerald">
-          Check your email — we sent a sign-in link to {email}.
+        <p aria-live="polite" className="rounded-2xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3.5 text-sm font-medium text-accent-emerald text-center">
+          Check your email — we sent a sign-in link to <span className="font-bold underline">{email}</span>.
         </p>
       ) : (
         <form
           onSubmit={(e) => { e.preventDefault(); emailMutation.mutate(); }}
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-3.5"
         >
-          <div className="space-y-1">
-            <label htmlFor="signin-email" className="text-sm font-medium text-surface-300">
+          <div className="space-y-1.5">
+            <label htmlFor="signin-email" className="text-xs font-semibold uppercase tracking-wider text-surface-300">
               Email address
             </label>
-            <input
-              id="signin-email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="min-h-11 w-full rounded-xl border border-surface-700 bg-surface-950 px-4 text-sm placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            />
+            <div className="relative">
+              <input
+                id="signin-email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="min-h-12 w-full rounded-2xl border border-surface-700 bg-surface-950/90 pl-10 pr-4 text-sm placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              />
+              <Mail aria-hidden className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-surface-500" />
+            </div>
           </div>
           <button
             type="submit"
             disabled={!email.trim() || emailMutation.isPending}
-            className="min-h-11 w-full rounded-xl bg-surface-800 px-4 text-sm font-medium transition-colors hover:bg-surface-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"
+            className="min-h-12 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-indigo-500 px-4 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20 transition-all hover:from-indigo-500 hover:to-indigo-400 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {emailMutation.isPending ? 'Sending link…' : 'Continue with Email'}
           </button>
           {emailMutation.isError && (
-            <p className="text-xs text-accent-red">Something went wrong. Please try again.</p>
+            <p className="text-xs text-accent-red text-center">Something went wrong. Please try again.</p>
           )}
         </form>
       )}

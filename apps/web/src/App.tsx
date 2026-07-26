@@ -202,6 +202,7 @@ function AppNav() {
   const { data: user } = useQuery({ queryKey: ['me'], queryFn: fetchMe, retry: false });
   const navRef = useRef<HTMLElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
+  const logoMarkRef = useRef<HTMLImageElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const dictionaryActive = pathname.startsWith('/dictionary') || pathname.startsWith('/word/');
   const moreActive = MORE_PATHS.some((p) => pathname.startsWith(p));
@@ -214,6 +215,16 @@ function AppNav() {
       { y: 0, opacity: 1, duration: 0.5, ease: 'power3.out', delay: 0.15, clearProps: 'y,opacity' },
     );
   }, { scope: navRef });
+
+  useGSAP(() => {
+    if (prefersReducedMotion() || !logoMarkRef.current) return;
+    gsap.to(logoMarkRef.current, {
+      rotation: 360,
+      duration: 25,
+      repeat: -1,
+      ease: 'none',
+    });
+  }, { scope: logoMarkRef });
 
   useEffect(() => { setMoreOpen(false); }, [pathname]);
 
@@ -267,7 +278,7 @@ function AppNav() {
             aria-label="Vocabahn Home"
             className="flex items-center justify-center size-8 rounded-full bg-surface-900 shadow-sm border border-surface-700/50 select-none group transition-all hover:scale-105 hover:border-accent-indigo/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white overflow-hidden"
           >
-            <img src="/logo.png" alt="Vocabahn" className="w-full h-full object-cover" />
+            <img ref={logoMarkRef} src="/logo.png" alt="Vocabahn" className="w-full h-full object-cover" />
           </Link>
         </div>
 
