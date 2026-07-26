@@ -62,7 +62,7 @@ export class DashboardService {
     const tomorrowKey = nextDateKey(todayKey);
     const tomorrowStartUtc = getLocalMidnightInUtc(tomorrowKey, tz);
 
-    const [dueToday, stateGroups, courses] = await Promise.all([
+    const [dueToday, activeStateGroups, totalKnown, courses] = await Promise.all([
       this.prisma.card.count({
         where: { userId, knownState: 'ACTIVE', due: { lt: tomorrowStartUtc } },
       }),
@@ -71,15 +71,16 @@ export class DashboardService {
         where: { userId, knownState: 'ACTIVE' },
         _count: { _all: true },
       }),
+      this.prisma.card.count({
+        where: { userId, knownState: { in: ['AUTO_KNOWN', 'USER_KNOWN'] } },
+      }),
       this.courses.listCourses(userId),
     ]);
 
     let totalNew = 0;
     let totalLearning = 0;
-    let totalKnown = 0;
-    for (const group of stateGroups) {
+    for (const group of activeStateGroups) {
       if (group.state === 'NEW') totalNew += group._count._all;
-      else if (group.state === 'REVIEW') totalKnown += group._count._all;
       else totalLearning += group._count._all;
     }
 

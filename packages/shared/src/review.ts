@@ -37,6 +37,7 @@ export type ReviewCard = z.infer<typeof reviewCardSchema>;
 
 export const dueCardsQuerySchema = z.object({
   courseId: z.string().optional(),
+  deckId: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
 });
 

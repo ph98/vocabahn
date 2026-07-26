@@ -124,9 +124,11 @@ function CardBack({
 function SessionSummary({
   stats,
   onReviewMore,
+  deckId,
 }: {
   stats: Record<ReviewRating, number>;
   onReviewMore: () => void;
+  deckId?: string | null;
 }) {
   const total = RATINGS.reduce((sum, r) => sum + stats[r], 0);
   const recalled = stats.GOOD + stats.EASY;
@@ -189,10 +191,10 @@ function SessionSummary({
       </ul>
       <div className="mt-8 flex justify-center gap-2">
         <Link
-          to="/courses"
+          to={deckId ? '/decks' : '/courses'}
           className="min-h-11 content-center rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
-          Back to courses
+          {deckId ? 'Back to decks' : 'Back to courses'}
         </Link>
         <button
           type="button"
@@ -209,11 +211,12 @@ function SessionSummary({
 export function ReviewSession() {
   const [searchParams] = useSearchParams();
   const courseId = searchParams.get('courseId');
+  const deckId = searchParams.get('deckId');
   const queryClient = useQueryClient();
 
   const { data: queue, isPending, isError } = useQuery({
-    queryKey: ['due-cards', courseId],
-    queryFn: () => fetchDueCards(courseId ?? undefined),
+    queryKey: ['due-cards', courseId, deckId],
+    queryFn: () => fetchDueCards(courseId ?? undefined, deckId ?? undefined),
   });
 
   const navigate = useNavigate();
@@ -501,10 +504,10 @@ export function ReviewSession() {
         <div className="rounded-3xl border border-surface-800 bg-surface-900 p-8 text-center shadow-xl">
           <p>All caught up — nothing due right now.</p>
           <Link
-            to="/courses"
+            to={deckId ? '/decks' : '/courses'}
             className="mt-4 inline-block min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
-            Back to courses
+            {deckId ? 'Back to decks' : 'Back to courses'}
           </Link>
         </div>
       )}
@@ -512,10 +515,11 @@ export function ReviewSession() {
       {queue && queue.length > 0 && !card && (
         <SessionSummary
           stats={stats}
+          deckId={deckId}
           onReviewMore={() => {
             setIndex(0);
             setStats({ AGAIN: 0, HARD: 0, GOOD: 0, EASY: 0 });
-            void queryClient.invalidateQueries({ queryKey: ['due-cards', courseId] });
+            void queryClient.invalidateQueries({ queryKey: ['due-cards', courseId, deckId] });
           }}
         />
       )}

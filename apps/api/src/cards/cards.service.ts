@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import type { AutoGraduation, ReviewCard, ReviewRating, SyncReviewItem } from '@vocabahn/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import {
@@ -33,13 +33,33 @@ export class CardsService {
 
   async getDueCards(
     userId: string,
-    { courseId, limit = 20 }: { courseId?: string; limit?: number },
+    { courseId, deckId, limit = 20 }: { courseId?: string; deckId?: string; limit?: number },
   ): Promise<ReviewCard[]> {
+    if (deckId) {
+      const deck = await this.prisma.userDeck.findUnique({
+        where: { id: deckId },
+        select: { id: true, isPublic: true, userId: true, words: { select: { dictionaryEntryId: true } } },
+      });
+      if (!deck) {
+        throw new NotFoundException('Deck not found');
+      }
+      if (!deck.isPublic && deck.userId !== userId) {
+        throw new ForbiddenException('Deck access denied');
+      }
+      if (deck.words.length > 0) {
+        await this.prisma.card.createMany({
+          data: deck.words.map((w) => ({ userId, dictionaryEntryId: w.dictionaryEntryId })),
+          skipDuplicates: true,
+        });
+      }
+    }
+
     const baseWhere = {
       userId,
       knownState: 'ACTIVE' as const,
       due: { lte: new Date() },
       ...(courseId ? { dictionaryEntry: { courseWords: { some: { courseId } } } } : {}),
+      ...(deckId ? { dictionaryEntry: { deckWords: { some: { deckId } } } } : {}),
     };
 
     const dueReviews = await this.prisma.card.findMany({
