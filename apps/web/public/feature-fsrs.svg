@@ -22,14 +22,14 @@
   <!-- Review 1 boost -->
   <path d="M 180 160 Q 250 290 320 310" stroke="#f59e0b" stroke-width="3" stroke-dasharray="6 4" fill="none" opacity="0.7" />
   <!-- Review 2 boost -->
-  <path d="M 320 160 Q 400 220 480 230" stroke="#6366f1" stroke-width="3" stroke-dasharray="6 4" fill="none" opacity="0.8" />
+  <path d="M 320 160 Q 400 220 480 230" stroke="#0088b0" stroke-width="3" stroke-dasharray="6 4" fill="none" opacity="0.8" />
   <!-- Review 3 boost (FSRS curve) -->
   <path d="M 480 160 Q 560 180 680 190" stroke="#10b981" stroke-width="4" fill="none" />
 
   <!-- Node points -->
   <circle cx="180" cy="160" r="10" fill="#ef4444" />
   <circle cx="320" cy="160" r="10" fill="#f59e0b" />
-  <circle cx="480" cy="160" r="10" fill="#6366f1" />
+  <circle cx="480" cy="160" r="10" fill="#0088b0" />
   <circle cx="680" cy="160" r="12" fill="#10b981" />
   
   <text x="680" y="130" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="800" fill="#34d399">Permanent Memory</text>
