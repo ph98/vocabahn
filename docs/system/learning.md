@@ -127,10 +127,8 @@ before tomorrow, so it includes the overdue backlog.
 
 ## Limitations
 
-- **Every day boundary is UTC** (#20). Streak, heatmap buckets, "reviewed today", and
-  the enrichment quota key all use `toISOString()` dates. For a learner far from
-  UTC, the streak can break despite daily study, and reviews land in the wrong
-  heatmap cell.
+- **Day boundaries use user/client timezone** (#20 fixed). Streak, heatmap buckets, "reviewed today", and
+  the enrichment quota key use timezone-aware date formatting (accepting client-supplied timezone parameter/header or saved user timezone).
 - **Two different meanings of "known" in the UI** (#18, above). Nothing in the
   code reconciles them.
 - **`markKnown` fabricates FSRS state** — `stability: 100`, `difficulty: 1`,

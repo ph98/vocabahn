@@ -2,6 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import type { Redis } from 'ioredis';
+import { getDateKey } from '../common/date-utils';
 import { REDIS } from '../redis/redis.module';
 import { ENRICHMENT_QUEUE, type EnrichmentJobData } from './enrichment.constants';
 
@@ -23,7 +24,7 @@ export class EnrichmentService {
    * promoted entries are never bulk-enriched — paid APIs fire only on access.
    * Best-effort: never let queue/Redis trouble break the dictionary page.
    */
-  async requestEnrichment(dictionaryEntryId: string, userId: string): Promise<void> {
+  async requestEnrichment(dictionaryEntryId: string, userId: string, timeZone: string = 'UTC'): Promise<void> {
     try {
       const existing = await this.queue.getJob(dictionaryEntryId);
       if (existing) {
@@ -33,7 +34,7 @@ export class EnrichmentService {
         await existing.remove();
       }
 
-      if (!(await this.consumeDailyQuota(userId))) {
+      if (!(await this.consumeDailyQuota(userId, timeZone))) {
         this.logger.warn(
           `user ${userId} hit daily enrichment cap (${DAILY_CAP}); skipping ${dictionaryEntryId}`,
         );
@@ -91,17 +92,18 @@ export class EnrichmentService {
   }
 
   /** Returns the current enrichment usage for today without incrementing the counter. */
-  async getQuota(userId: string): Promise<{ used: number; cap: number }> {
-    const key = `enrich:cap:${userId}:${new Date().toISOString().slice(0, 10)}`;
+  async getQuota(userId: string, timeZone: string = 'UTC'): Promise<{ used: number; cap: number }> {
+    const key = `enrich:cap:${userId}:${getDateKey(new Date(), timeZone)}`;
     const raw = await this.redis.get(key);
     return { used: raw ? Number(raw) : 0, cap: DAILY_CAP };
   }
 
   /** Atomic INCR with a rolling 24h TTL; true while the user is under the cap. */
-  private async consumeDailyQuota(userId: string): Promise<boolean> {
-    const key = `enrich:cap:${userId}:${new Date().toISOString().slice(0, 10)}`;
+  private async consumeDailyQuota(userId: string, timeZone: string = 'UTC'): Promise<boolean> {
+    const key = `enrich:cap:${userId}:${getDateKey(new Date(), timeZone)}`;
     const count = await this.redis.incr(key);
     if (count === 1) await this.redis.expire(key, 86_400);
     return count <= DAILY_CAP;
   }
 }
+

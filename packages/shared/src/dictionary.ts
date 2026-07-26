@@ -13,6 +13,12 @@ export const dictionarySearchQuerySchema = z.object({
   q: z.string().trim().min(1).max(100),
 });
 
+export const quotaQuerySchema = z.object({
+  timezone: z.string().optional(),
+});
+export type QuotaQuery = z.infer<typeof quotaQuerySchema>;
+
+
 export const dictionarySearchResultSchema = z.object({
   word: z.string(),
   pos: z.string(),

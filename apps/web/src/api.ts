@@ -68,8 +68,9 @@ export async function searchDictionary(q: string) {
   return dictionarySearchResponseSchema.parse(data).results;
 }
 
-export async function fetchDictionaryEntry(word: string) {
-  const { data } = await api.get(`/dictionary/${encodeURIComponent(word)}`);
+export async function fetchDictionaryEntry(word: string, timezone?: string | object) {
+  const tz = typeof timezone === 'string' ? timezone : Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const { data } = await api.get(`/dictionary/${encodeURIComponent(word)}`, { params: { timezone: tz } });
   return dictionaryEntryDetailSchema.parse(data);
 }
 
@@ -123,8 +124,9 @@ export async function markWordKnown(entryId: string) {
   await api.post(`/knowledge/entry/${encodeURIComponent(entryId)}/mark-known`);
 }
 
-export async function fetchDashboard() {
-  const { data } = await api.get('/dashboard');
+export async function fetchDashboard(timezone?: string | object) {
+  const tz = typeof timezone === 'string' ? timezone : Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const { data } = await api.get('/dashboard', { params: { timezone: tz } });
   return dashboardResponseSchema.parse(data);
 }
 
@@ -142,8 +144,9 @@ export async function requestEmailSignIn(email: string): Promise<void> {
   await api.post('/auth/email/request', { email });
 }
 
-export async function fetchEnrichmentQuota(): Promise<{ used: number; cap: number }> {
-  const { data } = await api.get('/dictionary/quota');
+export async function fetchEnrichmentQuota(timezone?: string | object): Promise<{ used: number; cap: number }> {
+  const tz = typeof timezone === 'string' ? timezone : Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const { data } = await api.get('/dictionary/quota', { params: { timezone: tz } });
   return data as { used: number; cap: number };
 }
 

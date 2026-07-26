@@ -2,18 +2,9 @@ import { Injectable } from '@nestjs/common';
 import type { DashboardResponse } from '@vocabahn/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { CoursesService } from '../courses/courses.service';
+import { getDateKey, getLocalMidnightInUtc, nextDateKey, prevDateKey } from '../common/date-utils';
 
 const HEATMAP_DAYS = 365;
-
-function dateKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-function startOfDay(date: Date): Date {
-  const start = new Date(date);
-  start.setUTCHours(0, 0, 0, 0);
-  return start;
-}
 
 @Injectable()
 export class DashboardService {
@@ -22,39 +13,58 @@ export class DashboardService {
     private readonly courses: CoursesService,
   ) {}
 
-  async getDashboard(userId: string): Promise<DashboardResponse> {
-    const today = startOfDay(new Date());
-    const rangeStart = new Date(today);
-    rangeStart.setUTCDate(rangeStart.getUTCDate() - (HEATMAP_DAYS - 1));
+  async getDashboard(userId: string, timeZone?: string): Promise<DashboardResponse> {
+    let tz = timeZone;
+    if (!tz || tz === 'UTC') {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { timezone: true },
+      });
+      if (user?.timezone) {
+        tz = user.timezone;
+      }
+    }
+    tz = tz || 'UTC';
+
+    const now = new Date();
+    const todayKey = getDateKey(now, tz);
+
+    const heatmapDateKeys: string[] = [];
+    let curKey = todayKey;
+    for (let i = 0; i < HEATMAP_DAYS; i++) {
+      heatmapDateKeys.unshift(curKey);
+      if (i < HEATMAP_DAYS - 1) {
+        curKey = prevDateKey(curKey);
+      }
+    }
+
+    const rangeStartKey = heatmapDateKeys[0] ?? todayKey;
+    const rangeStartUtc = getLocalMidnightInUtc(rangeStartKey, tz);
 
     const logs = await this.prisma.reviewLog.findMany({
-      where: { userId, reviewedAt: { gte: rangeStart } },
+      where: { userId, reviewedAt: { gte: rangeStartUtc } },
       select: { reviewedAt: true },
     });
 
     const countsByDate = new Map<string, number>();
     for (const log of logs) {
-      const key = dateKey(log.reviewedAt);
+      const key = getDateKey(log.reviewedAt, tz);
       countsByDate.set(key, (countsByDate.get(key) ?? 0) + 1);
     }
 
-    const heatmap = [];
-    for (let i = 0; i < HEATMAP_DAYS; i++) {
-      const date = new Date(rangeStart);
-      date.setUTCDate(date.getUTCDate() + i);
-      const key = dateKey(date);
-      heatmap.push({ date: key, count: countsByDate.get(key) ?? 0 });
-    }
+    const heatmap = heatmapDateKeys.map((date) => ({
+      date,
+      count: countsByDate.get(date) ?? 0,
+    }));
 
-    const todayKey = dateKey(today);
-    const streak = this.computeStreak(countsByDate, today, todayKey);
+    const streak = this.computeStreak(countsByDate, todayKey);
 
-    const tomorrow = new Date(today);
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const tomorrowKey = nextDateKey(todayKey);
+    const tomorrowStartUtc = getLocalMidnightInUtc(tomorrowKey, tz);
 
     const [dueToday, stateGroups, courses] = await Promise.all([
       this.prisma.card.count({
-        where: { userId, knownState: 'ACTIVE', due: { lt: tomorrow } },
+        where: { userId, knownState: 'ACTIVE', due: { lt: tomorrowStartUtc } },
       }),
       this.prisma.card.groupBy({
         by: ['state'],
@@ -87,17 +97,18 @@ export class DashboardService {
     };
   }
 
-  private computeStreak(countsByDate: Map<string, number>, today: Date, todayKey: string): number {
-    const cursor = new Date(today);
-    if (!countsByDate.has(todayKey)) {
-      cursor.setUTCDate(cursor.getUTCDate() - 1);
+  private computeStreak(countsByDate: Map<string, number>, todayKey: string): number {
+    let cursor = todayKey;
+    if (!countsByDate.has(cursor)) {
+      cursor = prevDateKey(cursor);
     }
 
     let streak = 0;
-    while (countsByDate.has(dateKey(cursor))) {
+    while (countsByDate.has(cursor)) {
       streak++;
-      cursor.setUTCDate(cursor.getUTCDate() - 1);
+      cursor = prevDateKey(cursor);
     }
     return streak;
   }
 }
+
