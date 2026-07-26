@@ -66,20 +66,30 @@ export class AuthService {
       throw new UnauthorizedException('Google account has no verified email');
     }
 
-    const user = await this.prisma.user.upsert({
-      where: { googleId: payload.sub },
-      create: {
-        googleId: payload.sub,
-        email: payload.email,
-        name: payload.name ?? null,
-        avatarUrl: payload.picture ?? null,
-      },
-      update: {
-        email: payload.email,
-        name: payload.name ?? null,
-        avatarUrl: payload.picture ?? null,
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ googleId: payload.sub }, { email: payload.email }],
       },
     });
+
+    const user = existingUser
+      ? await this.prisma.user.update({
+          where: { id: existingUser.id },
+          data: {
+            googleId: payload.sub,
+            email: payload.email,
+            name: payload.name ?? existingUser.name,
+            avatarUrl: payload.picture ?? existingUser.avatarUrl,
+          },
+        })
+      : await this.prisma.user.create({
+          data: {
+            googleId: payload.sub,
+            email: payload.email,
+            name: payload.name ?? null,
+            avatarUrl: payload.picture ?? null,
+          },
+        });
     return this.toPublicUser(user);
   }
 
@@ -145,16 +155,20 @@ export class AuthService {
     }
     await this.prisma.emailOtp.update({ where: { id: otp.id }, data: { usedAt: new Date() } });
 
-    const user = await this.prisma.user.upsert({
+    const existingUser = await this.prisma.user.findUnique({
       where: { email: otp.email },
-      create: {
-        googleId: `email:${otp.email}`,
-        email: otp.email,
-        name: null,
-        avatarUrl: null,
-      },
-      update: {},
     });
+
+    const user =
+      existingUser ??
+      (await this.prisma.user.create({
+        data: {
+          googleId: `email:${otp.email}`,
+          email: otp.email,
+          name: null,
+          avatarUrl: null,
+        },
+      }));
     return this.toPublicUser(user);
   }
 

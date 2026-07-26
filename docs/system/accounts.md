@@ -23,16 +23,12 @@ versioning to it.
 Google ID tokens are rejected unless the payload carries `sub`, `email`, and
 `email_verified === true`.
 
-## The googleId invariant
+## Identity reconciliation and googleId
 
-`User.googleId` is non-null and unique, so email-OTP users get a **synthetic**
-one: `email:<address>` (`auth.service.ts:151`). Google users upsert on
-`googleId`; OTP users upsert on `email`. The two keys are not reconciled.
+`User.googleId` is non-null and unique. Email-OTP users without a Google identity receive a **synthetic**
+`googleId`: `email:<address>`.
 
-Consequence: a user who first signs in by magic link and later uses Google with
-the same address hits the `create` branch of a `googleId` upsert, which violates
-the unique constraint on `email` and fails with a Prisma P2002. Account linking
-does not exist.
+Google sign-in (`signInWithIdToken`) searches for an existing user matching either `googleId` (`payload.sub`) or `email` (`payload.email`). If a match is found (such as a user created via email OTP), it updates the record with the Google `sub` ID and profile data, linking the accounts. Email OTP sign-in (`verifyEmailOtp`) looks up existing users by `email` and reuses the account without overwriting existing Google credentials.
 
 ## Session transport
 
@@ -77,14 +73,6 @@ Generated TTS files are served as static assets from `/api/static`.
 
 ## Limitations
 
-- **Email magic-link sign-in does not work end to end** (#13). The link points at
-  `${FRONTEND_URL}/auth/verify?token=…` (`auth.service.ts:136`), but the SPA has
-  no `/auth/verify` route and no code anywhere reads a `token` query param.
-  nginx's `try_files $uri /index.html` serves the app shell, which renders the
-  unauthenticated landing page and discards the token. The endpoint that would
-  consume it is `GET /api/v1/auth/email/verify`. Not verified at runtime; the
-  route table and a repo-wide grep both come up empty.
-- No account linking between Google and email identities (#15, above).
 - No sign-out-everywhere, no refresh-token revocation list: a leaked refresh
   token is valid for 30 days. `POST /auth/logout` only clears cookies.
 - `POST /auth/google/token` is **orphaned** — implemented for native clients,

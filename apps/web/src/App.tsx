@@ -4,7 +4,7 @@ import gsap from 'gsap';
 import { BadgeCheck, CircleUserRound, Monitor, Moon, Sun } from 'lucide-react';
 import { MotionConfig, motion } from 'motion/react';
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type RefObject } from 'react';
-import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchHealth, fetchMe, googleOneTapLogin } from './api';
 import { useGoogleOneTap } from './hooks/useGoogleOneTap';
 import { prefersReducedMotion, springSnappy } from './lib/motion';
@@ -34,6 +34,26 @@ const DeckDetailPage = lazy(() =>
 /** Suspense fallback for lazy-loaded routes; announced to screen readers. */
 function RouteLoading() {
   return <p aria-live="polite">Loading…</p>;
+}
+
+function AuthVerifyPage() {
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get('token');
+
+  useEffect(() => {
+    if (token) {
+      window.location.replace(`/api/v1/auth/email/verify?token=${encodeURIComponent(token)}`);
+    } else {
+      window.location.replace('/?auth_error=invalid_link');
+    }
+  }, [token]);
+
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center">
+      <div className="size-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" aria-hidden="true" />
+      <p className="text-surface-300 font-medium" aria-live="polite">Verifying your sign-in link…</p>
+    </div>
+  );
 }
 
 
@@ -492,7 +512,10 @@ export default function App() {
       >
       {!isPending && !user && (
         <div className="w-full max-w-6xl space-y-10 mt-8 md:mt-16 px-4 xl:px-0">
-          <LandingPage />
+          <Routes>
+            <Route path="/auth/verify" element={<AuthVerifyPage />} />
+            <Route path="*" element={<LandingPage />} />
+          </Routes>
         </div>
       )}
 
@@ -515,6 +538,7 @@ export default function App() {
                 <Route path="/decks/:id" element={<DeckDetailPage />} />
                 <Route path="/profile" element={<div className="mx-auto max-w-sm"><ProfilePage /></div>} />
                 <Route path="/status" element={<div className="mx-auto max-w-sm"><StatusPage /></div>} />
+                <Route path="/auth/verify" element={<AuthVerifyPage />} />
               </Routes>
             </Suspense>
           </div>
