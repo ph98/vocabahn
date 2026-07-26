@@ -1,5 +1,5 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { CreateDeckBody, DeckDetail, DeckListResponse, DeckSummary, UpdateDeckBody } from '@vocabahn/shared';
+import type { CreateDeckBody, DeckDetail, DeckListResponse, DeckSummary, ImportWordsResponse, UpdateDeckBody } from '@vocabahn/shared';
 import { DictionaryService } from '../dictionary/dictionary.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -143,43 +143,66 @@ export class DecksService {
     await this.prisma.userDeckWord.deleteMany({ where: { deckId, dictionaryEntryId: entryId } });
   }
 
-  async importWords(userId: string, deckId: string, words: string[]): Promise<{ imported: number, failed: string[] }> {
+  async importWords(userId: string, deckId: string, words: string[]): Promise<ImportWordsResponse> {
     await this.assertOwner(userId, deckId);
-    
-    let imported = 0;
-    const failed: string[] = [];
-    const importedEntryIds: string[] = [];
 
-    for (const w of words) {
-      const trimmed = w.trim();
+    const cleanedWords: string[] = [];
+    const seen = new Set<string>();
+
+    for (const raw of words) {
+      const trimmed = raw.trim();
       if (!trimmed) continue;
-      
-      try {
-        const entry = await this.dictionary.getEntry(trimmed, userId);
-        if (entry && entry.id) {
-          await this.prisma.userDeckWord.upsert({
-            where: { deckId_dictionaryEntryId: { deckId, dictionaryEntryId: entry.id } },
-            create: { deckId, dictionaryEntryId: entry.id },
-            update: {},
-          });
-          imported++;
-          importedEntryIds.push(entry.id);
-        } else {
-          failed.push(trimmed);
-        }
-      } catch {
-        failed.push(trimmed);
+      const key = trimmed.toLowerCase();
+      if (!seen.has(key)) {
+        seen.add(key);
+        cleanedWords.push(trimmed);
       }
     }
 
-    if (importedEntryIds.length > 0) {
-      await this.prisma.card.createMany({
-        data: importedEntryIds.map((dictionaryEntryId) => ({ userId, dictionaryEntryId })),
-        skipDuplicates: true,
-      });
+    if (cleanedWords.length === 0) {
+      return { imported: 0, failed: [] };
     }
 
-    return { imported, failed };
+    // Resolve entries in parallel without triggering enrichment or spending quota
+    const resolvedResults = await Promise.all(
+      cleanedWords.map(async (w) => {
+        try {
+          const entry = await this.dictionary.findOrCreateEntry(w);
+          if (entry) return { word: w, entry };
+        } catch {
+          // ignore
+        }
+        return { word: w, entry: null };
+      }),
+    );
+
+    const failed: string[] = [];
+    const importedEntryIds: string[] = [];
+
+    for (const res of resolvedResults) {
+      if (res.entry) {
+        importedEntryIds.push(res.entry.id);
+      } else {
+        failed.push(res.word);
+      }
+    }
+
+    const uniqueEntryIds = [...new Set(importedEntryIds)];
+
+    if (uniqueEntryIds.length > 0) {
+      await this.prisma.$transaction([
+        this.prisma.userDeckWord.createMany({
+          data: uniqueEntryIds.map((dictionaryEntryId) => ({ deckId, dictionaryEntryId })),
+          skipDuplicates: true,
+        }),
+        this.prisma.card.createMany({
+          data: uniqueEntryIds.map((dictionaryEntryId) => ({ userId, dictionaryEntryId })),
+          skipDuplicates: true,
+        }),
+      ]);
+    }
+
+    return { imported: uniqueEntryIds.length, failed };
   }
 
   private async assertOwner(userId: string, deckId: string): Promise<void> {

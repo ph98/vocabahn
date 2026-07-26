@@ -64,9 +64,10 @@ two-segment green/amber bars on the dashboard and library.
 Full CRUD, ownership enforced by `assertOwner` on every mutation; a non-public
 deck returns 403 to non-owners. `GET /decks` returns `myDecks` plus other users'
 `publicDecks`. Bulk import takes a list of words and reports
-`{ imported, failed }`. Adding or importing words creates corresponding `Card`
-rows for the user; fetching due cards with `deckId` filters reviews to that deck
-and ensures card rows exist for all deck entries.
+`{ imported, failed }`. Adding or importing words resolves entries concurrently
+without triggering background enrichment or spending quota, and creates
+corresponding `Card` rows for the user in batch. Fetching due cards with `deckId`
+filters reviews to that deck and ensures card rows exist for all deck entries.
 
 ## Limitations
 
@@ -76,10 +77,6 @@ and ensures card rows exist for all deck entries.
   demonstrate". C2 therefore has 31 words while its progress bar renders as
   though the course were nearly complete — the bar is a share of *seeded* words,
   not of the real level.
-- **Bulk import spends enrichment quota per word** (#22). `importWords` calls
-  `DictionaryService.getEntry` for each entry, which promotes stubs and triggers
-  enrichment — so a 60-word import silently exhausts the 50/day cap and fires
-  paid APIs. It is also sequential, one round trip per word.
 - **No de-enrollment** (#24). `UserCourse` rows can be created but never deleted; there
   is no endpoint and no UI. Cards created by an enrollment stay in the review
   queue permanently.

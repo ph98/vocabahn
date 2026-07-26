@@ -78,6 +78,89 @@ export class DictionaryService implements OnModuleInit {
   }
 
   /**
+   * Resolves a word into a DictionaryEntry (promoting from Lexicon if needed)
+   * without enqueuing background enrichment or consuming enrichment quota.
+   */
+  async findOrCreateEntry(
+    word: string,
+    depth = 0,
+  ): Promise<{ id: string; word: string } | null> {
+    const trimmed = word.trim();
+    if (!trimmed) return null;
+
+    let entry =
+      (await this.prisma.dictionaryEntry.findFirst({
+        where: { word: trimmed },
+        select: { id: true, word: true },
+      })) ??
+      (await this.prisma.dictionaryEntry.findFirst({
+        where: { word: { equals: trimmed, mode: 'insensitive' } },
+        select: { id: true, word: true },
+      }));
+
+    if (!entry) {
+      const candidateSelect = {
+        id: true,
+        word: true,
+        pos: true,
+        senses: { select: { tags: true, glosses: true } },
+        _count: { select: { senses: true } },
+      } as const;
+      const candidates = await this.prisma.lexiconEntry.findMany({
+        where: { word: { equals: trimmed, mode: 'insensitive' } },
+        select: candidateSelect,
+      });
+
+      const best = candidates
+        .filter((c) => isLemma(c.senses))
+        .sort((a, b) => compareLexiconCandidates(a, b, trimmed))[0];
+
+      if (best) {
+        try {
+          entry = await this.prisma.dictionaryEntry.create({
+            data: { lexiconEntryId: best.id, word: best.word },
+            select: { id: true, word: true },
+          });
+          this.fuse.add(
+            this.toSearchResult({
+              word: best.word,
+              translation: null,
+              emoji: null,
+              cefrLevel: null,
+              enrichmentStatus: 'PENDING',
+              lexiconEntry: { pos: best.pos, gender: null, frequencyRank: null },
+            }),
+          );
+          this.logger.log(`promoted "${best.word}" to active dictionary (pending enrichment)`);
+        } catch (err: unknown) {
+          if (
+            typeof err === 'object' &&
+            err !== null &&
+            'code' in err &&
+            (err as { code: string }).code === 'P2002'
+          ) {
+            entry = await this.prisma.dictionaryEntry.findFirst({
+              where: { lexiconEntryId: best.id },
+              select: { id: true, word: true },
+            });
+          }
+          if (!entry) return null;
+        }
+      } else if (candidates.length > 0 && depth < 2) {
+        const lemmaWord = await this.resolveLemmaWord(candidates.map((c) => c.id));
+        if (lemmaWord && lemmaWord.toLowerCase() !== trimmed.toLowerCase()) {
+          return this.findOrCreateEntry(lemmaWord, depth + 1);
+        }
+        return null;
+      } else {
+        return null;
+      }
+    }
+
+    return { id: entry.id, word: entry.word };
+  }
+
+  /**
    * Entry detail by headword. A word that exists in the lexicon but not yet in
    * the active dictionary is promoted to a PENDING stub instantly,
    * and viewing a not-yet-enriched word is what triggers enrichment — paid APIs
