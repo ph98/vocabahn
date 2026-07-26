@@ -119,11 +119,7 @@ to 0.75** (threshold − 0.1) so the next review cannot instantly re-graduate it
 from today (tolerating an unreviewed today), plus five stats and enrolled-course
 progress. All **observed**.
 
-Note what the labels mean: **"Known" on the dashboard counts `ACTIVE` cards in
-FSRS state `REVIEW`** — not `AUTO_KNOWN`/`USER_KNOWN` cards, which is what the
-Known Words page lists. The two "known" numbers are unrelated and will disagree.
-"Learning" is every other non-`NEW` state; `dueToday` counts everything due
-before tomorrow, so it includes the overdue backlog.
+Note what the labels mean: **"Known" on the dashboard counts cards in `AUTO_KNOWN` and `USER_KNOWN` states**, matching what the Known Words page lists. "Learning" counts all active (`knownState: ACTIVE`) cards in non-`NEW` states (`LEARNING`, `RELEARNING`, `REVIEW`); "New" counts active cards in state `NEW`; `dueToday` counts everything due before tomorrow, so it includes the overdue backlog.
 
 ## Limitations
 
@@ -131,8 +127,6 @@ before tomorrow, so it includes the overdue backlog.
   the enrichment quota key all use `toISOString()` dates. For a learner far from
   UTC, the streak can break despite daily study, and reviews land in the wrong
   heatmap cell.
-- **Two different meanings of "known" in the UI** (#18, above). Nothing in the
-  code reconciles them.
 - **`markKnown` fabricates FSRS state** — `stability: 100`, `difficulty: 1`,
   `state: REVIEW`, `reps: 0`, with no `ReviewLog` rows. This contradicts the
   log-is-truth invariant: any later `syncReviews` replay of that card resets it
