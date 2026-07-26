@@ -109,3 +109,18 @@ FROM "WordForm" wf JOIN "LexiconEntry" le ON le.id = wf."entryId"
 WHERE wf.form = 'Häuser';
 ```
 
+---
+
+## 6. AI Agent Workflow
+
+When an AI agent (or automated developer) works on a task in this codebase, it follows this standardized flow:
+
+1. **Target Issue**: Select a single, fully specified GitHub issue.
+2. **Branching**: Create a branch off `main` following standard naming:
+   - `fix/issue-<ID>-<short-description>`
+   - `feat/issue-<ID>-<short-description>`
+3. **Implementation**: Consult `docs/system/README.md` and codebase rules in `.agents/AGENTS.md`. Make minimal, targeted changes.
+4. **Verification**: Run `pnpm build`, `pnpm lint`, and `pnpm --filter @vocabahn/web test`.
+5. **Pull Request**: Push the branch and open a PR against `main` containing `Closes #<ID>`, a summary of changes, and verification evidence.
+
+
