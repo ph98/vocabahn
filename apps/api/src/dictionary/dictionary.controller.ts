@@ -2,8 +2,10 @@ import { Controller, Get, Param, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import {
   dictionarySearchQuerySchema,
+  quotaQuerySchema,
   type DictionaryEntryDetail,
   type DictionarySearchResponse,
+  type QuotaQuery,
 } from '@vocabahn/shared';
 import { CurrentUserId, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -19,8 +21,11 @@ export class DictionaryController {
   ) {}
 
   @Get('quota')
-  getQuota(@CurrentUserId() userId: string): Promise<{ used: number; cap: number }> {
-    return this.enrichment.getQuota(userId);
+  getQuota(
+    @CurrentUserId() userId: string,
+    @Query(new ZodValidationPipe(quotaQuerySchema)) query: QuotaQuery,
+  ): Promise<{ used: number; cap: number }> {
+    return this.enrichment.getQuota(userId, query.timezone);
   }
 
   /** Returns top-1000 enriched entries as a compact downloadable JSON for offline use. */
@@ -44,7 +49,9 @@ export class DictionaryController {
   getEntry(
     @Param('word') word: string,
     @CurrentUserId() userId: string,
+    @Query('timezone') timezone?: string,
   ): Promise<DictionaryEntryDetail> {
-    return this.dictionary.getEntry(word, userId);
+    return this.dictionary.getEntry(word, userId, timezone);
   }
 }
+

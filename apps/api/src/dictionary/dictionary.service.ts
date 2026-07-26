@@ -93,6 +93,7 @@ export class DictionaryService implements OnModuleInit {
   async getEntry(
     word: string,
     userId: string,
+    timeZone?: string,
     depth = 0,
   ): Promise<DictionaryEntryDetail> {
     const include = {
@@ -153,7 +154,7 @@ export class DictionaryService implements OnModuleInit {
         // lemma's entry with a banner describing this form (e.g. "plural of Hund").
         const lemmaWord = await this.resolveLemmaWord(candidates.map((c) => c.id));
         if (lemmaWord && lemmaWord.toLowerCase() !== word.toLowerCase()) {
-          const lemmaEntry = await this.getEntry(lemmaWord, userId, depth + 1);
+          const lemmaEntry = await this.getEntry(lemmaWord, userId, timeZone, depth + 1);
           // Drop Wiktextract's "inflection of X:" boilerplate gloss, keeping
           // only the descriptive part (e.g. "first/third-person plural preterite").
           const descriptions = [
@@ -185,7 +186,7 @@ export class DictionaryService implements OnModuleInit {
       if (caseVariant) {
         const target = await this.prisma.dictionaryEntry.findFirst({ where: { word: caseVariant }, include });
         if (target && target.id !== entry.id) {
-          const merged = await this.getEntry(caseVariant, userId, depth + 1);
+          const merged = await this.getEntry(caseVariant, userId, timeZone, depth + 1);
           return {
             ...merged,
             word,
@@ -212,7 +213,7 @@ export class DictionaryService implements OnModuleInit {
       entry.enrichmentStatus === 'FAILED' ||
       (entry.enrichmentStatus === 'ENRICHED' && entry.register === null)
     ) {
-      await this.enrichment.requestEnrichment(entry.id, userId);
+      await this.enrichment.requestEnrichment(entry.id, userId, timeZone);
     }
 
     const lex = entry.lexiconEntry;

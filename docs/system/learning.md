@@ -122,10 +122,8 @@ Note what the labels mean: **"Known" on the dashboard counts cards in `AUTO_KNOW
 
 ## Limitations
 
-- **Every day boundary is UTC** (#20). Streak, heatmap buckets, "reviewed today", and
-  the enrichment quota key all use `toISOString()` dates. For a learner far from
-  UTC, the streak can break despite daily study, and reviews land in the wrong
-  heatmap cell.
+- **Day boundaries use user/client timezone** (#20 fixed). Streak, heatmap buckets, "reviewed today", and
+  the enrichment quota key use timezone-aware date formatting (accepting client-supplied timezone parameter/header or saved user timezone).
 - **`markKnown` fabricates FSRS state** — `stability: 100`, `difficulty: 1`,
   `state: REVIEW`, `reps: 0`, with no `ReviewLog` rows. This contradicts the
   log-is-truth invariant: any later `syncReviews` replay of that card resets it

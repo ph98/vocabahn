@@ -16,6 +16,11 @@ export const dashboardStatsSchema = z.object({
 });
 export type DashboardStats = z.infer<typeof dashboardStatsSchema>;
 
+export const dashboardQuerySchema = z.object({
+  timezone: z.string().optional(),
+});
+export type DashboardQuery = z.infer<typeof dashboardQuerySchema>;
+
 export const dashboardResponseSchema = z.object({
   streak: z.number(),
   heatmap: z.array(heatmapEntrySchema),
@@ -23,3 +28,4 @@ export const dashboardResponseSchema = z.object({
   courses: z.array(courseSummarySchema),
 });
 export type DashboardResponse = z.infer<typeof dashboardResponseSchema>;
+
