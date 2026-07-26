@@ -6,12 +6,16 @@ import helmet from 'helmet';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { AppModule } from './app.module';
+import { initApiSentry, SentryExceptionFilter } from './common/sentry.filter';
 
 async function bootstrap() {
+  initApiSentry();
   const app = await NestFactory.create(AppModule);
 
   // Ensure static audio cache directory exists
   await mkdir(join(process.cwd(), 'static', 'audio'), { recursive: true });
+
+  app.useGlobalFilters(new SentryExceptionFilter());
 
   // Trust reverse proxy (Nginx / Cloudflare) to resolve correct client IPs and enable secure cookies
   app.getHttpAdapter().getInstance().set('trust proxy', true);

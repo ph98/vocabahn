@@ -15,6 +15,7 @@ import {
   importWordsToDeck,
 } from '../api';
 import { useStaggerIn } from '../lib/motion';
+import { trackEvent } from '../lib/telemetry';
 import { PullToRefresh } from './PullToRefresh';
 import type { DeckSummary } from '@vocabahn/shared';
 
@@ -282,6 +283,7 @@ function ImportModal({ deckId, onClose }: { deckId: string; onClose: () => void 
       return importWordsToDeck(deckId, words);
     },
     onSuccess: (data) => {
+      trackEvent('custom_word_added', { deck_id: deckId, count: data.imported });
       void queryClient.invalidateQueries({ queryKey: ['deck', deckId] });
       const failedMsg = data.failed.length > 0 ? `\nFailed to find ${data.failed.length} words: ${data.failed.join(', ')}` : '';
       alert(`Successfully imported ${data.imported} words.${failedMsg}`);

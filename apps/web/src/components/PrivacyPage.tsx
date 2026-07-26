@@ -1,7 +1,21 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Cookie, Database, Lock, Server, ShieldCheck, UserCheck } from 'lucide-react';
+import { getStoredConsent, setStoredConsent, type ConsentState } from '../lib/telemetry';
 
 export function PrivacyPage() {
+  const [consent, setConsent] = useState<ConsentState>('denied');
+
+  useEffect(() => {
+    setConsent(getStoredConsent());
+  }, []);
+
+  const handleToggleConsent = (granted: boolean) => {
+    const newState = granted ? 'granted' : 'denied';
+    setStoredConsent(newState);
+    setConsent(newState);
+  };
+
   return (
     <article className="w-full max-w-4xl mx-auto py-6 px-4 sm:px-6">
       {/* Navigation Header */}
@@ -33,6 +47,49 @@ export function PrivacyPage() {
             Your privacy is fundamental to Vocabahn. This policy explains what information we collect, how it is stored, and your rights under privacy laws such as GDPR.
           </p>
         </header>
+
+        {/* Interactive Consent Settings Card */}
+        <section className="mb-10 rounded-2xl border border-indigo-500/30 bg-indigo-500/10 p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-surface-100 flex items-center gap-2">
+            <Cookie className="size-5 text-accent-amber shrink-0" aria-hidden="true" />
+            <span>Your Cookie & Analytics Preferences</span>
+          </h2>
+          <p className="text-sm text-surface-300 leading-relaxed">
+            You can update your analytics preference at any time. We support Google Consent Mode v2 to ensure no non-essential telemetry runs unless explicit consent is given.
+          </p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-indigo-500/20">
+            <div>
+              <span className="text-sm font-medium">Analytics & Performance Tracking: </span>
+              <span className={`text-sm font-bold ${consent === 'granted' ? 'text-accent-emerald' : 'text-accent-amber'}`}>
+                {consent === 'granted' ? 'Enabled (Granted)' : 'Disabled (Denied)'}
+              </span>
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => handleToggleConsent(false)}
+                className={`min-h-10 rounded-xl px-3.5 text-xs font-medium transition-colors ${
+                  consent === 'denied'
+                    ? 'bg-surface-700 text-white font-semibold'
+                    : 'border border-surface-700 bg-surface-800/60 text-surface-400 hover:text-white'
+                }`}
+              >
+                Deny
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleConsent(true)}
+                className={`min-h-10 rounded-xl px-4 text-xs font-semibold transition-colors ${
+                  consent === 'granted'
+                    ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30'
+                    : 'border border-surface-700 bg-surface-800/60 text-surface-300 hover:text-white'
+                }`}
+              >
+                Grant Consent
+              </button>
+            </div>
+          </div>
+        </section>
 
         {/* Content Sections */}
         <div className="space-y-10 text-surface-300 leading-relaxed text-sm md:text-base">

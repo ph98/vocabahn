@@ -11,7 +11,9 @@ import { prefersReducedMotion, springSnappy } from './lib/motion';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
 import { ProfilePage } from './components/ProfilePage';
 import { LandingPage } from './components/LandingPage';
+import { CookieConsentBanner } from './components/CookieConsentBanner';
 import { type Theme, useTheme, resolveTheme } from './lib/theme';
+import { trackPageView, trackEvent } from './lib/telemetry';
 
 const CourseDetailPage = lazy(() =>
   import('./components/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })),
@@ -365,6 +367,7 @@ function pageNameForPath(pathname: string): string {
   if (pathname.startsWith('/review')) return 'Review';
   if (pathname.startsWith('/known-words')) return 'Known words';
   if (pathname.startsWith('/profile')) return 'Profile';
+  if (pathname.startsWith('/privacy')) return 'Privacy Policy';
   if (pathname.startsWith('/status')) return 'System status';
   if (pathname.startsWith('/terms')) return 'Terms of Service';
   if (pathname.startsWith('/privacy')) return 'Privacy Policy';
@@ -381,8 +384,10 @@ function RouteAnnouncer({ mainRef }: { mainRef: RefObject<HTMLElement | null> })
   const pageName = pageNameForPath(pathname);
 
   useEffect(() => {
-    document.title = pageName === 'Dictionary' ? 'Vocabahn' : `${pageName} — Vocabahn`;
+    const title = pageName === 'Dictionary' ? 'Vocabahn' : `${pageName} — Vocabahn`;
+    document.title = title;
     mainRef.current?.focus();
+    trackPageView(pathname, title);
   }, [pathname, pageName, mainRef]);
 
   return (
@@ -491,7 +496,10 @@ function GoogleOneTapPrompt() {
   });
 
   useGoogleOneTap({
-    onSuccess: (credential) => mutation.mutate(credential),
+    onSuccess: (credential) => {
+      trackEvent('login', { method: 'google_one_tap' });
+      mutation.mutate(credential);
+    },
   });
 
   return null;
@@ -520,6 +528,7 @@ export default function App() {
   return (
     <>
       {!isPending && !user && <GoogleOneTapPrompt />}
+      <CookieConsentBanner />
       <a
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-indigo-500 focus:px-4 focus:py-2.5 focus:text-sm focus:font-medium focus:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
@@ -612,7 +621,7 @@ export default function App() {
           to="/privacy"
           className="hover:text-surface-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-colors"
         >
-          Privacy
+          Privacy Policy
         </Link>
         <span aria-hidden="true">•</span>
         <StatusLink />

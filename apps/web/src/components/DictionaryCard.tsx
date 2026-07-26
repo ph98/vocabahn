@@ -19,6 +19,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { addWordToDeck, fetchDecks, fetchDictionaryEntry, fetchFeedback, markWordKnown, searchDictionary, submitFeedback } from '../api';
 import { prefersReducedMotion } from '../lib/motion';
+import { trackEvent } from '../lib/telemetry';
 import { Tab, TabList, TabPanel } from './Tabs';
 
 const FEEDBACK_ISSUES = Object.keys(FEEDBACK_ISSUE_LABELS) as FeedbackIssue[];
@@ -824,6 +825,7 @@ export function EntryBody({
   const addToDeckMutation = useMutation({
     mutationFn: (deckId: string) => addWordToDeck(deckId, entry.id),
     onSuccess: (_data, deckId) => {
+      trackEvent('custom_word_added', { word: entry.word, deck_id: deckId });
       void queryClient.invalidateQueries({ queryKey: ['deck', deckId] });
       setAddedToDeck(deckId);
       setTimeout(() => setAddedToDeck(null), 2000);

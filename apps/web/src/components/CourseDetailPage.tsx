@@ -3,6 +3,7 @@ import { PullToRefresh } from './PullToRefresh';
 import type { FsrsState } from '@vocabahn/shared';
 import { Link, useParams } from 'react-router-dom';
 import { enrollCourse, fetchCourse } from '../api';
+import { trackEvent } from '../lib/telemetry';
 
 const STATE_LABELS: Record<FsrsState, string> = {
   NEW: 'New',
@@ -28,7 +29,10 @@ export function CourseDetailPage() {
   });
 
   const enroll = useMutation({
-    mutationFn: () => enrollCourse(slug!),
+    mutationFn: () => {
+      trackEvent('course_start', { course_slug: slug, cefr_level: course?.cefrLevel });
+      return enrollCourse(slug!);
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['course', slug] });
       void queryClient.invalidateQueries({ queryKey: ['courses'] });
