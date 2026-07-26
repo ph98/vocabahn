@@ -1,9 +1,9 @@
-import { screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import type { DictionaryEntryDetail } from '@vocabahn/shared';
 import { axe } from 'jest-axe';
 import { describe, expect, it, vi } from 'vitest';
 import { renderWithProviders } from '../../test/test-utils';
-import { EntryBody } from '../DictionaryCard';
+import { AudioButton, EntryBody } from '../DictionaryCard';
 
 vi.mock('../../api', () => ({
   fetchFeedback: vi.fn().mockResolvedValue({ vote: null, issues: [], comment: null }),
@@ -75,3 +75,35 @@ describe('EntryBody', () => {
     expect(tabs[0]).toHaveAttribute('aria-selected', 'false');
   });
 });
+
+describe('AudioButton', () => {
+  it('renders normal active state', () => {
+    renderWithProviders(<AudioButton src="/api/static/audio/test.mp3" label="Pronounce laufen" />);
+
+    const btn = screen.getByRole('button', { name: 'Pronounce laufen' });
+    expect(btn).toBeInTheDocument();
+    expect(btn).not.toBeDisabled();
+    expect(btn).toHaveTextContent('🔊');
+  });
+
+  it('handles media 404/loading error gracefully', async () => {
+    const { container } = renderWithProviders(
+      <AudioButton src="/api/static/audio/missing.mp3" label="Pronounce laufen" />,
+    );
+
+    const audioElement = container.querySelector('audio')!;
+    expect(audioElement).toBeInTheDocument();
+
+    // Trigger media load error (e.g. 404)
+    fireEvent.error(audioElement);
+
+    await waitFor(() => {
+      const btn = screen.getByRole('button');
+      expect(btn).toBeDisabled();
+      expect(btn).toHaveTextContent('🔇');
+      expect(btn).toHaveAttribute('aria-label', 'Pronounce laufen (Audio unavailable)');
+      expect(btn).toHaveAttribute('title', 'Audio unavailable');
+    });
+  });
+});
+

@@ -3,11 +3,15 @@ import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Ensure static audio cache directory exists
+  await mkdir(join(process.cwd(), 'static', 'audio'), { recursive: true });
 
   // Trust reverse proxy (Nginx / Cloudflare) to resolve correct client IPs and enable secure cookies
   app.getHttpAdapter().getInstance().set('trust proxy', true);
