@@ -32,17 +32,20 @@ API. Recursion is bounded by `depth < 2`.
    same-spelling variant.
 2. **No active entry → promote.** Candidate lexicon entries for that spelling
    are filtered to real lemmas — at least one sense lacking a `form-of` /
-   `alt-of` tag — then sorted by `POS_PRIORITY` (`noun`, `verb`, `adj`, `adv`,
-   then everything else), tie-broken by sense count. The winner becomes a
+   `alt-of` tag — then ranked via `compareLexiconCandidates` in `lexicon-ranking.ts`.
+   Lowercase non-nouns (e.g. `wenn` conjunction, `hallo` interjection) take precedence
+   over capitalized substantivized nouns (`das Wenn`, `das Hallo`) unless the noun
+   has substantially more senses (e.g. `Frau` noun). The winner becomes a
    `PENDING` `DictionaryEntry` and is pushed into the search index.
 3. **Only inflected forms exist → show the lemma.** The lemma's entry is
    returned with `formOf: { lemma, descriptions }` so the UI can render a
    "plural of Hund" banner. Wiktextract's `inflection of X:` boilerplate is
    stripped from the descriptions.
-4. **Case-variant merge.** If a sibling lexicon entry with the same spelling is
-   an `alt-of` pointer to a differently-cased word, the other word's entry
-   becomes primary and this entry's senses are appended. This is what keeps the
-   common meaning of `Du`/`du` from being shadowed by the rare noun `das Du`.
+4. **Case-variant and primary sibling merge.** If a primary sibling lexicon entry
+   (e.g. `wenn` conjunction vs `Wenn` noun) or `alt-of` case variant exists for a
+   headword, the primary entry becomes primary and sibling senses are folded in.
+   This prevents rare substantivized nouns from shadowing common conjunctions/interjections
+   and keeps `Du`/`du` properly merged.
 5. **Enrichment trigger** — see `enrichment.md`.
 
 ## Search
@@ -91,17 +94,6 @@ Search results show a plain "Searching…" line instead.
 
 ## Limitations
 
-- **Capitalized headwords resolve to the wrong sense, systematically** (#17).
-  `POS_PRIORITY` ranks `noun` first, so any capitalized word with both a noun
-  lexicon entry and a more common non-noun one promotes the noun.
-  **Observed**: `Wenn` (frequency rank #35, a conjunction) renders as
-  `das Wenn` tagged `NOUN`; `Hallo` (#164) is glossed only "hullabaloo", losing
-  the greeting. Frequency rank is inherited from the spelling, so these entries
-  advertise the importance of a sense they do not describe. The case-variant
-  merge in step 4 handles `alt-of` siblings but not distinct-POS siblings.
-- The wrong POS is passed to Gemini during enrichment, so the error propagates
-  into generated content — though in the `Wenn` case the model's `usageNote`
-  correctly described a conjunction anyway.
 - Search is single-process in-memory: it does not survive horizontal scaling,
   and index build time grows with the whole active dictionary.
 - `@Get(':word')` is declared after `quota`, `offline-pack`, and `search` in

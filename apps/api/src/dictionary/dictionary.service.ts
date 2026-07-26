@@ -10,17 +10,10 @@ import { buildAdjectiveDeclension, buildNounDeclension } from './declension';
 import { buildPronunciation, buildTopics, buildWordFamily } from './lexicon-extras';
 import { buildVerbConjugation } from './verb-conjugation';
 
-// When a word has several lexicon records, layer the dictionary entry on the
-// most useful one (same heuristic as scripts/seed-dictionary.ts).
-const POS_PRIORITY = ['noun', 'verb', 'adj', 'adv'];
-const posRank = (pos: string) =>
-  POS_PRIORITY.indexOf(pos) === -1 ? POS_PRIORITY.length : POS_PRIORITY.indexOf(pos);
+import { compareLexiconCandidates, isLemma } from './lexicon-ranking';
 
-// A lemma has at least one sense that is a real meaning, not a form-of/alt-of
-// pointer to another word (e.g. "Hunde" = plural of Hund is *not* a lemma).
+// A sense tagged with any of these is a pointer to another word, not a meaning.
 const FORM_TAGS = ['form-of', 'alt-of'];
-const isLemma = (senses: { tags: string[] }[]) =>
-  senses.some((s) => !s.tags.some((t) => FORM_TAGS.includes(t)));
 
 @Injectable()
 export class DictionaryService implements OnModuleInit {
@@ -125,22 +118,14 @@ export class DictionaryService implements OnModuleInit {
         _count: { select: { senses: true } },
       } as const;
       const candidates = await this.prisma.lexiconEntry.findMany({
-        where: { word },
+        where: { word: { equals: word, mode: 'insensitive' } },
         select: candidateSelect,
       });
-      if (candidates.length === 0) {
-        candidates.push(
-          ...(await this.prisma.lexiconEntry.findMany({
-            where: { word: { equals: word, mode: 'insensitive' } },
-            select: candidateSelect,
-          })),
-        );
-      }
 
       // Promote only real lemmas; inflected/alternative forms are never listed.
       const best = candidates
         .filter((c) => isLemma(c.senses))
-        .sort((a, b) => posRank(a.pos) - posRank(b.pos) || b._count.senses - a._count.senses)[0];
+        .sort((a, b) => compareLexiconCandidates(a, b, word))[0];
 
       if (best) {
         entry = await this.prisma.dictionaryEntry.create({
@@ -175,13 +160,43 @@ export class DictionaryService implements OnModuleInit {
       }
     }
 
-    // Some words have a sibling lexicon entry for the same exact spelling that is
-    // just an alternative letter-case form of a different word (e.g. "Du" the
-    // pronoun is the capitalized form of "du", but "Du" the noun — "das Du" — is
-    // its own rare lemma). When that's the case, show the other word's entry as
-    // primary and fold this entry's own sense(s) in alongside it, so the common
-    // meaning isn't shadowed by the rare one.
+    // Check for a primary sibling lexicon entry (e.g. "wenn" conj vs "Wenn" noun,
+    // or "hallo" intj vs "Hallo" noun) or an alt-of case variant (e.g. "Du" pron -> "du").
     if (depth < 2) {
+      const candidateSelect = {
+        id: true,
+        word: true,
+        pos: true,
+        senses: { select: { tags: true, glosses: true } },
+        _count: { select: { senses: true } },
+      } as const;
+      const siblings = await this.prisma.lexiconEntry.findMany({
+        where: { word: { equals: word, mode: 'insensitive' } },
+        select: candidateSelect,
+      });
+      const bestSibling = siblings
+        .filter((c) => isLemma(c.senses))
+        .sort((a, b) => compareLexiconCandidates(a, b))[0];
+
+      if (bestSibling && bestSibling.id !== entry.lexiconEntryId) {
+        const merged = await this.getEntry(bestSibling.word, userId, timeZone, depth + 1);
+        const existingGlosses = new Set(merged.senses.flatMap((s) => s.glosses));
+        const extraSenses = entry.lexiconEntry.senses
+          .filter((s) => !s.glosses.some((g) => existingGlosses.has(g)))
+          .map((s) => ({
+            glosses: s.glosses,
+            tags: s.tags,
+            topics: s.topics,
+            synonyms: s.synonyms,
+            antonyms: s.antonyms,
+          }));
+        return {
+          ...merged,
+          word,
+          senses: [...merged.senses, ...extraSenses],
+        };
+      }
+
       const caseVariant = await this.findCaseVariantLemma(word, entry.lexiconEntryId);
       if (caseVariant) {
         const target = await this.prisma.dictionaryEntry.findFirst({ where: { word: caseVariant }, include });
