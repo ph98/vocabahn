@@ -1,10 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import type { CourseDetail, CourseProgress, CourseSummary, FsrsState } from '@vocabahn/shared';
+import { cefrIndex } from '../knowledge/constants';
+import { KnowledgeService } from '../knowledge/knowledge.service';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class CoursesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly knowledgeService: KnowledgeService,
+  ) {}
 
   async listCourses(userId: string): Promise<CourseSummary[]> {
     const courses = await this.prisma.course.findMany({
@@ -102,6 +107,12 @@ export class CoursesService {
       data: course.words.map((w) => ({ userId, dictionaryEntryId: w.dictionaryEntryId })),
       skipDuplicates: true,
     });
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { cefrLevel: true } });
+    const userLevelIndex = cefrIndex(user?.cefrLevel);
+    if (userLevelIndex !== null) {
+      await this.knowledgeService.batchGraduateHighPrior(userId, userLevelIndex);
+    }
 
     return { enrolled: true, cardsCreated: count };
   }

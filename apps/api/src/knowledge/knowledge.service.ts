@@ -141,13 +141,12 @@ export class KnowledgeService {
       graduation = { count: 1, words: [card.dictionaryEntry.word] };
     }
 
-    const { index: cefrLevelIndex, graduation: fillerGraduation } = await this.maybeUpdateCefrLevel(userId);
+    const { index: cefrLevelIndex, levelChanged, graduation: fillerGraduation } = await this.maybeUpdateCefrLevel(userId);
 
-    // Whenever the user's level is known, sweep their never-reviewed cards for
-    // ones whose prior alone is overwhelming (extremely frequent, well below
-    // their level) — these don't need to wait for review history.
+    // Only sweep high-prior cards when the user's inferred level actually changes,
+    // rather than scanning every single new card on every review.
     const highPriorGraduation =
-      cefrLevelIndex !== null ? await this.batchGraduateHighPrior(userId, cefrLevelIndex) : null;
+      levelChanged && cefrLevelIndex !== null ? await this.batchGraduateHighPrior(userId, cefrLevelIndex) : null;
 
     return mergeGraduations(graduation, fillerGraduation, highPriorGraduation);
   }
@@ -280,12 +279,12 @@ export class KnowledgeService {
   /**
    * Re-estimates the user's effective CEFR level from recent review
    * performance and persists it if it changed. Returns the current (possibly
-   * updated) level index, plus any batch graduation of "filler" words
-   * triggered by a level increase.
+   * updated) level index, whether the level changed, plus any batch graduation
+   * of "filler" words triggered by a level increase.
    */
   private async maybeUpdateCefrLevel(
     userId: string,
-  ): Promise<{ index: number | null; graduation: AutoGraduation | null }> {
+  ): Promise<{ index: number | null; levelChanged: boolean; graduation: AutoGraduation | null }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { cefrLevel: true } });
     const currentIndex = cefrIndex(user?.cefrLevel);
 
@@ -295,7 +294,7 @@ export class KnowledgeService {
       take: LEVEL_INFERENCE_LOOKBACK,
       select: { rating: true, card: { select: { dictionaryEntry: { select: { cefrLevel: true } } } } },
     });
-    if (logs.length < LEVEL_INFERENCE_MIN_SAMPLES) return { index: currentIndex, graduation: null };
+    if (logs.length < LEVEL_INFERENCE_MIN_SAMPLES) return { index: currentIndex, levelChanged: false, graduation: null };
 
     const perLevel = new Map<number, { sum: number; count: number }>();
     for (const log of logs) {
@@ -314,7 +313,8 @@ export class KnowledgeService {
       }
     }
 
-    if (inferredIndex < 0 || inferredIndex === (currentIndex ?? -1)) return { index: currentIndex, graduation: null };
+    const levelChanged = inferredIndex >= 0 && inferredIndex !== (currentIndex ?? -1);
+    if (!levelChanged) return { index: currentIndex, levelChanged: false, graduation: null };
 
     await this.prisma.user.update({ where: { id: userId }, data: { cefrLevel: CEFR_LEVELS[inferredIndex] } });
 
@@ -322,7 +322,7 @@ export class KnowledgeService {
       currentIndex === null || inferredIndex > currentIndex
         ? await this.batchGraduateFillers(userId, inferredIndex)
         : null;
-    return { index: inferredIndex, graduation };
+    return { index: inferredIndex, levelChanged: true, graduation };
   }
 
   /** Auto-marks unseen words at least two sub-levels below `levelIndex` as known. */
@@ -355,9 +355,24 @@ export class KnowledgeService {
    * ("a user performing well at rank ~3,000 gets high knowledge
    * priors for the top-1,000 words they haven't seen yet").
    */
-  private async batchGraduateHighPrior(userId: string, levelIndex: number): Promise<AutoGraduation | null> {
+  async batchGraduateHighPrior(userId: string, levelIndex: number): Promise<AutoGraduation | null> {
+    const eligibleLevels = [...CEFR_LEVELS.slice(0, Math.max(0, levelIndex - 1))];
+    if (eligibleLevels.length === 0) return null;
+
+    const ceilingIndex = Math.max(levelIndex - 1, 0);
+    const ceiling = CEFR_FREQUENCY_CEILING[ceilingIndex] ?? 300;
+    const maxRank = Math.floor(0.2 * ceiling);
+
     const candidates = await this.prisma.card.findMany({
-      where: { userId, knownState: 'ACTIVE', state: 'NEW' },
+      where: {
+        userId,
+        knownState: 'ACTIVE',
+        state: 'NEW',
+        dictionaryEntry: {
+          cefrLevel: { in: eligibleLevels },
+          lexiconEntry: { frequencyRank: { lte: maxRank } },
+        },
+      },
       select: {
         id: true,
         dictionaryEntry: {
