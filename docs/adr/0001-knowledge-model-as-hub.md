@@ -1,7 +1,11 @@
 # 0001. Knowledge Model as the architectural hub
 
 Date: 2026-07-05
-Status: accepted
+Status: proposed
+
+> Not implemented as of 2026-07-26. Cards + FSRS remain the hub;
+> there is no evidence ledger and no planner in the codebase. See
+> `docs/system/learning.md` for what actually schedules reviews.
 
 ## Context
 

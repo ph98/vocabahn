@@ -1,4 +1,4 @@
-/** Single BullMQ queue for on-demand word enrichment (PRD §6). */
+/** Single BullMQ queue for on-demand word enrichment. */
 export const ENRICHMENT_QUEUE = 'enrichment';
 
 export interface EnrichmentJobData {

@@ -15,7 +15,7 @@ model User {
   email     String   @unique
   name      String?
   avatarUrl String?
-  // Inferred CEFR level for the knowledge model (PRD §4.5); null until inferred
+  // Inferred CEFR level for the knowledge model; null until inferred
   cefrLevel String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -28,7 +28,7 @@ model User {
   decks           UserDeck[]
 }
 
-// ── Lexicon layer (complete Wiktextract ingest, PRD §7) ─────────────────────
+// ── Lexicon layer (complete Wiktextract ingest) ────────────────────────────
 
 model LexiconEntry {
   id              String  @id @default(cuid())
@@ -83,7 +83,7 @@ model WordSense {
   @@index([entryId])
 }
 
-// ── Active learner-facing dictionary (PRD §4.2) ─────────────────────────────
+// ── Active learner-facing dictionary ────────────────────────────────────────
 
 enum EnrichmentStatus {
   PENDING
@@ -107,7 +107,7 @@ model DictionaryEntry {
   cefrLevel        String? // half sub-level, e.g. "A1.1" … "C2.2"
   // One concise learner-facing usage note (when/how to use + key grammar pitfall)
   usageNote        String?
-  // AI learner aids (PRD §19): common collocations/idioms, English false
+  // AI learner aids: common collocations/idioms, English false
   // friends, register/domain, and a short memory hook.
   collocations     Json?
   falseFriends     Json?
@@ -203,7 +203,7 @@ model EntryFeedback {
   @@index([vote])
 }
 
-// ── Study loop: FSRS cards + review log (PRD §4.4) ──────────────────────────
+// ── Study loop: FSRS cards + review log ─────────────────────────────────────
 
 enum KnownState {
   ACTIVE
@@ -260,7 +260,7 @@ model ReviewLog {
   cardId String
   userId String
   rating ReviewRating
-  // Answer latency feeds the knowledge model's performance signal (PRD §4.5)
+  // Answer latency feeds the knowledge model's performance signal
   latencyMs Int?
 
   // FSRS snapshot at review time (ts-fsrs ReviewLog shape, enables replay)
@@ -279,7 +279,7 @@ model ReviewLog {
   @@index([userId, reviewedAt])
 }
 
-// ── Knowledge model (derived & recomputable, PRD §4.5) ──────────────────────
+// ── Knowledge model (derived & recomputable) ────────────────────────────────
 
 model KnowledgeScore {
   id                String   @id @default(cuid())
@@ -296,7 +296,7 @@ model KnowledgeScore {
   @@index([userId, score])
 }
 
-// ── Courses (PRD §4.3) ──────────────────────────────────────────────────────
+// ── Courses ─────────────────────────────────────────────────────────────────
 
 model Course {
   id          String   @id @default(cuid())

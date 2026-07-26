@@ -5,7 +5,7 @@ import type { Redis } from 'ioredis';
 import { REDIS } from '../redis/redis.module';
 import { ENRICHMENT_QUEUE, type EnrichmentJobData } from './enrichment.constants';
 
-// Per-user/day cap on new-word enrichments that trigger paid APIs (PRD §6 abuse control).
+// Per-user/day cap on new-word enrichments that trigger paid APIs (abuse control).
 const DAILY_CAP = Number(process.env.ENRICHMENT_DAILY_CAP ?? 50);
 
 @Injectable()
@@ -19,7 +19,7 @@ export class EnrichmentService {
   ) {}
 
   /**
-   * Lazily enqueue enrichment for a word a user just opened (PRD §4.2). The 10k
+   * Lazily enqueue enrichment for a word a user just opened. The 10k
    * promoted entries are never bulk-enriched — paid APIs fire only on access.
    * Best-effort: never let queue/Redis trouble break the dictionary page.
    */

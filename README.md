@@ -30,14 +30,18 @@ pnpm dev                      # Spin up backend (3000) and frontend (5173) in wa
 
 ## Documentation Index
 
-Detailed documentation files have been consolidated under `docs/`:
-
-*   **[Product Requirements (PRD)](docs/prd.md)**: Product goals, detailed feature specifications, user stories, and target stack decisions.
-*   **[AI & Knowledge Architecture](docs/architecture.md)**: Complete system design covering the Knowledge Model hub, FSRS engine, LLM Gateway, and Model Context Protocol (MCP).
-*   **[Domain Glossary & Ubiquitous Language](docs/domain.md)**: Canonical terminology definitions across learning state, experiences, and scheduling.
+*   **[System Description](docs/system/README.md)**: What the codebase actually
+    does today — topology, data flow, and one file per subsystem, each with its
+    known limitations. Start here.
 *   **[Developer & Contributor Guide](docs/development.md)**: Local setup workflows, diagnostic tools, and database seeding commands.
 *   **[Operations & Infrastructure Guide](docs/operations.md)**: Server deployment guidelines, environment variables, TLS, monitoring, and database export/import procedures.
-*   **[Project Backlog & Roadmap](docs/backlog.md)**: Feature backlog, task roadmap, UI stories, and completed delivery history.
+*   **[Architecture Decisions](docs/adr/)**: Recorded decisions. Both current
+    ADRs are `proposed` and describe an architecture that is not built.
 *   **[Changelog](docs/changelog.md)**: Detailed historical versioning details.
 
-> **AI Assistants**: Please refer to [docs/llms.txt](docs/llms.txt) and [.agents/AGENTS.md](.agents/AGENTS.md) for context and codebase rules before writing code or running commands.
+**Planned work lives in GitHub issues, not in this repository.** There is no
+roadmap document. `docs/legacy/` holds the superseded PRD and backlog; they are
+retained as raw material for issue triage and are not specifications.
+
+> **AI Assistants**: Read [docs/system/README.md](docs/system/README.md) first,
+> then [.agents/AGENTS.md](.agents/AGENTS.md) for codebase rules.

@@ -1,5 +1,5 @@
 /**
- * System snapshot — how data is flowing through Vocabahn (PRD §7 pipeline).
+ * System snapshot — how data is flowing through the ingest → promote → enrich pipeline.
  *
  *   pnpm --filter @vocabahn/api stats
  *

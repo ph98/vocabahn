@@ -101,7 +101,7 @@ export class CardsService {
   }
 
   /**
-   * Syncs reviews completed offline (PRD §4.4). Each card touched is fully
+   * Syncs reviews completed offline. Each card touched is fully
    * replayed from an empty FSRS state through its complete ReviewLog history
    * (existing + newly-synced, sorted by `reviewedAt`) — the log is the source
    * of truth, so this also self-heals out-of-order submissions.

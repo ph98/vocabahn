@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-/** Generated .mp3 cache, served as static files at /api/static/audio (PRD §7 step 5). */
+/** Generated .mp3 cache, served as static files at /api/static/audio. */
 export const AUDIO_DIR = join(process.cwd(), 'static', 'audio');
 
 @Injectable()

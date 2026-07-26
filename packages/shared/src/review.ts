@@ -57,7 +57,7 @@ export const submitReviewResponseSchema = z.object({
 });
 export type SubmitReviewResponse = z.infer<typeof submitReviewResponseSchema>;
 
-// ── Offline review sync (PRD §4.4) ──────────────────────────────────────────
+// ── Offline review sync ─────────────────────────────────────────────────────
 // Reviews completed while offline are queued client-side with their original
 // timestamp, then replayed in timestamp order; server-side FSRS state is
 // recomputed from the full ReviewLog (the log is the source of truth).
