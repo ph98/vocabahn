@@ -60,6 +60,26 @@ export class DictionaryService implements OnModuleInit {
     );
   }
 
+  async updateSearchIndex(id: string): Promise<void> {
+    const entry = await this.prisma.dictionaryEntry.findUnique({
+      where: { id },
+      select: {
+        word: true,
+        translation: true,
+        emoji: true,
+        cefrLevel: true,
+        enrichmentStatus: true,
+        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true } },
+      },
+    });
+    if (!entry) return;
+
+    const result = this.toSearchResult(entry);
+    this.fuse.remove((doc) => doc.word === result.word);
+    this.fuse.add(result);
+    this.logger.log(`updated search index for "${result.word}" (${id})`);
+  }
+
   search(q: string): DictionarySearchResult[] {
     return this.fuse.search(q, { limit: 20 }).map((r) => r.item);
   }
