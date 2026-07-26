@@ -34,6 +34,9 @@ const DeckDetailPage = lazy(() =>
 );
 const TermsPage = lazy(() => import('./components/TermsPage').then((m) => ({ default: m.TermsPage })));
 const PrivacyPage = lazy(() => import('./components/PrivacyPage').then((m) => ({ default: m.PrivacyPage })));
+const NotFoundPage = lazy(() =>
+  import('./components/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
+);
 
 /** Suspense fallback for lazy-loaded routes; announced to screen readers. */
 function RouteLoading() {
@@ -594,6 +597,7 @@ export default function App() {
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/auth/verify" element={<AuthVerifyPage />} />
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
           </div>
