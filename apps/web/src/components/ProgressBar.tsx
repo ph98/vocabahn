@@ -7,14 +7,18 @@ export function ProgressBar({ progress, wordCount }: { progress: CourseSummary['
     <div
       role="img"
       aria-label={`${progress.learned} learned, ${progress.inProgress} in progress, ${progress.notStarted} not started`}
-      className="flex h-3 w-full overflow-hidden rounded-full bg-surface-800"
+      className="flex h-3 w-full overflow-hidden rounded-full bg-surface-800 p-0.5"
     >
-      <span className="relative overflow-hidden bg-emerald-400" style={{ width: pct(progress.learned) }}>
-        <span className="absolute inset-0 -translate-x-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent)] animate-[shimmer_2s_infinite]" />
-      </span>
-      <span className="relative overflow-hidden bg-amber-300" style={{ width: pct(progress.inProgress) }}>
-        <span className="absolute inset-0 -translate-x-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.4),transparent)] animate-[shimmer_2s_infinite_0.5s]" />
-      </span>
+      {progress.learned > 0 && (
+        <span className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: pct(progress.learned) }}>
+          <span className="absolute inset-0 -translate-x-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.45),transparent)] animate-[shimmer_2s_infinite] motion-reduce:animate-none motion-reduce:hidden" />
+        </span>
+      )}
+      {progress.inProgress > 0 && (
+        <span className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-amber-400 to-amber-300" style={{ width: pct(progress.inProgress) }}>
+          <span className="absolute inset-0 -translate-x-full bg-[linear-gradient(90deg,transparent,rgba(255,255,255,0.45),transparent)] animate-[shimmer_2s_infinite_0.5s] motion-reduce:animate-none motion-reduce:hidden" />
+        </span>
+      )}
     </div>
   );
 }

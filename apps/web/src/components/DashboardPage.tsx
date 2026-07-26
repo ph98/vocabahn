@@ -8,6 +8,7 @@ import { CountUp } from './CountUp';
 import { useRef, type ComponentType } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import { prefersReducedMotion } from '../lib/motion';
 import {
   ArrowRight,
   BadgeCheck,
@@ -33,10 +34,10 @@ function StatCard({
   className?: string;
 }) {
   return (
-    <div className={`dashboard-card flex flex-col items-center justify-center gap-1.5 rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-4 text-center shadow-[0_4px_24px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(79,70,229,0.15)] hover:border-indigo-500/30 ${className}`}>
-      <Icon aria-hidden className={`size-4 ${accent}`} />
-      <CountUp value={value} className="text-3xl font-semibold tabular-nums text-surface-100" />
-      <p className="text-xs uppercase tracking-wide text-surface-400">{label}</p>
+    <div className={`dashboard-card flex flex-col items-center justify-center gap-1.5 rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-5 text-center shadow-[0_4px_24px_rgba(0,0,0,0.2)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(79,70,229,0.15)] hover:border-indigo-500/30 motion-reduce:hover:translate-y-0 ${className}`}>
+      <Icon aria-hidden className={`size-5 ${accent}`} />
+      <CountUp value={value} className="text-3xl font-bold tabular-nums text-surface-100" />
+      <p className="text-xs font-semibold uppercase tracking-wider text-surface-400">{label}</p>
     </div>
   );
 }
@@ -47,6 +48,7 @@ export function DashboardPage() {
 
   useGSAP(() => {
     if (data) {
+      if (prefersReducedMotion()) return;
       gsap.fromTo(
         '.dashboard-card',
         { y: 40, opacity: 0 },
@@ -73,49 +75,50 @@ export function DashboardPage() {
 
       {data && (
         <div className="flex flex-col gap-5">
-          <div className="dashboard-card relative overflow-hidden rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/80 to-surface-950/80 backdrop-blur-md p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -top-20 left-1/2 size-72 -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl"
-            />
-            <div className="relative z-10 flex flex-col items-center gap-6 text-center">
-              {data.streak > 0 ? (
-                <div>
-                  <p className="flex items-center justify-center gap-3 text-6xl font-extrabold tracking-tight text-surface-100">
-                    <Flame aria-hidden className="size-12 text-accent-amber" fill="currentColor" />
-                    <CountUp value={data.streak} className="tabular-nums" />
+          {/* Bento Box Grid for Statistics */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="dashboard-card relative overflow-hidden rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/90 via-surface-900/80 to-surface-950/90 backdrop-blur-md p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.3)] sm:col-span-2 lg:col-span-2 flex flex-col justify-between">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -top-20 left-1/2 size-72 -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl"
+              />
+              <div className="relative z-10 flex flex-col items-center gap-6 text-center my-auto">
+                {data.streak > 0 ? (
+                  <div>
+                    <p className="flex items-center justify-center gap-3 text-6xl font-extrabold tracking-tight text-surface-100">
+                      <Flame aria-hidden className="size-12 text-accent-amber" fill="currentColor" />
+                      <CountUp value={data.streak} className="tabular-nums" />
+                    </p>
+                    <p className="mt-3 text-sm font-semibold uppercase tracking-widest text-surface-400">day streak</p>
+                  </div>
+                ) : (
+                  <div>
+                    <Flame aria-hidden className="mx-auto size-10 text-surface-600" />
+                    <p className="mt-3 text-2xl font-bold tracking-tight text-surface-100">Start your streak today</p>
+                    <p className="mt-1 text-surface-400">One review session is all it takes.</p>
+                  </div>
+                )}
+
+                {data.stats.dueToday > 0 ? (
+                  <Link
+                    to="/review"
+                    className="group inline-flex min-h-12 items-center gap-3 rounded-2xl bg-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 transition-[background-color,transform] hover:bg-indigo-400 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  >
+                    Start review
+                    <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-sm tabular-nums">
+                      {data.stats.dueToday.toLocaleString()} due
+                    </span>
+                    <ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                ) : (
+                  <p className="inline-flex items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-2.5 text-sm font-medium text-accent-emerald">
+                    <PartyPopper aria-hidden className="size-4" />
+                    All caught up — nothing due today
                   </p>
-                  <p className="mt-3 text-sm font-semibold uppercase tracking-widest text-surface-400">day streak</p>
-                </div>
-              ) : (
-                <div>
-                  <Flame aria-hidden className="mx-auto size-10 text-surface-600" />
-                  <p className="mt-3 text-2xl font-bold tracking-tight text-surface-100">Start your streak today</p>
-                  <p className="mt-1 text-surface-400">One review session is all it takes.</p>
-                </div>
-              )}
-
-              {data.stats.dueToday > 0 ? (
-                <Link
-                  to="/review"
-                  className="group inline-flex min-h-12 items-center gap-3 rounded-2xl bg-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 transition-[background-color,transform] hover:bg-indigo-400 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  Start review
-                  <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-sm tabular-nums">
-                    {data.stats.dueToday.toLocaleString()} due
-                  </span>
-                  <ArrowRight aria-hidden className="size-4 transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              ) : (
-                <p className="inline-flex items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-5 py-2.5 text-sm font-medium text-accent-emerald">
-                  <PartyPopper aria-hidden className="size-4" />
-                  All caught up — nothing due today
-                </p>
-              )}
+                )}
+              </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <StatCard label="Reviewed today" value={data.stats.reviewedToday} icon={CheckCheck} accent="text-accent-sky" />
             <StatCard label="Known" value={data.stats.totalKnown} icon={BadgeCheck} accent="text-accent-emerald" />
             <StatCard label="Learning" value={data.stats.totalLearning} icon={Brain} accent="text-accent-amber" />

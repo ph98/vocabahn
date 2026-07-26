@@ -127,6 +127,21 @@ body {
   }
 }
 
+@keyframes morph-mesh {
+  0%, 100% {
+    border-radius: 40% 60% 70% 30% / 40% 50% 60% 50%;
+    transform: translate(0px, 0px) scale(1) rotate(0deg);
+  }
+  33% {
+    border-radius: 60% 40% 30% 70% / 50% 30% 70% 50%;
+    transform: translate(25px, -20px) scale(1.15) rotate(120deg);
+  }
+  66% {
+    border-radius: 30% 70% 50% 50% / 30% 60% 40% 70%;
+    transform: translate(-20px, 20px) scale(0.92) rotate(240deg);
+  }
+}
+
 .skeleton-shimmer {
   position: relative;
   overflow: hidden;
