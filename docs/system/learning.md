@@ -106,8 +106,7 @@ and merged into one `AutoGraduation` summary:
    inferred level. `User.cefrLevel` is written here and nowhere else.
 3. **Filler sweep** — on a level *increase*, every `NEW`/`ACTIVE` card at least
    two sub-levels below the new level is marked `AUTO_KNOWN` in bulk.
-4. **High prior** — whenever the level is known, `NEW`/`ACTIVE` cards whose prior
-   alone reaches 0.9 graduate without any review history.
+4. **High prior** — on a level *increase* (or on course enrollment when the level is known), `NEW`/`ACTIVE` cards whose prior alone reaches 0.9 (filtered in SQL by CEFR level and frequency rank) graduate without any review history.
 
 Manual marking (`markKnown`, `bulkMarkKnown`) writes `USER_KNOWN` with due one
 year out. Undo returns the card to `ACTIVE`, due now, and **pulls the score down
@@ -131,11 +130,7 @@ Note what the labels mean: **"Known" on the dashboard counts cards in `AUTO_KNOW
   `state: REVIEW`, `reps: 0`, with no `ReviewLog` rows. This contradicts the
   log-is-truth invariant: any later `syncReviews` replay of that card resets it
   from `emptyFsrsCard()` and discards the fabricated numbers.
-- **`batchGraduateHighPrior` runs on every single review** (#19) and loads *all* of the
-  user's `NEW`/`ACTIVE` cards to filter them in JavaScript. A learner enrolled in
-  every course carries thousands of such cards (**observed**: 3,197 new), so each
-  rating triggers a full scan. `maybeUpdateCefrLevel` adds another 100-row joined
-  query per review.
+
 - Auto-graduation has no strong-evidence requirement: three self-graded `EASY`
   taps satisfy it. Self-report is the only evidence kind that exists.
 - Swipe covers only **Again** and **Good**. `RATING_OFFSET` defines vertical
