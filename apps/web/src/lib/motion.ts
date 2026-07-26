@@ -2,7 +2,7 @@ import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import type { RefObject } from 'react';
 
-/** PRD §4.0: every GSAP animation needs a prefers-reduced-motion variant. */
+/** Every GSAP animation needs a prefers-reduced-motion variant. */
 export function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }

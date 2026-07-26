@@ -23,7 +23,7 @@ AdminJS.registerAdapter({
 const prisma = new PrismaClient();
 const port = Number(process.env.ADMIN_PORT ?? 3001);
 
-// Group models into a readable navigation (PRD §5 data model layers)
+// Group models into a readable navigation (by data model layer)
 const NAV = {
   lexicon: { name: 'Lexicon', icon: 'Book' },
   dictionary: { name: 'Dictionary', icon: 'BookOpen' },

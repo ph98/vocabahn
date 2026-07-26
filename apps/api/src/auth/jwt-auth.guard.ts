@@ -21,7 +21,7 @@ export class JwtAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<AuthenticatedRequest>();
 
-    // httpOnly cookie for web; Authorization: Bearer for native clients (PRD §6)
+    // httpOnly cookie for web; Authorization: Bearer for native clients
     const bearer = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
     const token = (req.cookies as Record<string, string>)[ACCESS_COOKIE] ?? bearer;
     if (!token) {

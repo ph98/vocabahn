@@ -13,7 +13,7 @@ export function createScheduler() {
 const FSRS_STATES: FsrsState[] = ['NEW', 'LEARNING', 'REVIEW', 'RELEARNING'];
 const FSRS_RATINGS: ReviewRating[] = ['AGAIN', 'HARD', 'GOOD', 'EASY'];
 
-/** A brand-new card's FSRS state, used as the replay starting point (PRD §4.4 offline sync). */
+/** A brand-new card's FSRS state, used as the replay starting point for offline sync. */
 export function emptyFsrsCard(): FsrsCard {
   return createEmptyCard();
 }

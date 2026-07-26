@@ -232,7 +232,7 @@ export function ReviewSession() {
     queryKey: ['dictionary-entry', card?.entry.word],
     queryFn: () => fetchDictionaryEntry(card!.entry.word),
     enabled: !!card && revealed,
-    // Poll while the background pipeline enriches the entry (PRD §4.2)
+    // Poll while the background pipeline enriches the entry
     refetchInterval: (q) => {
       const status = q.state.data?.enrichmentStatus;
       return status === 'PENDING' || status === 'ENRICHING' ? 4000 : false;
@@ -273,7 +273,7 @@ export function ReviewSession() {
       }
     },
     // Offline (or a flaky connection): queue the review for sync on reconnect
-    // rather than losing it (PRD §4.4).
+    // rather than losing it.
     onError: async (_error, vars) => {
       await enqueueReview({
         cardId: vars.cardId,
@@ -380,7 +380,7 @@ export function ReviewSession() {
   );
 
   // Screen-reader-only announcements for card transitions and review
-  // results (PRD §4.0).
+  // results.
   const [announcement, setAnnouncement] = useState('');
   const lastRatingRef = useRef<ReviewRating | null>(null);
 

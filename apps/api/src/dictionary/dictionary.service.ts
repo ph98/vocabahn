@@ -66,7 +66,7 @@ export class DictionaryService implements OnModuleInit {
 
   /**
    * Entry detail by headword. A word that exists in the lexicon but not yet in
-   * the active dictionary is promoted to a PENDING stub instantly (PRD §4.2),
+   * the active dictionary is promoted to a PENDING stub instantly,
    * and viewing a not-yet-enriched word is what triggers enrichment — paid APIs
    * never run for the 10k promoted-but-unviewed entries.
    */
@@ -184,7 +184,7 @@ export class DictionaryService implements OnModuleInit {
       }
     }
 
-    // On-demand enrichment (PRD §4.2): fire only when the word is actually viewed
+    // On-demand enrichment: fire only when the word is actually viewed
     // and still needs work. Also re-enrich entries that predate the AI learner
     // aids (collocations/false friends/register/mnemonic) so they backfill on view.
     if (

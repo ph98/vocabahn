@@ -54,7 +54,7 @@ export class AuthService {
     return this.signInWithIdToken(tokens.id_token);
   }
 
-  /** Mobile-ready flow: verify a Google ID token directly (PRD §4.1). */
+  /** Mobile-ready flow: verify a Google ID token directly. */
   async signInWithIdToken(idToken: string): Promise<User> {
     const ticket = await this.google
       .verifyIdToken({ idToken, audience: this.clientId })

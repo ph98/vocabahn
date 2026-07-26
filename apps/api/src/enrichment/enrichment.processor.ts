@@ -7,7 +7,7 @@ import { GeminiProvider } from './providers/gemini.provider';
 import { TtsProvider } from './providers/tts.provider';
 import { UnsplashProvider } from './providers/unsplash.provider';
 
-// Global rate limit protects the free-tier external APIs (PRD §6).
+// Global rate limit protects the free-tier external APIs.
 @Processor(ENRICHMENT_QUEUE, {
   concurrency: 2,
   limiter: { max: 5, duration: 1_000 },

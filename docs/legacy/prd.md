@@ -1,5 +1,21 @@
 # Product Requirements Document (PRD)
 
+> **LEGACY — SUPERSEDED. DO NOT TREAT AS SPECIFICATION.**
+>
+> This document was written ahead of the code and describes features that were
+> never built alongside features that were built differently. It is retained
+> only as raw material for triaging GitHub issues.
+>
+> For what the system actually does, read `docs/system/`. For what is planned,
+> read the GitHub issues — nothing in this file is planned work until it has an
+> issue.
+>
+> Known-false claims in this file include: a separate `apps/worker` application,
+> a standalone AdminJS server, SSE for enrichment progress, listening mode,
+> and the entire Phase A/B/C AI-first spine (evidence ledger, production
+> drills, micro-stories, planner). Section numbers cited elsewhere refer to
+> earlier revisions of this file and no longer resolve.
+
 **Status:** Approved for Implementation  
 **Latest Update:** 2026-07-25  
 

@@ -24,7 +24,7 @@ export class UnsplashProvider {
     return this.accessKey !== null;
   }
 
-  /** Top squarish photo for the query, with attribution to store (PRD §7). */
+  /** Top squarish photo for the query, with attribution to store. */
   async search(query: string): Promise<UnsplashImage | null> {
     if (!this.accessKey) {
       this.logger.warn('UNSPLASH_ACCESS_KEY not set — skipping image');

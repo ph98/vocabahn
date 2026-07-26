@@ -62,7 +62,7 @@ function EntryDetail({
   const { data: entry, isPending, isError } = useQuery({
     queryKey: ['dictionary-entry', word],
     queryFn: () => fetchDictionaryEntry(word),
-    // Poll while the background pipeline enriches the entry (PRD §4.2)
+    // Poll while the background pipeline enriches the entry
     refetchInterval: (q) => {
       const status = q.state.data?.enrichmentStatus;
       return status === 'PENDING' || status === 'ENRICHING' ? 4000 : false;

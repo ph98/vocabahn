@@ -35,7 +35,7 @@ import {
 } from './cookies';
 import { CurrentUserId, JwtAuthGuard } from './jwt-auth.guard';
 
-// Stricter throttle tier for auth endpoints (PRD §4.9)
+// Stricter throttle tier for auth endpoints
 @Throttle({ default: { limit: 10, ttl: 60_000 } })
 @Controller('auth')
 export class AuthController {

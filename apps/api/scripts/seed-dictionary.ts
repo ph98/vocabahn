@@ -1,5 +1,5 @@
 /**
- * Select the active dictionary (PRD §7 step 3): top-N words by frequency that
+ * Select the active dictionary: top-N words by frequency that
  * have a real LEMMA lexicon entry become DictionaryEntry rows (PENDING).
  *
  *   pnpm --filter @vocabahn/api seed:dictionary [-- --top 10000] [-- --reset]

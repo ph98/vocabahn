@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { Injectable, Logger } from '@nestjs/common';
 
-/** Gap-fill content the local datasets can't provide (PRD §7 step 3). */
+/** Gap-fill content the local datasets can't provide. */
 export interface GeminiEnrichment {
   translation: string | null;
   emoji: string | null;
@@ -57,7 +57,7 @@ export class GeminiProvider {
 
   /**
    * One small Gemini call per word. Returns null only when unconfigured;
-   * a real API error throws so the job can retry (PRD §6 backoff).
+   * a real API error throws so the job can retry with backoff.
    */
   async enrich(input: {
     word: string;

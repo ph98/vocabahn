@@ -52,7 +52,7 @@ export class KnowledgeService {
 
   /**
    * Estimated knowledge prior (0..1) for a word the user hasn't reviewed yet,
-   * combining level inference and the frequency prior (PRD §4.5).
+   * combining level inference and the frequency prior.
    */
   priorScore({ userCefrIndex, entryCefrLevel, frequencyRank }: PriorInput): number {
     if (userCefrIndex === null) return 0;
@@ -77,7 +77,7 @@ export class KnowledgeService {
 
   /**
    * Orders new (never-reviewed) cards lowest-knowledge-score first, so a
-   * session's introduction slots go to genuinely unknown material (PRD §4.5).
+   * session's introduction slots go to genuinely unknown material.
    */
   orderByPrior<T extends NewCardCandidate>(userCefrLevel: string | null, cards: T[]): T[] {
     const userCefrIndex = cefrIndex(userCefrLevel);
@@ -179,7 +179,7 @@ export class KnowledgeService {
     }));
   }
 
-  /** One-tap undo: returns the card to ACTIVE, due now, so it reappears in review (PRD §4.5). */
+  /** One-tap undo: returns the card to ACTIVE, due now, so it reappears in review. */
   /** Mark a word as USER_KNOWN by its dictionary entry ID; creates the card if needed. */
   async markKnown(userId: string, dictionaryEntryId: string): Promise<void> {
     await this.prisma.card.upsert({
@@ -352,7 +352,7 @@ export class KnowledgeService {
   /**
    * Auto-marks NEW (never-reviewed) cards whose prior alone — frequency rank
    * combined with the gap below the user's level — is overwhelming
-   * (PRD §4.5: "a user performing well at rank ~3,000 gets high knowledge
+   * ("a user performing well at rank ~3,000 gets high knowledge
    * priors for the top-1,000 words they haven't seen yet").
    */
   private async batchGraduateHighPrior(userId: string, levelIndex: number): Promise<AutoGraduation | null> {

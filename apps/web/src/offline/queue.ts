@@ -31,7 +31,7 @@ async function withStore<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore
   }
 }
 
-/** Queues a review completed while offline, to be synced on reconnect (PRD §4.4). */
+/** Queues a review completed while offline, to be synced on reconnect. */
 export async function enqueueReview(item: SyncReviewItem): Promise<void> {
   await withStore('readwrite', (store) => {
     store.add(item);
