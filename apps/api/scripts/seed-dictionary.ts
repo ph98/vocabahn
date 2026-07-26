@@ -18,14 +18,7 @@ import { AUDIO_DIR } from '../src/enrichment/providers/tts.provider';
 
 const prisma = new PrismaClient();
 
-// When a word has several lexicon records (POS/etymologies), the dictionary
-// entry is layered on the most useful one: content words first, then most senses.
-const POS_PRIORITY = ['noun', 'verb', 'adj', 'adv'];
-
-function posRank(pos: string): number {
-  const i = POS_PRIORITY.indexOf(pos);
-  return i === -1 ? POS_PRIORITY.length : i;
-}
+import { compareLexiconCandidates } from '../src/dictionary/lexicon-ranking';
 
 // A sense tagged with any of these is a pointer to another word, not a meaning.
 const FORM_TAGS = ['form-of', 'alt-of'];
@@ -41,8 +34,9 @@ async function main() {
   }
 
   // Top-N by frequency among words that have at least one real lemma entry.
+  // Group case-insensitively by LOWER(le.word) so spelling variants are considered together.
   const words = await prisma.$queryRaw<{ word: string }[]>`
-    SELECT le.word, MIN(le."frequencyRank") AS rank
+    SELECT LOWER(le.word) AS word, MIN(le."frequencyRank") AS rank
     FROM "LexiconEntry" le
     WHERE le."frequencyRank" IS NOT NULL
       AND EXISTS (
@@ -50,7 +44,7 @@ async function main() {
         WHERE s."entryId" = le.id
           AND NOT (s.tags @> ARRAY['form-of'] OR s.tags @> ARRAY['alt-of'])
       )
-    GROUP BY le.word
+    GROUP BY LOWER(le.word)
     ORDER BY rank ASC
     LIMIT ${top}
   `;
@@ -63,7 +57,7 @@ async function main() {
     const candidates = await prisma.lexiconEntry.findMany({
       // Only lemma entries: at least one sense that is not a form-of/alt-of pointer.
       where: {
-        word: { in: chunk },
+        word: { in: chunk, mode: 'insensitive' },
         senses: { some: { NOT: { tags: { hasSome: FORM_TAGS } } } },
       },
       select: {
@@ -76,13 +70,10 @@ async function main() {
 
     const bestByWord = new Map<string, (typeof candidates)[number]>();
     for (const c of candidates) {
-      const cur = bestByWord.get(c.word);
-      if (
-        !cur ||
-        posRank(c.pos) < posRank(cur.pos) ||
-        (posRank(c.pos) === posRank(cur.pos) && c._count.senses > cur._count.senses)
-      ) {
-        bestByWord.set(c.word, c);
+      const key = c.word.toLowerCase();
+      const cur = bestByWord.get(key);
+      if (!cur || compareLexiconCandidates(c, cur) < 0) {
+        bestByWord.set(key, c);
       }
     }
 
