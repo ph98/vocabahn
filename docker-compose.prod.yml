@@ -53,6 +53,7 @@ services:
     volumes:
       - ./service-account.json:/repo/service-account.json:ro
       - ./data:/repo/data:ro
+      - audio-data:/repo/apps/api/static/audio
 
   web:
     build:
@@ -73,6 +74,7 @@ services:
 volumes:
   db-data:
   redis-data:
+  audio-data:
 
 networks:
   internal:

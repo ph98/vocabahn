@@ -90,13 +90,7 @@ A `DOWN` vote **plus** at least one of `TRANSLATION`, `EXAMPLE`, `IMAGE`, or
 
 ## Limitations
 
-- **Generated audio is not persisted across deploys** (#14). Files are written to the
-  API container's filesystem, and `docker-compose.prod.yml` mounts no volume at
-  `static/`. A rebuild discards every mp3 while `DictionaryEntry.audioUrl` and
-  `DictionaryExample.audioUrl` still point at them, leaving dead audio links.
-  Re-enrichment will not repair them, because an `ENRICHED` entry with a
-  non-null `register` no longer triggers. Not verified against a live deploy;
-  read off the compose file and `tts.provider.ts`.
+- Generated audio is persisted in production via a named volume (`audio-data` mounted at `static/audio/` in `docker-compose.prod.yml`, resolved from #14).
 - Quota is consumed on **enqueue**, before any external call. A job that fails
   all three attempts still cost the user one of their 50.
 - Viewing pre-learner-aid entries burns quota invisibly (the `register === null`
