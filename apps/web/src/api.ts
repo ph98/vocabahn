@@ -10,6 +10,7 @@ import {
   dueCardsResponseSchema,
   entryFeedbackSchema,
   enrollResponseSchema,
+  unenrollResponseSchema,
   healthResponseSchema,
   importWordsResponseSchema,
   knownWordsResponseSchema,
@@ -89,6 +90,11 @@ export async function fetchCourse(slug: string) {
 export async function enrollCourse(slug: string) {
   const { data } = await api.post(`/courses/${encodeURIComponent(slug)}/enroll`);
   return enrollResponseSchema.parse(data);
+}
+
+export async function unenrollCourse(slug: string) {
+  const { data } = await api.post(`/courses/${encodeURIComponent(slug)}/unenroll`);
+  return unenrollResponseSchema.parse(data);
 }
 
 export async function fetchDueCards(courseId?: string, deckId?: string) {

@@ -48,3 +48,10 @@ export const enrollResponseSchema = z.object({
   cardsCreated: z.number(),
 });
 export type EnrollResponse = z.infer<typeof enrollResponseSchema>;
+
+export const unenrollResponseSchema = z.object({
+  enrolled: z.literal(false),
+  cardsSuspended: z.number(),
+});
+export type UnenrollResponse = z.infer<typeof unenrollResponseSchema>;
+

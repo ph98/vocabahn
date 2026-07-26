@@ -3,7 +3,7 @@ import { PullToRefresh } from './PullToRefresh';
 import type { CourseSummary } from '@vocabahn/shared';
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { enrollCourse, fetchCourses } from '../api';
+import { enrollCourse, fetchCourses, unenrollCourse } from '../api';
 import { useStaggerIn } from '../lib/motion';
 import { ProgressBar } from './ProgressBar';
 
@@ -11,6 +11,10 @@ function CourseCard({ course }: { course: CourseSummary }) {
   const queryClient = useQueryClient();
   const enroll = useMutation({
     mutationFn: () => enrollCourse(course.slug),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['courses'] }),
+  });
+  const unenroll = useMutation({
+    mutationFn: () => unenrollCourse(course.slug),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['courses'] }),
   });
 
@@ -48,12 +52,22 @@ function CourseCard({ course }: { course: CourseSummary }) {
           View words
         </Link>
         {course.enrolled ? (
-          <Link
-            to={`/review?courseId=${course.id}`}
-            className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
-            Review
-          </Link>
+          <>
+            <Link
+              to={`/review?courseId=${course.id}`}
+              className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              Review
+            </Link>
+            <button
+              type="button"
+              onClick={() => unenroll.mutate()}
+              disabled={unenroll.isPending}
+              className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-accent-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60"
+            >
+              {unenroll.isPending ? 'Unenrolling…' : 'Unenroll'}
+            </button>
+          </>
         ) : (
           <button
             type="button"
