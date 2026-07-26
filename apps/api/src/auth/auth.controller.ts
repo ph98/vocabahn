@@ -68,7 +68,7 @@ export class AuthController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    const cookies = req.cookies as Record<string, string>;
+    const cookies = (req.cookies as Record<string, string> | undefined) ?? {};
     const expectedState = cookies[OAUTH_STATE_COOKIE];
     clearOauthStateCookie(res);
 
@@ -118,7 +118,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
     @Body() body: { refreshToken?: string } | undefined,
   ): Promise<AuthTokens> {
-    const cookies = req.cookies as Record<string, string>;
+    const cookies = (req.cookies as Record<string, string> | undefined) ?? {};
     const token = cookies[REFRESH_COOKIE] ?? body?.refreshToken;
     if (!token) {
       throw new UnauthorizedException('No refresh token');
@@ -160,7 +160,7 @@ export class AuthController {
     }
   }
 
-  @Get('me')
+  @Get(['me', '/me'])
   @UseGuards(JwtAuthGuard)
   async me(@CurrentUserId() userId: string): Promise<User> {
     const user = await this.auth.getUserById(userId);

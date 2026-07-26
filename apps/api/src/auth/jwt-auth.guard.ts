@@ -23,7 +23,8 @@ export class JwtAuthGuard implements CanActivate {
 
     // httpOnly cookie for web; Authorization: Bearer for native clients
     const bearer = req.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
-    const token = (req.cookies as Record<string, string>)[ACCESS_COOKIE] ?? bearer;
+    const cookies = req.cookies as Record<string, string> | undefined;
+    const token = cookies?.[ACCESS_COOKIE] ?? bearer;
     if (!token) {
       throw new UnauthorizedException('Not signed in');
     }
