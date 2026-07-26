@@ -45,3 +45,10 @@ retained as raw material for issue triage and are not specifications.
 
 > **AI Assistants**: Read [docs/system/README.md](docs/system/README.md) first,
 > then [.agents/AGENTS.md](.agents/AGENTS.md) for codebase rules.
+
+---
+
+## License
+
+This project is licensed under the terms of the [PolyForm Noncommercial License 1.0.0](LICENSE) (`PolyForm-Noncommercial-1.0.0`).
+
