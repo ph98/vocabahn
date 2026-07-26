@@ -88,8 +88,13 @@ export async function enrollCourse(slug: string) {
   return enrollResponseSchema.parse(data);
 }
 
-export async function fetchDueCards(courseId?: string) {
-  const { data } = await api.get('/reviews/due', { params: courseId ? { courseId } : undefined });
+export async function fetchDueCards(courseId?: string, deckId?: string) {
+  const { data } = await api.get('/reviews/due', {
+    params: {
+      ...(courseId ? { courseId } : {}),
+      ...(deckId ? { deckId } : {}),
+    },
+  });
   return dueCardsResponseSchema.parse(data).cards;
 }
 

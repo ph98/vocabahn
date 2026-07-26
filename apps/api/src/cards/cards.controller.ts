@@ -20,7 +20,7 @@ export class CardsController {
   @Get('due')
   async getDue(
     @Query(new ZodValidationPipe(dueCardsQuerySchema))
-    query: { courseId?: string; limit?: number },
+    query: { courseId?: string; deckId?: string; limit?: number },
     @CurrentUserId() userId: string,
   ): Promise<DueCardsResponse> {
     const cards = await this.cards.getDueCards(userId, query);

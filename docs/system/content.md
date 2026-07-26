@@ -64,8 +64,9 @@ two-segment green/amber bars on the dashboard and library.
 Full CRUD, ownership enforced by `assertOwner` on every mutation; a non-public
 deck returns 403 to non-owners. `GET /decks` returns `myDecks` plus other users'
 `publicDecks`. Bulk import takes a list of words and reports
-`{ imported, failed }`. **Observed**: create modal with a "Make this deck public"
-checkbox, and per-deck View words / Delete.
+`{ imported, failed }`. Adding or importing words creates corresponding `Card`
+rows for the user; fetching due cards with `deckId` filters reviews to that deck
+and ensures card rows exist for all deck entries.
 
 ## Limitations
 
@@ -75,9 +76,6 @@ checkbox, and per-deck View words / Delete.
   demonstrate". C2 therefore has 31 words while its progress bar renders as
   though the course were nearly complete — the bar is a share of *seeded* words,
   not of the real level.
-- **Deck words are not studyable** (#21). Unlike enrollment, nothing in `DecksService`
-  creates `Card` rows. A deck is a list; it cannot be reviewed. The Library UI
-  presents decks and courses side by side, which implies otherwise.
 - **Bulk import spends enrichment quota per word** (#22). `importWords` calls
   `DictionaryService.getEntry` for each entry, which promotes stubs and triggers
   enrichment — so a 60-word import silently exhausts the 50/day cap and fires

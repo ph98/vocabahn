@@ -154,6 +154,14 @@ function DeckCard({ deck }: { deck: DeckSummary }) {
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
+        {deck.wordCount > 0 && (
+          <Link
+            to={`/review?deckId=${deck.id}`}
+            className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            Review
+          </Link>
+        )}
         <Link
           to={`/decks/${deck.id}`}
           className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
@@ -451,24 +459,34 @@ export function DeckDetailPage() {
               {deck.description && <p className="mt-1 text-sm text-surface-400">{deck.description}</p>}
               <p className="mt-2 text-sm text-surface-500">{deck.wordCount} words</p>
             </div>
-            {deck.isOwner && (
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowImport(true)}
-                  className="min-h-11 shrink-0 rounded-xl border border-surface-700 px-3 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            <div className="flex flex-wrap gap-2">
+              {deck.words.length > 0 && (
+                <Link
+                  to={`/review?deckId=${deck.id}`}
+                  className="min-h-11 shrink-0 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
-                  Import
-                </button>
-                <button
-                  type="button"
-                  onClick={startEditing}
-                  className="min-h-11 shrink-0 rounded-xl border border-surface-700 px-3 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  Edit
-                </button>
-              </div>
-            )}
+                  Start review
+                </Link>
+              )}
+              {deck.isOwner && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowImport(true)}
+                    className="min-h-11 shrink-0 rounded-xl border border-surface-700 px-3 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  >
+                    Import
+                  </button>
+                  <button
+                    type="button"
+                    onClick={startEditing}
+                    className="min-h-11 shrink-0 rounded-xl border border-surface-700 px-3 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  >
+                    Edit
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
