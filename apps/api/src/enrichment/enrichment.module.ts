@@ -8,11 +8,14 @@ import { GeminiProvider } from './providers/gemini.provider';
 import { TtsProvider } from './providers/tts.provider';
 import { UnsplashProvider } from './providers/unsplash.provider';
 
+import { StaticAudioController } from './static-audio.controller';
+
 @Module({
   imports: [
     BullModule.registerQueue({ name: ENRICHMENT_QUEUE }),
     forwardRef(() => DictionaryModule),
   ],
+  controllers: [StaticAudioController],
   providers: [
     EnrichmentService,
     EnrichmentProcessor,

@@ -114,21 +114,47 @@ function EntryDetail({
   );
 }
 
-/** Compact, keyboard-accessible "play audio" button backed by a hidden <audio>. */
+/** Compact, keyboard-accessible "play audio" button backed by a hidden <audio>. Handles media loading/404 errors gracefully. */
 export function AudioButton({ src, label }: { src: string; label: string }) {
   const ref = useRef<HTMLAudioElement>(null);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setHasError(false);
+  }, [src]);
+
+  const handlePlay = async () => {
+    if (!ref.current || hasError) return;
+    try {
+      await ref.current.play();
+    } catch {
+      setHasError(true);
+    }
+  };
+
   return (
     <span className="inline-flex items-center align-middle">
       <button
         type="button"
-        onClick={() => void ref.current?.play()}
-        aria-label={label}
-        className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-surface-700 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        onClick={handlePlay}
+        disabled={hasError}
+        title={hasError ? 'Audio unavailable' : label}
+        aria-label={hasError ? `${label} (Audio unavailable)` : label}
+        className={`inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+          hasError
+            ? 'cursor-not-allowed border-surface-800 bg-surface-900/50 text-surface-500 opacity-60'
+            : 'border-surface-700 hover:bg-surface-800 text-surface-200'
+        }`}
       >
-        <span aria-hidden="true">🔊</span>
+        <span aria-hidden="true">{hasError ? '🔇' : '🔊'}</span>
       </button>
       {/* eslint-disable-next-line jsx-a11y/media-has-caption -- short German audio, transcript shown alongside */}
-      <audio ref={ref} src={src} preload="none" />
+      <audio
+        ref={ref}
+        src={src}
+        preload="none"
+        onError={() => setHasError(true)}
+      />
     </span>
   );
 }
