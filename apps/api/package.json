@@ -14,6 +14,7 @@
     "seed:dictionary": "dotenv -e ../../.env -- tsx scripts/seed-dictionary.ts",
     "seed:course": "dotenv -e ../../.env -- tsx scripts/seed-course.ts",
     "seed:cefr-courses": "dotenv -e ../../.env -- tsx scripts/seed-cefr-courses.ts",
+    "generate:c1-c2": "dotenv -e ../../.env -- tsx scripts/generate-c1-c2.ts",
     "seed:decks": "dotenv -e ../../.env -- tsx scripts/seed-decks.ts",
     "stats": "dotenv -e ../../.env -- tsx scripts/stats.ts",
     "admin": "dotenv -e ../../.env -- tsx scripts/admin.mts"

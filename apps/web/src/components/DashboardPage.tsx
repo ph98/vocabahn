@@ -180,6 +180,11 @@ export function DashboardPage() {
                       <Link to={`/courses/${course.slug}`} className="font-medium text-surface-100 group-hover:text-indigo-300 transition-colors text-lg">
                         {course.title}
                       </Link>
+                      {!course.isComplete && (
+                        <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-accent-amber">
+                          Incomplete / Beta
+                        </span>
+                      )}
                     </div>
                     <div className="mt-3">
                       <ProgressBar progress={course.progress} wordCount={course.wordCount} />

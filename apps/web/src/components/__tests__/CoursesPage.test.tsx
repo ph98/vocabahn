@@ -20,17 +20,19 @@ const COURSES: CourseSummary[] = [
     description: 'Foundational vocabulary',
     cefrLevel: 'A1',
     order: 0,
+    isComplete: true,
     wordCount: 100,
     enrolled: true,
     progress: { learned: 20, inProgress: 30, notStarted: 50 },
   },
   {
     id: 'course-2',
-    slug: 'a2-everyday',
-    title: 'A2 Everyday',
+    slug: 'c1-advanced',
+    title: 'C1 Advanced',
     description: null,
-    cefrLevel: 'A2',
+    cefrLevel: 'C1',
     order: 1,
+    isComplete: false,
     wordCount: 50,
     enrolled: false,
     progress: null,
@@ -45,6 +47,7 @@ describe('CoursesPage', () => {
     await waitFor(() => expect(screen.getByText('A1 Basics')).toBeInTheDocument());
     expect(screen.getByRole('link', { name: 'Review' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Enroll' })).toBeInTheDocument();
+    expect(screen.getByText('Incomplete / Beta')).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();
   });

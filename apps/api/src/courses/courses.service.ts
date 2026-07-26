@@ -32,6 +32,7 @@ export class CoursesService {
           description: course.description,
           cefrLevel: course.cefrLevel,
           order: course.order,
+          isComplete: course.isComplete,
           wordCount: course._count.words,
           enrolled,
           progress: enrolled
@@ -73,6 +74,7 @@ export class CoursesService {
       description: course.description,
       cefrLevel: course.cefrLevel,
       order: course.order,
+      isComplete: course.isComplete,
       wordCount: course._count.words,
       enrolled,
       progress: enrolled ? this.summarizeStates([...cardsByEntry.values()], course._count.words) : null,

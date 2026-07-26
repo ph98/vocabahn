@@ -27,26 +27,26 @@ Run with `pnpm --filter @vocabahn/api <script>`; each loads the root `.env`.
 - `seed:dictionary` — promotes the top-N words by frequency into
   `DictionaryEntry` stubs, using the same lemma/POS heuristic as
   `DictionaryService` (`POS_PRIORITY`). Promotion only; no enrichment.
-- `seed:cefr-courses` — builds the six official CEFR courses.
+- `seed:cefr-courses` — builds the six official CEFR courses (marking C1/C2 as `isComplete: false`).
 - `seed:course`, `seed:decks` — single course / sample decks.
 - `stats` — snapshot of how data is flowing through the pipeline.
-- `generate-c1-c2.ts` — Gemini batch labeller for CEFR levels.
+- `generate:c1-c2` — batch LLM classifier for CEFR levels using Gemini Flash Lite. Supports `START_INDEX`, `END_INDEX`, `BATCH_SIZE` env vars and `--stats` flag.
 
 ## Courses
 
-`Course` (slug, title, CEFR level, `order`, `published`) → ordered `CourseWord`
+`Course` (slug, title, CEFR level, `order`, `published`, `isComplete`) → ordered `CourseWord`
 rows → `DictionaryEntry`. `UserCourse` records enrollment.
 
 Six published courses, **observed** with these word counts:
 
-| Course | Words |
-| :--- | ---: |
-| CEFR A1 — Beginner | 610 |
-| CEFR A2 — Elementary | 821 |
-| CEFR B1 — Intermediate | 2038 |
-| CEFR B2 — Upper-Intermediate | 2589 |
-| CEFR C1 — Advanced | 1624 |
-| CEFR C2 — Mastery | **31** |
+| Course | Words | Complete |
+| :--- | ---: | :--- |
+| CEFR A1 — Beginner | 610 | Yes |
+| CEFR A2 — Elementary | 821 | Yes |
+| CEFR B1 — Intermediate | 2038 | Yes |
+| CEFR B2 — Upper-Intermediate | 2589 | Yes |
+| CEFR C1 — Advanced | 1624 | No (Incomplete / Beta) |
+| CEFR C2 — Mastery | **31** | No (Incomplete / Beta) |
 
 **Enrollment is required and explicit.** `POST /courses/:slug/enroll` upserts
 `UserCourse` then `createMany`s one `Card` per course word with
@@ -71,12 +71,7 @@ filters reviews to that deck and ensures card rows exist for all deck entries.
 
 ## Limitations
 
-- **C1 and C2 vocabulary is incomplete (issue #3).** The cause is visible in
-  `apps/api/scripts/generate-c1-c2.ts`: `START_INDEX = 14000`,
-  `END_INDEX = 14500`, with a comment saying it processes 500 words "to
-  demonstrate". C2 therefore has 31 words while its progress bar renders as
-  though the course were nearly complete — the bar is a share of *seeded* words,
-  not of the real level.
+- **C1 and C2 vocabulary is incomplete (issue #3).** C1 and C2 courses are explicitly flagged as `isComplete: false` and render "Incomplete / Beta" badges across the catalog, detail pages, and dashboard. The `generate:c1-c2` batch pipeline is established to continue classifying remaining high-frequency advanced words from `de_full.txt` into `data/german_cefr_wordlist.json`.
 - **No de-enrollment** (#24). `UserCourse` rows can be created but never deleted; there
   is no endpoint and no UI. Cards created by an enrollment stay in the review
   queue permanently.

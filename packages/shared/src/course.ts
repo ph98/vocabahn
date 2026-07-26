@@ -15,6 +15,7 @@ export const courseSummarySchema = z.object({
   description: z.string().nullable(),
   cefrLevel: z.string().nullable(),
   order: z.number(),
+  isComplete: z.boolean(),
   wordCount: z.number(),
   enrolled: z.boolean(),
   progress: courseProgressSchema.nullable(),
