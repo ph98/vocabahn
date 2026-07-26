@@ -115,17 +115,17 @@ footer, and linked to the changelog on GitHub. A polled health dot
 
 ## Limitations
 
-- **No 404 route.** An unmatched path under a signed-in user renders the shell
+- **No 404 route** (#28). An unmatched path under a signed-in user renders the shell
   with an empty content area.
-- **No route for the email magic link** — see `accounts.md`.
-- The `offline-pack` endpoint has **no client consumer**. There is no download
+- **No route for the email magic link** (#13) — see `accounts.md`.
+- The `offline-pack` endpoint has **no client consumer** (#23). There is no download
   control anywhere in the UI, so the top-1000 pack is unreachable
   (`dictionary.controller.ts`).
-- Test coverage is thin: 10 Vitest cases across 5 component files (with
+- Test coverage is thin (#28): 10 Vitest cases across 5 component files (with
   `jest-axe` wired up in `src/test/`), and 13 Playwright specs across
   `landing`, `dictionary`, `review`. Most routes and every error path are
   untested.
-- The PWA manifest hardcodes `theme_color: '#0a0a0a'` (dark) while `theme.ts`
+- (#28) The PWA manifest hardcodes `theme_color: '#0a0a0a'` (dark) while `theme.ts`
   updates the meta tag dynamically, so an installed app's chrome does not follow
   the light theme.
 - The review route binds arrow keys on `window` for its whole lifetime — no
@@ -134,7 +134,7 @@ footer, and linked to the changelog on GitHub. A polled health dot
   entry body, all five tab panels, four morphology table renderers, the audio
   button, and the feedback widget. `EntryBody` is imported by `ReviewSession`, so
   the file is on the critical path for two routes.
-- The dashboard is a vertical stack of full-width sections, not the bento grid
+- (#27) The dashboard is a vertical stack of full-width sections, not the bento grid
   the legacy backlog describes (**observed**).
 - Landing-page copy advertises studying offline and PWA install; both are real,
   but the offline *dictionary* pack it implies is the orphaned endpoint above.

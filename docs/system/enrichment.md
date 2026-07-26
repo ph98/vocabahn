@@ -90,7 +90,7 @@ A `DOWN` vote **plus** at least one of `TRANSLATION`, `EXAMPLE`, `IMAGE`, or
 
 ## Limitations
 
-- **Generated audio is not persisted across deploys.** Files are written to the
+- **Generated audio is not persisted across deploys** (#14). Files are written to the
   API container's filesystem, and `docker-compose.prod.yml` mounts no volume at
   `static/`. A rebuild discards every mp3 while `DictionaryEntry.audioUrl` and
   `DictionaryExample.audioUrl` still point at them, leaving dead audio links.
@@ -101,7 +101,7 @@ A `DOWN` vote **plus** at least one of `TRANSLATION`, `EXAMPLE`, `IMAGE`, or
   all three attempts still cost the user one of their 50.
 - Viewing pre-learner-aid entries burns quota invisibly (the `register === null`
   backfill).
-- `LEVEL`, `GRAMMAR`, `EMOJI`, `AUDIO`, and `MNEMONIC` feedback issues trigger no
+- (#28) `LEVEL`, `GRAMMAR`, `EMOJI`, `AUDIO`, and `MNEMONIC` feedback issues trigger no
   re-enrichment at all. Conversely `IMAGE` triggers a full Gemini re-run even
   though images come from Unsplash.
 - Nothing throttles re-enrichment per entry or per user: each qualifying `DOWN`

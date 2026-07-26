@@ -77,19 +77,19 @@ Generated TTS files are served as static assets from `/api/static`.
 
 ## Limitations
 
-- **Email magic-link sign-in does not work end to end.** The link points at
+- **Email magic-link sign-in does not work end to end** (#13). The link points at
   `${FRONTEND_URL}/auth/verify?token=…` (`auth.service.ts:136`), but the SPA has
   no `/auth/verify` route and no code anywhere reads a `token` query param.
   nginx's `try_files $uri /index.html` serves the app shell, which renders the
   unauthenticated landing page and discards the token. The endpoint that would
   consume it is `GET /api/v1/auth/email/verify`. Not verified at runtime; the
   route table and a repo-wide grep both come up empty.
-- No account linking between Google and email identities (above).
+- No account linking between Google and email identities (#15, above).
 - No sign-out-everywhere, no refresh-token revocation list: a leaked refresh
   token is valid for 30 days. `POST /auth/logout` only clears cookies.
 - `POST /auth/google/token` is **orphaned** — implemented for native clients,
-  no consumer in this repo.
-- Users cannot set their own CEFR level. `User.cefrLevel` is written only by
+  no consumer in this repo (#23).
+- Users cannot set their own CEFR level (#25). `User.cefrLevel` is written only by
   level inference in `knowledge.service.ts`; there is no onboarding, no
   self-assessment, and no settings control.
 - reCAPTCHA is not integrated anywhere, despite being described in the legacy

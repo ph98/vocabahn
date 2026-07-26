@@ -8,6 +8,10 @@ Every claim here was derived by reading the code. Where a behaviour was
 confirmed by running the app, it is marked **observed**. Where it is only
 readable in code and has never been verified at runtime, that is stated.
 
+Each file ends with a **Limitations** section: present-tense defects and gaps,
+carrying an issue number where one is filed. A limitation with no issue number
+is known and unplanned.
+
 ## Read these in order
 
 | File | Subsystem |
