@@ -131,6 +131,10 @@ export class DecksService {
       create: { deckId, dictionaryEntryId: entryId },
       update: {},
     });
+    await this.prisma.card.createMany({
+      data: [{ userId, dictionaryEntryId: entryId }],
+      skipDuplicates: true,
+    });
     return { added: true };
   }
 
@@ -144,6 +148,7 @@ export class DecksService {
     
     let imported = 0;
     const failed: string[] = [];
+    const importedEntryIds: string[] = [];
 
     for (const w of words) {
       const trimmed = w.trim();
@@ -158,6 +163,7 @@ export class DecksService {
             update: {},
           });
           imported++;
+          importedEntryIds.push(entry.id);
         } else {
           failed.push(trimmed);
         }
@@ -165,6 +171,14 @@ export class DecksService {
         failed.push(trimmed);
       }
     }
+
+    if (importedEntryIds.length > 0) {
+      await this.prisma.card.createMany({
+        data: importedEntryIds.map((dictionaryEntryId) => ({ userId, dictionaryEntryId })),
+        skipDuplicates: true,
+      });
+    }
+
     return { imported, failed };
   }
 
