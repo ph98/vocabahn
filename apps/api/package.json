@@ -32,6 +32,7 @@
     "@nestjs/platform-express": "^11.1.28",
     "@nestjs/throttler": "^6.5.0",
     "@prisma/client": "^6.8.0",
+    "@sentry/node": "^10.68.0",
     "@vocabahn/shared": "workspace:*",
     "adminjs": "^7.8.17",
     "bullmq": "^5.81.2",

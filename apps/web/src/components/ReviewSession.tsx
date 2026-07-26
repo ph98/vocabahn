@@ -11,6 +11,7 @@ import { useSettings } from '../hooks/useSettings';
 import { enqueueReview, flushQueue, getQueueCount } from '../offline/queue';
 import { useOnlineStatus } from '../offline/useOnlineStatus';
 import { prefersReducedMotion, spring, springSnappy } from '../lib/motion';
+import { trackEvent } from '../lib/telemetry';
 import { AudioButton, EntryBody } from './DictionaryCard';
 import { CountUp } from './CountUp';
 
@@ -133,6 +134,14 @@ function SessionSummary({
   const total = RATINGS.reduce((sum, r) => sum + stats[r], 0);
   const recalled = stats.GOOD + stats.EASY;
   const accuracy = total > 0 ? Math.round((recalled / total) * 100) : 0;
+
+  useEffect(() => {
+    trackEvent('review_session_complete', {
+      total_cards: total,
+      accuracy_rate: accuracy,
+      deck_id: deckId ?? undefined,
+    });
+  }, [total, accuracy, deckId]);
 
   return (
     <motion.section

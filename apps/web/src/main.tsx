@@ -4,6 +4,10 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
+import { initTelemetry } from './lib/telemetry';
+
+// Initialize GA4, Sentry, Web Vitals, and Consent Mode v2
+initTelemetry();
 
 // Focus-driven refetches are disabled app-wide: the Google One Tap / FedCM
 // prompt loop churns window focus on the landing page, and each churn would
@@ -21,3 +25,4 @@ createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </StrictMode>,
 );
+

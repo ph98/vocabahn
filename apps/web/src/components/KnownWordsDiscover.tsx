@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { fetchKnowledgeSuggestions, bulkMarkKnownWords } from '../api';
 import { PullToRefresh } from './PullToRefresh';
+import { trackEvent } from '../lib/telemetry';
 
 export function KnownWordsDiscover() {
   const queryClient = useQueryClient();
@@ -19,7 +20,13 @@ export function KnownWordsDiscover() {
   };
 
   const bulkMarkMutation = useMutation({
-    mutationFn: bulkMarkKnownWords,
+    mutationFn: (ids: string[]) => {
+      trackEvent('diagnostic_quiz_complete', {
+        quiz_score: ids.length,
+        calibrated_cefr_frontier: 'A1',
+      });
+      return bulkMarkKnownWords(ids);
+    },
     onSuccess: () => {
       setSelected(new Set());
       invalidate();

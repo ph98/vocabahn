@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
 import { fetchEnrichmentQuota, fetchMe, logout, requestEmailSignIn } from '../api';
 import { useSettings } from '../hooks/useSettings';
+import { trackEvent } from '../lib/telemetry';
 import gsap from 'gsap';
 
 export function SignInOptions() {
@@ -10,7 +11,10 @@ export function SignInOptions() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const emailMutation = useMutation({
-    mutationFn: () => requestEmailSignIn(email.trim()),
+    mutationFn: () => {
+      trackEvent('login', { method: 'email' });
+      return requestEmailSignIn(email.trim());
+    },
     onSuccess: () => setSent(true),
   });
 
@@ -33,6 +37,7 @@ export function SignInOptions() {
 
       <a
         href="/api/v1/auth/google"
+        onClick={() => trackEvent('login', { method: 'google' })}
         className="flex min-h-11 w-full items-center justify-center gap-3 rounded-xl bg-white px-4 py-2.5 font-medium text-gray-900 shadow-sm transition-all hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500"
       >
         <svg viewBox="0 0 24 24" className="size-5 shrink-0" aria-hidden="true">
