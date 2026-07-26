@@ -15,12 +15,13 @@
   --color-surface-100: light-dark(#1A1918, #F4F4F5); /* Primary Text */
   --color-surface-50: light-dark(#000000, #FFFFFF);
 
-  /* Vibrant Accents */
+  /* Vibrant Accents matched to new logo (#0088B0 cyan/teal) */
   --color-accent-red: light-dark(#EF4444, #F87171);
-  --color-accent-indigo: light-dark(#4F46E5, #818CF8);
+  --color-accent-indigo: light-dark(#0088B0, #38BDF8);
   --color-accent-amber: light-dark(#D97706, #FBBF24);
   --color-accent-emerald: light-dark(#059669, #34D399);
-  --color-accent-sky: light-dark(#0284C7, #38BDF8);
+  --color-accent-sky: light-dark(#0088B0, #38BDF8);
+  --color-brand: light-dark(#0088B0, #00A3D4);
 
   --font-sans: 'Plus Jakarta Sans', sans-serif;
   --font-serif: 'Merriweather', serif;

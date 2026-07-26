@@ -6,17 +6,8 @@
       <stop offset="0%" stop-color="#0f172a" />
       <stop offset="100%" stop-color="#020617" />
     </linearGradient>
-    <linearGradient id="vGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366f1" />
-      <stop offset="50%" stop-color="#8b5cf6" />
-      <stop offset="100%" stop-color="#10b981" />
-    </linearGradient>
-    <linearGradient id="vGradLight" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#818cf8" />
-      <stop offset="100%" stop-color="#34d399" />
-    </linearGradient>
     <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feGaussianBlur stdDeviation="12" result="blur" />
       <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
   </defs>
@@ -24,28 +15,16 @@
   <!-- Background rounded card -->
   <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bgGrad)" stroke="#1e293b" stroke-width="8" />
   
-  <!-- Subtle speed lines / Autobahn motif -->
-  <path d="M 80 140 Q 256 80 432 140" stroke="#334155" stroke-width="6" stroke-dasharray="16 12" opacity="0.4" fill="none" />
-  <path d="M 60 220 Q 256 160 452 220" stroke="#475569" stroke-width="4" stroke-dasharray="24 16" opacity="0.3" fill="none" />
-
-  <!-- Back Card visual layer -->
-  <rect x="160" y="110" width="240" height="150" rx="24" fill="#6366f1" opacity="0.18" transform="rotate(-12 280 185)" />
-
-  <!-- Main Aerodynamic V / Flashcard motif -->
-  <g filter="url(#glow)">
-    <!-- Left Stem of V -->
-    <path d="M 112 144 L 236 392 C 244 408 268 408 276 392 L 400 144 C 408 128 392 112 374 124 L 256 280 L 138 124 C 120 112 104 128 112 144 Z" fill="url(#vGrad)" />
-    
-    <!-- Accent forward arrow highlight inside V -->
-    <path d="M 196 160 L 256 280 L 316 160 C 322 148 310 136 298 144 L 256 200 L 214 144 C 202 136 190 148 196 160 Z" fill="url(#vGradLight)" opacity="0.9" />
+  <!-- Aerodynamic V Logo Mark -->
+  <g filter="url(#glow)" transform="translate(32, 32) scale(7)">
+    <path d="M9 8 L18 8 L32 47 L46 8 L55 8 L35 58 L29 58 Z" fill="#ffffff" />
+    <rect x="24" y="20" width="16" height="4" rx="2" fill="#0088b0" />
+    <rect x="28" y="32" width="8" height="4" rx="2" fill="#0088b0" />
   </g>
-  
-  <!-- Fast-lane speed dot -->
-  <circle cx="384" cy="128" r="20" fill="#10b981" />
 </svg>
   </g>
   <text x="240" y="145" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="96" font-weight="900" letter-spacing="-2" fill="#ffffff">
-    Vocab<tspan fill="#6366f1">ahn</tspan>
+    Vocab<tspan fill="#0088b0">ahn</tspan>
   </text>
   <text x="245" y="185" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="24" font-weight="600" letter-spacing="4" fill="#94a3b8">
     GERMAN IN THE FAST LANE

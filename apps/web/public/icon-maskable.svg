@@ -1,13 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <rect width="512" height="512" fill="#090d16" />
-  <g transform="translate(64, 64) scale(0.75)">
-    <path d="M 112 144 L 236 392 C 244 408 268 408 276 392 L 400 144 C 408 128 392 112 374 124 L 256 280 L 138 124 C 120 112 104 128 112 144 Z" fill="url(#maskGrad)" />
-    <circle cx="384" cy="128" r="24" fill="#10b981" />
+  <g transform="translate(64, 64) scale(6)">
+    <path d="M9 8 L18 8 L32 47 L46 8 L55 8 L35 58 L29 58 Z" fill="#ffffff" />
+    <rect x="24" y="20" width="16" height="4" rx="2" fill="#0088b0" />
+    <rect x="28" y="32" width="8" height="4" rx="2" fill="#0088b0" />
   </g>
-  <defs>
-    <linearGradient id="maskGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366f1" />
-      <stop offset="100%" stop-color="#8b5cf6" />
-    </linearGradient>
-  </defs>
 </svg>

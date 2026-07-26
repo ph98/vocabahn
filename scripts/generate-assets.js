@@ -48,17 +48,8 @@ const LOGO_MARK_DARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0
       <stop offset="0%" stop-color="#0f172a" />
       <stop offset="100%" stop-color="#020617" />
     </linearGradient>
-    <linearGradient id="vGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366f1" />
-      <stop offset="50%" stop-color="#8b5cf6" />
-      <stop offset="100%" stop-color="#10b981" />
-    </linearGradient>
-    <linearGradient id="vGradLight" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#818cf8" />
-      <stop offset="100%" stop-color="#34d399" />
-    </linearGradient>
     <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="16" result="blur" />
+      <feGaussianBlur stdDeviation="12" result="blur" />
       <feComposite in="SourceGraphic" in2="blur" operator="over" />
     </filter>
   </defs>
@@ -66,24 +57,12 @@ const LOGO_MARK_DARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0
   <!-- Background rounded card -->
   <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bgGrad)" stroke="#1e293b" stroke-width="8" />
   
-  <!-- Subtle speed lines / Autobahn motif -->
-  <path d="M 80 140 Q 256 80 432 140" stroke="#334155" stroke-width="6" stroke-dasharray="16 12" opacity="0.4" fill="none" />
-  <path d="M 60 220 Q 256 160 452 220" stroke="#475569" stroke-width="4" stroke-dasharray="24 16" opacity="0.3" fill="none" />
-
-  <!-- Back Card visual layer -->
-  <rect x="160" y="110" width="240" height="150" rx="24" fill="#6366f1" opacity="0.18" transform="rotate(-12 280 185)" />
-
-  <!-- Main Aerodynamic V / Flashcard motif -->
-  <g filter="url(#glow)">
-    <!-- Left Stem of V -->
-    <path d="M 112 144 L 236 392 C 244 408 268 408 276 392 L 400 144 C 408 128 392 112 374 124 L 256 280 L 138 124 C 120 112 104 128 112 144 Z" fill="url(#vGrad)" />
-    
-    <!-- Accent forward arrow highlight inside V -->
-    <path d="M 196 160 L 256 280 L 316 160 C 322 148 310 136 298 144 L 256 200 L 214 144 C 202 136 190 148 196 160 Z" fill="url(#vGradLight)" opacity="0.9" />
+  <!-- Aerodynamic V Logo Mark -->
+  <g filter="url(#glow)" transform="translate(32, 32) scale(7)">
+    <path d="M9 8 L18 8 L32 47 L46 8 L55 8 L35 58 L29 58 Z" fill="#ffffff" />
+    <rect x="24" y="20" width="16" height="4" rx="2" fill="#0088b0" />
+    <rect x="28" y="32" width="8" height="4" rx="2" fill="#0088b0" />
   </g>
-  
-  <!-- Fast-lane speed dot -->
-  <circle cx="384" cy="128" r="20" fill="#10b981" />
 </svg>`;
 
 // Logomark Symbol SVG (Light mode)
@@ -93,16 +72,13 @@ const LOGO_MARK_LIGHT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 
       <stop offset="0%" stop-color="#ffffff" />
       <stop offset="100%" stop-color="#f1f5f9" />
     </linearGradient>
-    <linearGradient id="vGradL" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#4f46e5" />
-      <stop offset="50%" stop-color="#7c3aed" />
-      <stop offset="100%" stop-color="#059669" />
-    </linearGradient>
   </defs>
   <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bgGradL)" stroke="#e2e8f0" stroke-width="8" />
-  <rect x="160" y="110" width="240" height="150" rx="24" fill="#4f46e5" opacity="0.12" transform="rotate(-12 280 185)" />
-  <path d="M 112 144 L 236 392 C 244 408 268 408 276 392 L 400 144 C 408 128 392 112 374 124 L 256 280 L 138 124 C 120 112 104 128 112 144 Z" fill="url(#vGradL)" />
-  <circle cx="384" cy="128" r="20" fill="#059669" />
+  <g transform="translate(32, 32) scale(7)">
+    <path d="M9 8 L18 8 L32 47 L46 8 L55 8 L35 58 L29 58 Z" fill="rgb(32, 30, 29)" />
+    <rect x="24" y="20" width="16" height="4" rx="2" fill="rgb(0, 136, 176)" />
+    <rect x="28" y="32" width="8" height="4" rx="2" fill="rgb(0, 136, 176)" />
+  </g>
 </svg>`;
 
 // Full Logo Dark SVG (Mark + Wordmark)
@@ -111,7 +87,7 @@ const LOGO_DARK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 
     ${LOGO_MARK_DARK_SVG}
   </g>
   <text x="240" y="145" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="96" font-weight="900" letter-spacing="-2" fill="#ffffff">
-    Vocab<tspan fill="#6366f1">ahn</tspan>
+    Vocab<tspan fill="#0088b0">ahn</tspan>
   </text>
   <text x="245" y="185" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="24" font-weight="600" letter-spacing="4" fill="#94a3b8">
     GERMAN IN THE FAST LANE
@@ -123,8 +99,8 @@ const LOGO_LIGHT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800
   <g transform="translate(20, 20) scale(0.39)">
     ${LOGO_MARK_LIGHT_SVG}
   </g>
-  <text x="240" y="145" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="96" font-weight="900" letter-spacing="-2" fill="#0f172a">
-    Vocab<tspan fill="#4f46e5">ahn</tspan>
+  <text x="240" y="145" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="96" font-weight="900" letter-spacing="-2" fill="rgb(32, 30, 29)">
+    Vocab<tspan fill="rgb(0, 136, 176)">ahn</tspan>
   </text>
   <text x="245" y="185" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="24" font-weight="600" letter-spacing="4" fill="#64748b">
     GERMAN IN THE FAST LANE
@@ -134,16 +110,11 @@ const LOGO_LIGHT_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800
 // PWA Maskable Icon SVG
 const MASKABLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <rect width="512" height="512" fill="#090d16" />
-  <g transform="translate(64, 64) scale(0.75)">
-    <path d="M 112 144 L 236 392 C 244 408 268 408 276 392 L 400 144 C 408 128 392 112 374 124 L 256 280 L 138 124 C 120 112 104 128 112 144 Z" fill="url(#maskGrad)" />
-    <circle cx="384" cy="128" r="24" fill="#10b981" />
+  <g transform="translate(64, 64) scale(6)">
+    <path d="M9 8 L18 8 L32 47 L46 8 L55 8 L35 58 L29 58 Z" fill="#ffffff" />
+    <rect x="24" y="20" width="16" height="4" rx="2" fill="#0088b0" />
+    <rect x="28" y="32" width="8" height="4" rx="2" fill="#0088b0" />
   </g>
-  <defs>
-    <linearGradient id="maskGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#6366f1" />
-      <stop offset="100%" stop-color="#8b5cf6" />
-    </linearGradient>
-  </defs>
 </svg>`;
 
 // Open Graph (OG) Image (1200x630)
@@ -155,8 +126,8 @@ const OG_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 
       <stop offset="100%" stop-color="#020617" />
     </linearGradient>
     <linearGradient id="ogGlow" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.4" />
-      <stop offset="50%" stop-color="#8b5cf6" stop-opacity="0.2" />
+      <stop offset="0%" stop-color="#0088b0" stop-opacity="0.6" />
+      <stop offset="50%" stop-color="#0284c7" stop-opacity="0.3" />
       <stop offset="100%" stop-color="#10b981" stop-opacity="0.4" />
     </linearGradient>
     <linearGradient id="cardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -169,7 +140,7 @@ const OG_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 
   <rect width="1200" height="630" fill="url(#ogBg)" />
   
   <!-- Glowing meshes -->
-  <circle cx="200" cy="100" r="300" fill="#6366f1" opacity="0.15" filter="blur(80px)" />
+  <circle cx="200" cy="100" r="300" fill="#0088b0" opacity="0.2" filter="blur(80px)" />
   <circle cx="1000" cy="500" r="350" fill="#10b981" opacity="0.15" filter="blur(100px)" />
   
   <!-- Top Banner Line -->
@@ -180,7 +151,7 @@ const OG_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 
     ${LOGO_MARK_DARK_SVG}
   </g>
   <text x="280" y="180" font-family="'Plus Jakarta Sans', system-ui, sans-serif" font-size="80" font-weight="900" letter-spacing="-2" fill="#ffffff">
-    Vocab<tspan fill="#6366f1">ahn</tspan>
+    Vocab<tspan fill="#0088b0">ahn</tspan>
   </text>
 
   <!-- Headline -->
@@ -196,7 +167,7 @@ const OG_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 
   <!-- Feature Badge Chips -->
   <g transform="translate(80, 440)">
     <rect width="180" height="52" rx="26" fill="#1e293b" stroke="#334155" stroke-width="2" />
-    <text x="90" y="33" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="#818cf8">🧠 FSRS v4</text>
+    <text x="90" y="33" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="700" fill="#38bdf8">🧠 FSRS v4</text>
   </g>
   <g transform="translate(280, 440)">
     <rect width="220" height="52" rx="26" fill="#1e293b" stroke="#334155" stroke-width="2" />
@@ -215,8 +186,8 @@ const OG_IMAGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 
     <rect x="0" y="0" width="350" height="240" rx="24" fill="url(#cardGrad)" stroke="#334155" stroke-width="3" />
     
     <!-- Card content -->
-    <rect x="30" y="30" width="60" height="28" rx="8" fill="#6366f1" opacity="0.2" />
-    <text x="60" y="49" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="800" fill="#818cf8">B2</text>
+    <rect x="30" y="30" width="60" height="28" rx="8" fill="#0088b0" opacity="0.25" />
+    <text x="60" y="49" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="800" fill="#38bdf8">B2</text>
     
     <text x="30" y="110" font-family="sans-serif" font-size="36" font-weight="800" fill="#ffffff">der Wortschatz</text>
     <text x="30" y="145" font-family="sans-serif" font-size="20" font-weight="500" fill="#94a3b8">vocabulary, word power</text>
@@ -258,9 +229,9 @@ const HERO_ILLUSTRATION_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="
 
   <!-- Card Stack 2: Main Active Card -->
   <g transform="translate(480, 180) rotate(4)">
-    <rect width="320" height="210" rx="24" fill="#0f172a" stroke="#6366f1" stroke-width="4" />
-    <rect x="28" y="24" width="56" height="26" rx="6" fill="#3b82f6" opacity="0.2" />
-    <text x="56" y="42" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="800" fill="#60a5fa">der</text>
+    <rect width="320" height="210" rx="24" fill="#0f172a" stroke="#0088b0" stroke-width="4" />
+    <rect x="28" y="24" width="56" height="26" rx="6" fill="#0284c7" opacity="0.2" />
+    <text x="56" y="42" text-anchor="middle" font-family="sans-serif" font-size="13" font-weight="800" fill="#38bdf8">der</text>
     <text x="28" y="98" font-family="sans-serif" font-size="32" font-weight="900" fill="#ffffff">Durchbruch</text>
     <text x="28" y="132" font-family="sans-serif" font-size="18" font-weight="500" fill="#cbd5e1">breakthrough, advance</text>
     <rect x="28" y="155" width="264" height="32" rx="8" fill="#1e293b" />
@@ -307,14 +278,14 @@ const FEATURE_FSRS_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8
   <!-- Review 1 boost -->
   <path d="M 180 160 Q 250 290 320 310" stroke="#f59e0b" stroke-width="3" stroke-dasharray="6 4" fill="none" opacity="0.7" />
   <!-- Review 2 boost -->
-  <path d="M 320 160 Q 400 220 480 230" stroke="#6366f1" stroke-width="3" stroke-dasharray="6 4" fill="none" opacity="0.8" />
+  <path d="M 320 160 Q 400 220 480 230" stroke="#0088b0" stroke-width="3" stroke-dasharray="6 4" fill="none" opacity="0.8" />
   <!-- Review 3 boost (FSRS curve) -->
   <path d="M 480 160 Q 560 180 680 190" stroke="#10b981" stroke-width="4" fill="none" />
 
   <!-- Node points -->
   <circle cx="180" cy="160" r="10" fill="#ef4444" />
   <circle cx="320" cy="160" r="10" fill="#f59e0b" />
-  <circle cx="480" cy="160" r="10" fill="#6366f1" />
+  <circle cx="480" cy="160" r="10" fill="#0088b0" />
   <circle cx="680" cy="160" r="12" fill="#10b981" />
   
   <text x="680" y="130" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="800" fill="#34d399">Permanent Memory</text>
@@ -328,8 +299,8 @@ const FEATURE_LLM_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80
   <text x="40" y="90" font-family="sans-serif" font-size="16" font-weight="500" fill="#94a3b8">Instant AI sentence generation, collocations & mnemonic hooks</text>
 
   <!-- Central AI Spark Node -->
-  <circle cx="400" cy="280" r="60" fill="#6366f1" opacity="0.2" />
-  <circle cx="400" cy="280" r="40" fill="#6366f1" opacity="0.4" />
+  <circle cx="400" cy="280" r="60" fill="#0088b0" opacity="0.2" />
+  <circle cx="400" cy="280" r="40" fill="#0088b0" opacity="0.4" />
   <text x="400" y="288" text-anchor="middle" font-family="sans-serif" font-size="28">✨</text>
 
   <!-- Connected Nodes -->
