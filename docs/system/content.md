@@ -75,19 +75,19 @@ checkbox, and per-deck View words / Delete.
   demonstrate". C2 therefore has 31 words while its progress bar renders as
   though the course were nearly complete — the bar is a share of *seeded* words,
   not of the real level.
-- **Deck words are not studyable.** Unlike enrollment, nothing in `DecksService`
+- **Deck words are not studyable** (#21). Unlike enrollment, nothing in `DecksService`
   creates `Card` rows. A deck is a list; it cannot be reviewed. The Library UI
   presents decks and courses side by side, which implies otherwise.
-- **Bulk import spends enrichment quota per word.** `importWords` calls
+- **Bulk import spends enrichment quota per word** (#22). `importWords` calls
   `DictionaryService.getEntry` for each entry, which promotes stubs and triggers
   enrichment — so a 60-word import silently exhausts the 50/day cap and fires
   paid APIs. It is also sequential, one round trip per word.
-- **No de-enrollment.** `UserCourse` rows can be created but never deleted; there
+- **No de-enrollment** (#24). `UserCourse` rows can be created but never deleted; there
   is no endpoint and no UI. Cards created by an enrollment stay in the review
   queue permanently.
-- Deleting a deck has no confirmation step (**observed**: a bare "Delete" button
+- Deleting a deck has no confirmation step (#28) (**observed**: a bare "Delete" button
   next to "View words").
-- `Course.published` is respected by `listCourses` but not by `getCourse`, so an
+- `Course.published` is respected by `listCourses` but not by `getCourse` (#28), so an
   unpublished course is still readable by slug.
 - `listCourses` loads every `CourseWord` id for all six courses (~7,700 rows) and
   then issues a per-course card query, and the dashboard calls it on every load.

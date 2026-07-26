@@ -127,17 +127,17 @@ before tomorrow, so it includes the overdue backlog.
 
 ## Limitations
 
-- **Every day boundary is UTC.** Streak, heatmap buckets, "reviewed today", and
+- **Every day boundary is UTC** (#20). Streak, heatmap buckets, "reviewed today", and
   the enrichment quota key all use `toISOString()` dates. For a learner far from
   UTC, the streak can break despite daily study, and reviews land in the wrong
   heatmap cell.
-- **Two different meanings of "known" in the UI** (above). Nothing in the code
-  reconciles them.
+- **Two different meanings of "known" in the UI** (#18, above). Nothing in the
+  code reconciles them.
 - **`markKnown` fabricates FSRS state** — `stability: 100`, `difficulty: 1`,
   `state: REVIEW`, `reps: 0`, with no `ReviewLog` rows. This contradicts the
   log-is-truth invariant: any later `syncReviews` replay of that card resets it
   from `emptyFsrsCard()` and discards the fabricated numbers.
-- **`batchGraduateHighPrior` runs on every single review** and loads *all* of the
+- **`batchGraduateHighPrior` runs on every single review** (#19) and loads *all* of the
   user's `NEW`/`ACTIVE` cards to filter them in JavaScript. A learner enrolled in
   every course carries thousands of such cards (**observed**: 3,197 new), so each
   rating triggers a full scan. `maybeUpdateCefrLevel` adds another 100-row joined
@@ -152,12 +152,12 @@ before tomorrow, so it includes the overdue backlog.
   `ReviewLog` row with no `latencyMs`.
 - Session summary's "Back to courses" points at `/courses`, which only redirects
   to `/library`.
-- Listening mode does not exist — no audio-only prompt path anywhere in the web
+- Listening mode does not exist (not planned; no issue) — no audio-only prompt path anywhere in the web
   app.
 - Known-words management is implemented (`KnownWordsPage.tsx` and
   `knowledge.service.ts`: list, bulk mark, frequency-ranked suggestions, bulk
   undo, per-card undo). It has no test coverage, has not been verified at
-  runtime, and its value to the learner is unvalidated.
+  runtime, and its value to the learner is unvalidated (#26).
 - `bulkUndo` fans out `Promise.all` over individual `undoKnown` calls, each its
   own transaction and each re-reading the card; a large selection is N round
   trips with no batching and no partial-failure reporting.

@@ -93,7 +93,7 @@ Search results show a plain "Searching…" line instead.
 
 ## Limitations
 
-- **Capitalized headwords resolve to the wrong sense, systematically.**
+- **Capitalized headwords resolve to the wrong sense, systematically** (#17).
   `POS_PRIORITY` ranks `noun` first, so any capitalized word with both a noun
   lexicon entry and a more common non-noun one promotes the noun.
   **Observed**: `Wenn` (frequency rank #35, a conjunction) renders as
@@ -104,7 +104,7 @@ Search results show a plain "Searching…" line instead.
 - The wrong POS is passed to Gemini during enrichment, so the error propagates
   into generated content — though in the `Wenn` case the model's `usageNote`
   correctly described a conjunction anyway.
-- Enriched translations never reach the search index until restart (above).
+- Enriched translations never reach the search index until restart (#16, above).
 - Search is single-process in-memory: it does not survive horizontal scaling,
   and index build time grows with the whole active dictionary.
 - `@Get(':word')` is declared after `quota`, `offline-pack`, and `search` in
