@@ -56,6 +56,41 @@ function AuthVerifyPage() {
   );
 }
 
+function AuthErrorBanner() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const errorType = searchParams.get('auth_error');
+
+  if (!errorType) return null;
+
+  const messages: Record<string, string> = {
+    state: 'Sign-in session expired or state mismatch. Please try signing in again.',
+    google: 'Google authentication failed. Please try again.',
+    invalid_link: 'The sign-in link is invalid or has expired.',
+  };
+
+  const message = messages[errorType] || 'Authentication error occurred. Please try again.';
+
+  return (
+    <div
+      role="alert"
+      className="w-full max-w-xl mx-auto my-4 flex items-center justify-between rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200 shadow-lg backdrop-blur-md"
+    >
+      <span>{message}</span>
+      <button
+        type="button"
+        onClick={() => {
+          searchParams.delete('auth_error');
+          setSearchParams(searchParams, { replace: true });
+        }}
+        className="ml-3 font-semibold text-red-300 hover:text-white transition-colors"
+        aria-label="Dismiss error"
+      >
+        Dismiss
+      </button>
+    </div>
+  );
+}
+
 
 
 const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
@@ -510,7 +545,8 @@ export default function App() {
         tabIndex={-1}
         className={`flex min-h-dvh flex-col items-center gap-6 ${user ? 'max-md:pb-mobile-nav md:pb-safe' : 'pb-safe'} text-surface-100 outline-none`}
       >
-      {!isPending && !user && (
+        <AuthErrorBanner />
+        {!isPending && !user && (
         <div className="w-full max-w-6xl space-y-10 mt-8 md:mt-16 px-4 xl:px-0">
           <Routes>
             <Route path="/auth/verify" element={<AuthVerifyPage />} />
