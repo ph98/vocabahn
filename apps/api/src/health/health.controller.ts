@@ -4,25 +4,34 @@ import Redis from 'ioredis';
 import { PrismaService } from '../prisma/prisma.service';
 import { REDIS } from '../redis/redis.module';
 
-@Controller('health')
+@Controller(['health', 'status'])
 export class HealthController {
   constructor(
     private readonly prisma: PrismaService,
     @Inject(REDIS) private readonly redis: Redis,
   ) {}
 
-  @Get()
+  @Get(['', '/status', '/health'])
   async check(): Promise<HealthResponse> {
-    const [database, redis] = await Promise.all([
-      this.prisma.$queryRaw`SELECT 1`.then(
-        () => 'up' as const,
-        () => 'down' as const,
-      ),
-      this.redis.ping().then(
-        () => 'up' as const,
-        () => 'down' as const,
-      ),
-    ]);
+    const checkDb = async (): Promise<'up' | 'down'> => {
+      try {
+        await this.prisma.$queryRaw`SELECT 1`;
+        return 'up';
+      } catch {
+        return 'down';
+      }
+    };
+
+    const checkRedis = async (): Promise<'up' | 'down'> => {
+      try {
+        await this.redis.ping();
+        return 'up';
+      } catch {
+        return 'down';
+      }
+    };
+
+    const [database, redis] = await Promise.all([checkDb(), checkRedis()]);
 
     return {
       status: database === 'up' && redis === 'up' ? 'ok' : 'degraded',
