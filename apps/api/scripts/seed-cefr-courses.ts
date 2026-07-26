@@ -18,13 +18,13 @@ const DATA_FILE = path.resolve(__dirname, '../../../data/german_cefr_wordlist.js
 const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as const;
 type Level = (typeof LEVELS)[number];
 
-const COURSE_META: Record<Level, { title: string; description: string; order: number }> = {
-  A1: { title: 'CEFR A1 — Beginner',          description: 'Essential vocabulary for absolute beginners.',                   order: 1 },
-  A2: { title: 'CEFR A2 — Elementary',         description: 'Core vocabulary for everyday elementary communication.',         order: 2 },
-  B1: { title: 'CEFR B1 — Intermediate',       description: 'Vocabulary for independent communication in German.',            order: 3 },
-  B2: { title: 'CEFR B2 — Upper-Intermediate', description: 'Expanded vocabulary for upper-intermediate proficiency.',        order: 4 },
-  C1: { title: 'CEFR C1 — Advanced',           description: 'Sophisticated vocabulary for advanced German speakers.',         order: 5 },
-  C2: { title: 'CEFR C2 — Mastery',            description: 'Near-native vocabulary for German mastery.',                    order: 6 },
+const COURSE_META: Record<Level, { title: string; description: string; order: number; isComplete: boolean }> = {
+  A1: { title: 'CEFR A1 — Beginner',          description: 'Essential vocabulary for absolute beginners.',                   order: 1, isComplete: true },
+  A2: { title: 'CEFR A2 — Elementary',         description: 'Core vocabulary for everyday elementary communication.',         order: 2, isComplete: true },
+  B1: { title: 'CEFR B1 — Intermediate',       description: 'Vocabulary for independent communication in German.',            order: 3, isComplete: true },
+  B2: { title: 'CEFR B2 — Upper-Intermediate', description: 'Expanded vocabulary for upper-intermediate proficiency.',        order: 4, isComplete: true },
+  C1: { title: 'CEFR C1 — Advanced',           description: 'Sophisticated vocabulary for advanced German speakers. (Incomplete dataset)', order: 5, isComplete: false },
+  C2: { title: 'CEFR C2 — Mastery',            description: 'Near-native vocabulary for German mastery. (Incomplete dataset)',            order: 6, isComplete: false },
 };
 
 async function main() {
@@ -89,6 +89,7 @@ async function main() {
         cefrLevel: level,
         order: meta.order,
         published: true,
+        isComplete: meta.isComplete,
       },
       update: {
         title: meta.title,
@@ -96,6 +97,7 @@ async function main() {
         cefrLevel: level,
         order: meta.order,
         published: true,
+        isComplete: meta.isComplete,
       },
     });
 

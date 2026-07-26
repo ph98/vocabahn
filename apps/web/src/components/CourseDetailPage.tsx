@@ -50,16 +50,29 @@ export function CourseDetailPage() {
 
       {course && (
         <div className="rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20">
+          {!course.isComplete && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-accent-amber">
+              <span className="font-semibold shrink-0">Incomplete Data / Beta:</span>
+              <span>This dataset is partially curated while data collection and classification are ongoing.</span>
+            </div>
+          )}
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-xl font-medium">{course.title}</h2>
               {course.description && <p className="mt-1 text-sm text-surface-400">{course.description}</p>}
             </div>
-            {course.cefrLevel && (
-              <span className="shrink-0 rounded-full bg-surface-800 px-2.5 py-1 text-xs font-medium text-surface-300">
-                {course.cefrLevel}
-              </span>
-            )}
+            <div className="flex shrink-0 items-center gap-1.5">
+              {!course.isComplete && (
+                <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-accent-amber">
+                  Incomplete / Beta
+                </span>
+              )}
+              {course.cefrLevel && (
+                <span className="rounded-full bg-surface-800 px-2.5 py-1 text-xs font-medium text-surface-300">
+                  {course.cefrLevel}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="mt-4 flex gap-2">

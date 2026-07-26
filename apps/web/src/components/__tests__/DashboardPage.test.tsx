@@ -27,6 +27,7 @@ const DASHBOARD: DashboardResponse = {
       description: null,
       cefrLevel: 'A1',
       order: 0,
+      isComplete: true,
       wordCount: 100,
       enrolled: true,
       progress: { learned: 20, inProgress: 30, notStarted: 50 },

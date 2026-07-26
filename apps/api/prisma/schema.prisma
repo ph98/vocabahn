@@ -308,6 +308,7 @@ model Course {
   cefrLevel   String?
   order       Int      @default(0)
   published   Boolean  @default(false)
+  isComplete  Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

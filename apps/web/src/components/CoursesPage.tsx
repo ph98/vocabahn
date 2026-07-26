@@ -21,11 +21,18 @@ function CourseCard({ course }: { course: CourseSummary }) {
           <h3 className="text-lg font-medium">{course.title}</h3>
           {course.description && <p className="mt-1 text-sm text-surface-400">{course.description}</p>}
         </div>
-        {course.cefrLevel && (
-          <span className="shrink-0 rounded-full bg-surface-800 px-2.5 py-1 text-xs font-medium text-surface-300">
-            {course.cefrLevel}
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {!course.isComplete && (
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-accent-amber">
+              Incomplete / Beta
+            </span>
+          )}
+          {course.cefrLevel && (
+            <span className="rounded-full bg-surface-800 px-2.5 py-1 text-xs font-medium text-surface-300">
+              {course.cefrLevel}
+            </span>
+          )}
+        </div>
       </div>
 
       <p className="mt-3 text-sm text-surface-500">{course.wordCount} words</p>
