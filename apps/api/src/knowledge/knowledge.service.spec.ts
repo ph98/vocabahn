@@ -3,9 +3,28 @@ import { KnowledgeService } from './knowledge.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AUTO_GRADUATE_PRIOR_THRESHOLD } from './constants';
 
+type MockPrisma = {
+  card: {
+    findUnique: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
+  };
+  knowledgeScore: {
+    upsert: ReturnType<typeof vi.fn>;
+  };
+  reviewLog: {
+    findMany: ReturnType<typeof vi.fn>;
+  };
+  user: {
+    findUnique: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
+};
+
 describe('KnowledgeService', () => {
   let service: KnowledgeService;
-  let prismaMock: any;
+  let prismaMock: MockPrisma;
 
   beforeEach(() => {
     prismaMock = {
