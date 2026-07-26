@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PullToRefresh } from './PullToRefresh';
 import type { FsrsState } from '@vocabahn/shared';
 import { Link, useParams } from 'react-router-dom';
-import { enrollCourse, fetchCourse } from '../api';
+import { enrollCourse, fetchCourse, unenrollCourse } from '../api';
 import { trackEvent } from '../lib/telemetry';
 
 const STATE_LABELS: Record<FsrsState, string> = {
@@ -33,6 +33,14 @@ export function CourseDetailPage() {
       trackEvent('course_start', { course_slug: slug, cefr_level: course?.cefrLevel });
       return enrollCourse(slug!);
     },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['course', slug] });
+      void queryClient.invalidateQueries({ queryKey: ['courses'] });
+    },
+  });
+
+  const unenroll = useMutation({
+    mutationFn: () => unenrollCourse(slug!),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['course', slug] });
       void queryClient.invalidateQueries({ queryKey: ['courses'] });
@@ -81,12 +89,22 @@ export function CourseDetailPage() {
 
           <div className="mt-4 flex gap-2">
             {course.enrolled ? (
-              <Link
-                to={`/review?courseId=${course.id}`}
-                className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                Start review
-              </Link>
+              <>
+                <Link
+                  to={`/review?courseId=${course.id}`}
+                  className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  Start review
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => unenroll.mutate()}
+                  disabled={unenroll.isPending}
+                  className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-accent-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60"
+                >
+                  {unenroll.isPending ? 'Unenrolling…' : 'Unenroll'}
+                </button>
+              </>
             ) : (
               <button
                 type="button"

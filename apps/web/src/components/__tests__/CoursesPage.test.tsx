@@ -8,6 +8,7 @@ import { CoursesPage } from '../CoursesPage';
 vi.mock('../../api', () => ({
   fetchCourses: vi.fn(),
   enrollCourse: vi.fn(),
+  unenrollCourse: vi.fn(),
 }));
 
 const { fetchCourses } = await import('../../api');
@@ -46,6 +47,7 @@ describe('CoursesPage', () => {
 
     await waitFor(() => expect(screen.getByText('A1 Basics')).toBeInTheDocument());
     expect(screen.getByRole('link', { name: 'Review' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Unenroll' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Enroll' })).toBeInTheDocument();
     expect(screen.getByText('Incomplete / Beta')).toBeInTheDocument();
 

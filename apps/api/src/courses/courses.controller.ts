@@ -1,5 +1,5 @@
-import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
-import type { CourseDetail, CourseListResponse, EnrollResponse } from '@vocabahn/shared';
+import { Controller, Delete, Get, Param, Post, UseGuards } from '@nestjs/common';
+import type { CourseDetail, CourseListResponse, EnrollResponse, UnenrollResponse } from '@vocabahn/shared';
 import { CurrentUserId, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CoursesService } from './courses.service';
 
@@ -22,4 +22,15 @@ export class CoursesController {
   enroll(@Param('slug') slug: string, @CurrentUserId() userId: string): Promise<EnrollResponse> {
     return this.courses.enroll(userId, slug);
   }
+
+  @Post(':slug/unenroll')
+  unenroll(@Param('slug') slug: string, @CurrentUserId() userId: string): Promise<UnenrollResponse> {
+    return this.courses.unenroll(userId, slug);
+  }
+
+  @Delete(':slug/enroll')
+  unenrollDelete(@Param('slug') slug: string, @CurrentUserId() userId: string): Promise<UnenrollResponse> {
+    return this.courses.unenroll(userId, slug);
+  }
 }
+
