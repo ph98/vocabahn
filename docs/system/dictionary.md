@@ -50,17 +50,15 @@ API. Recursion is bounded by `depth < 2`.
 Fuse.js, in-process. Weighted `word` (2) over `translation` (1), threshold 0.3,
 `ignoreLocation`, capped at 20 results.
 
-The index is built **once**, in `onModuleInit`, over every `DictionaryEntry`, and
-thereafter only appended to when a word is promoted. `rebuildIndex()` exists but
-has no caller besides init.
+The index is built in `onModuleInit` over every `DictionaryEntry`. When a word
+is promoted, it is added to the index, and when enrichment completes (or fails),
+`DictionaryService.updateSearchIndex(id)` updates the entry in Fuse.js so new
+translations become searchable immediately.
 
-Two consequences worth knowing before touching this:
-
-- A newly enriched entry's `translation` is **not** refreshed in the index. Its
-  search row keeps whatever translation existed at boot — usually `null` for a
-  freshly promoted word. Only an API restart fixes it.
-- With more than one API replica, each holds its own index and its own
-  incremental additions, so search results differ per replica.
+Note regarding multi-replica deployments:
+- With more than one API replica, each holds its own in-memory index, so search
+  index updates affect only the replica processing the enrichment job unless
+  search is moved to a shared index or Postgres full-text search.
 
 Client side: query lives in the URL as `?q=`, debounced 250 ms, fired at ≥ 2
 characters (`DictionaryCard.tsx:1057`).
@@ -104,7 +102,6 @@ Search results show a plain "Searching…" line instead.
 - The wrong POS is passed to Gemini during enrichment, so the error propagates
   into generated content — though in the `Wenn` case the model's `usageNote`
   correctly described a conjunction anyway.
-- Enriched translations never reach the search index until restart (#16, above).
 - Search is single-process in-memory: it does not survive horizontal scaling,
   and index build time grows with the whole active dictionary.
 - `@Get(':word')` is declared after `quota`, `offline-pack`, and `search` in
