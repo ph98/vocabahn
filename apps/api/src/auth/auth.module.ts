@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { EmailService } from './email.service';
@@ -8,6 +9,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Module({
   imports: [
+    KnowledgeModule,
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],

@@ -16,6 +16,7 @@ import {
   submitReviewResponseSchema,
   syncReviewsResponseSchema,
   userSchema,
+  type AutoGraduation,
   type CreateDeckBody,
   type ImportWordsResponse,
   type ReviewRating,
@@ -54,6 +55,14 @@ export async function fetchMe(): Promise<User | null> {
   } catch {
     return null;
   }
+}
+
+export async function updateCefrLevel(cefrLevel: string | null): Promise<{ user: User; graduation: AutoGraduation | null }> {
+  const { data } = await api.patch('/auth/me', { cefrLevel });
+  return {
+    user: userSchema.parse(data.user),
+    graduation: data.graduation as AutoGraduation | null,
+  };
 }
 
 export async function logout() {

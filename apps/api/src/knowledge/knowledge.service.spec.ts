@@ -162,4 +162,34 @@ describe('KnowledgeService', () => {
       expect(batchSpy).toHaveBeenCalledWith('user-1', 5);
     });
   });
+
+  describe('setUserCefrLevel', () => {
+    it('throws BadRequestException if CEFR level string is invalid', async () => {
+      prismaMock.user.findUnique.mockResolvedValue({ cefrLevel: null });
+      await expect(service.setUserCefrLevel('user-1', 'INVALID_LEVEL')).rejects.toThrow('Invalid CEFR level');
+    });
+
+    it('updates user CEFR level and graduates fillers + high prior cards when setting level for first time', async () => {
+      prismaMock.user.findUnique.mockResolvedValue({ cefrLevel: null });
+      prismaMock.user.update.mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        name: 'Test',
+        avatarUrl: null,
+        timezone: null,
+        cefrLevel: 'B1.1',
+      });
+      prismaMock.card.findMany.mockResolvedValue([]); // No candidates found
+
+      const result = await service.setUserCefrLevel('user-1', 'B1.1');
+
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { cefrLevel: 'B1.1' },
+        select: expect.any(Object),
+      });
+
+      expect(result.user.cefrLevel).toBe('B1.1');
+    });
+  });
 });

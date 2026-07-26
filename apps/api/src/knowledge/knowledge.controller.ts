@@ -1,5 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import type { KnownWordsResponse } from '@vocabahn/shared';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  updateCefrLevelSchema,
+  type AutoGraduation,
+  type KnownWordsResponse,
+  type UpdateCefrLevelBody,
+  type User,
+} from '@vocabahn/shared';
+import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { CurrentUserId, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { KnowledgeService } from './knowledge.service';
 
@@ -11,6 +18,15 @@ export class KnowledgeController {
   @Get('known')
   async listKnown(@CurrentUserId() userId: string): Promise<KnownWordsResponse> {
     return { words: await this.knowledge.listKnownWords(userId) };
+  }
+
+  @Post('level')
+  @Patch('level')
+  async setLevel(
+    @CurrentUserId() userId: string,
+    @Body(new ZodValidationPipe(updateCefrLevelSchema)) body: UpdateCefrLevelBody,
+  ): Promise<{ user: User; graduation: AutoGraduation | null }> {
+    return this.knowledge.setUserCefrLevel(userId, body.cefrLevel);
   }
 
   @Post('entry/:entryId/mark-known')

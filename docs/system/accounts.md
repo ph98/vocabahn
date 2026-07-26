@@ -77,9 +77,7 @@ Generated TTS files are served as static assets from `/api/static`.
   token is valid for 30 days. `POST /auth/logout` only clears cookies.
 - `POST /auth/google/token` is **orphaned** — implemented for native clients,
   no consumer in this repo (#23).
-- Users cannot set their own CEFR level (#25). `User.cefrLevel` is written only by
-  level inference in `knowledge.service.ts`; there is no onboarding, no
-  self-assessment, and no settings control.
+- Learners can set and calibrate their own CEFR level (#25) during onboarding or via Profile Settings (`PATCH /auth/me` or `POST /knowledge/level`), seeding prior scores and triggering filler/high-prior auto-graduations immediately. Level inference also continues to update `User.cefrLevel` as reviews progress.
 - reCAPTCHA is not integrated anywhere, despite being described in the legacy
   PRD. `ContactMessage` exists as a model with no controller.
 - Server-side user preferences do not exist. The only setting, "Autoplay audio
