@@ -45,3 +45,15 @@ export const updateDeckBodySchema = z.object({
   isPublic: z.boolean().optional(),
 });
 export type UpdateDeckBody = z.infer<typeof updateDeckBodySchema>;
+
+export const importWordsBodySchema = z.object({
+  words: z.array(z.string()),
+});
+export type ImportWordsBody = z.infer<typeof importWordsBodySchema>;
+
+export const importWordsResponseSchema = z.object({
+  imported: z.number(),
+  failed: z.array(z.string()),
+});
+export type ImportWordsResponse = z.infer<typeof importWordsResponseSchema>;
+

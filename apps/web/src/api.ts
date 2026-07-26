@@ -11,11 +11,13 @@ import {
   entryFeedbackSchema,
   enrollResponseSchema,
   healthResponseSchema,
+  importWordsResponseSchema,
   knownWordsResponseSchema,
   submitReviewResponseSchema,
   syncReviewsResponseSchema,
   userSchema,
   type CreateDeckBody,
+  type ImportWordsResponse,
   type ReviewRating,
   type SubmitFeedbackBody,
   type SyncReviewItem,
@@ -170,9 +172,9 @@ export async function createDeck(body: CreateDeckBody) {
   return deckSummarySchema.parse(data);
 }
 
-export async function importWordsToDeck(id: string, words: string[]) {
+export async function importWordsToDeck(id: string, words: string[]): Promise<ImportWordsResponse> {
   const { data } = await api.post(`/decks/${encodeURIComponent(id)}/import`, { words });
-  return data as { imported: number; failed: string[] };
+  return importWordsResponseSchema.parse(data);
 }
 
 export async function updateDeck(id: string, body: UpdateDeckBody) {

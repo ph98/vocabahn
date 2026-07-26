@@ -1,6 +1,16 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
-import type { CreateDeckBody, DeckDetail, DeckListResponse, DeckSummary, UpdateDeckBody } from '@vocabahn/shared';
+import {
+  importWordsBodySchema,
+  type CreateDeckBody,
+  type DeckDetail,
+  type DeckListResponse,
+  type DeckSummary,
+  type ImportWordsBody,
+  type ImportWordsResponse,
+  type UpdateDeckBody,
+} from '@vocabahn/shared';
 import { CurrentUserId, JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { DecksService } from './decks.service';
 
 @UseGuards(JwtAuthGuard)
@@ -61,8 +71,8 @@ export class DecksController {
   importWords(
     @Param('id') id: string,
     @CurrentUserId() userId: string,
-    @Body() body: { words: string[] },
-  ): Promise<{ imported: number, failed: string[] }> {
+    @Body(new ZodValidationPipe(importWordsBodySchema)) body: ImportWordsBody,
+  ): Promise<ImportWordsResponse> {
     return this.decks.importWords(userId, id, body.words);
   }
 }
