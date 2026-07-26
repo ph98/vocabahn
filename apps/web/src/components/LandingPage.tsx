@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useRef } from 'react';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
@@ -127,7 +128,14 @@ export function LandingPage() {
           <SignInOptions />
           
           <p className="mt-8 text-center text-xs text-surface-500 leading-relaxed">
-            By signing in, you agree to our <span className="underline hover:text-surface-300 cursor-pointer">Terms of Service</span> and <span className="underline hover:text-surface-300 cursor-pointer">Privacy Policy</span>.
+            By signing in, you agree to our{' '}
+            <Link to="/terms" className="underline hover:text-surface-300 font-medium transition-colors">
+              Terms of Service
+            </Link>{' '}
+            and{' '}
+            <Link to="/privacy" className="underline hover:text-surface-300 font-medium transition-colors">
+              Privacy Policy
+            </Link>.
           </p>
         </div>
       </div>

@@ -30,6 +30,8 @@ const StatusPage = lazy(() => import('./components/StatusPage').then((m) => ({ d
 const DeckDetailPage = lazy(() =>
   import('./components/DecksPage').then((m) => ({ default: m.DeckDetailPage })),
 );
+const TermsPage = lazy(() => import('./components/TermsPage').then((m) => ({ default: m.TermsPage })));
+const PrivacyPage = lazy(() => import('./components/PrivacyPage').then((m) => ({ default: m.PrivacyPage })));
 
 /** Suspense fallback for lazy-loaded routes; announced to screen readers. */
 function RouteLoading() {
@@ -364,6 +366,8 @@ function pageNameForPath(pathname: string): string {
   if (pathname.startsWith('/known-words')) return 'Known words';
   if (pathname.startsWith('/profile')) return 'Profile';
   if (pathname.startsWith('/status')) return 'System status';
+  if (pathname.startsWith('/terms')) return 'Terms of Service';
+  if (pathname.startsWith('/privacy')) return 'Privacy Policy';
   return 'Vocabahn';
 }
 
@@ -548,10 +552,14 @@ export default function App() {
         <AuthErrorBanner />
         {!isPending && !user && (
         <div className="w-full max-w-6xl space-y-10 mt-8 md:mt-16 px-4 xl:px-0">
-          <Routes>
-            <Route path="/auth/verify" element={<AuthVerifyPage />} />
-            <Route path="*" element={<LandingPage />} />
-          </Routes>
+          <Suspense fallback={<RouteLoading />}>
+            <Routes>
+              <Route path="/auth/verify" element={<AuthVerifyPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="*" element={<LandingPage />} />
+            </Routes>
+          </Suspense>
         </div>
       )}
 
@@ -574,6 +582,8 @@ export default function App() {
                 <Route path="/decks/:id" element={<DeckDetailPage />} />
                 <Route path="/profile" element={<div className="mx-auto max-w-sm"><ProfilePage /></div>} />
                 <Route path="/status" element={<div className="mx-auto max-w-sm"><StatusPage /></div>} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/auth/verify" element={<AuthVerifyPage />} />
               </Routes>
             </Suspense>
@@ -590,6 +600,21 @@ export default function App() {
         >
           v{__APP_VERSION__}
         </a>
+        <span aria-hidden="true">•</span>
+        <Link
+          to="/terms"
+          className="hover:text-surface-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-colors"
+        >
+          Terms
+        </Link>
+        <span aria-hidden="true">•</span>
+        <Link
+          to="/privacy"
+          className="hover:text-surface-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-colors"
+        >
+          Privacy
+        </Link>
+        <span aria-hidden="true">•</span>
         <StatusLink />
       </footer>
 
