@@ -1,6 +1,7 @@
 import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
+import { Inject, Logger, forwardRef } from '@nestjs/common';
 import type { Job } from 'bullmq';
+import { DictionaryService } from '../dictionary/dictionary.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ENRICHMENT_QUEUE, type EnrichmentJobData } from './enrichment.constants';
 import { GeminiProvider } from './providers/gemini.provider';
@@ -20,6 +21,8 @@ export class EnrichmentProcessor extends WorkerHost {
     private readonly gemini: GeminiProvider,
     private readonly unsplash: UnsplashProvider,
     private readonly tts: TtsProvider,
+    @Inject(forwardRef(() => DictionaryService))
+    private readonly dictionaryService: DictionaryService,
   ) {
     super();
   }
@@ -43,6 +46,7 @@ export class EnrichmentProcessor extends WorkerHost {
       where: { id: entry.id },
       data: { enrichmentStatus: 'ENRICHING', enrichmentError: null },
     });
+    await this.dictionaryService.updateSearchIndex(entry.id);
 
     const lex = entry.lexiconEntry;
     const glosses = lex.senses.flatMap((s) => s.glosses);
@@ -145,6 +149,7 @@ export class EnrichmentProcessor extends WorkerHost {
       });
     });
 
+    await this.dictionaryService.updateSearchIndex(entry.id);
     this.logger.log(`enriched "${entry.word}" (${entry.id})`);
   }
 
@@ -171,6 +176,9 @@ export class EnrichmentProcessor extends WorkerHost {
         where: { id: job.data.dictionaryEntryId },
         data: { enrichmentStatus: 'FAILED', enrichmentError: err.message?.slice(0, 500) },
       })
+      .catch(() => undefined);
+    await this.dictionaryService
+      .updateSearchIndex(job.data.dictionaryEntryId)
       .catch(() => undefined);
   }
 }

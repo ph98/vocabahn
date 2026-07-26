@@ -1,10 +1,10 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { EnrichmentModule } from '../enrichment/enrichment.module';
 import { DictionaryController } from './dictionary.controller';
 import { DictionaryService } from './dictionary.service';
 
 @Module({
-  imports: [EnrichmentModule],
+  imports: [forwardRef(() => EnrichmentModule)],
   controllers: [DictionaryController],
   providers: [DictionaryService],
   exports: [DictionaryService],
