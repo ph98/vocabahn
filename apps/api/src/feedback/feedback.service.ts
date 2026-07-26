@@ -5,8 +5,13 @@ import { PrismaService } from '../prisma/prisma.service';
 
 // Issues that indicate the AI-generated content is wrong and warrants re-enrichment.
 const CONTENT_QUALITY_ISSUES: FeedbackIssue[] = [
+  'LEVEL',
   'TRANSLATION',
+  'EMOJI',
+  'AUDIO',
   'EXAMPLE',
+  'GRAMMAR',
+  'MNEMONIC',
   'IMAGE',
   'OTHER',
 ];

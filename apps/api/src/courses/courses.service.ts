@@ -58,7 +58,7 @@ export class CoursesService {
         },
       },
     });
-    if (!course) {
+    if (!course || !course.published) {
       throw new NotFoundException('Course not found');
     }
 
@@ -95,7 +95,7 @@ export class CoursesService {
       where: { slug },
       include: { words: { select: { dictionaryEntryId: true } } },
     });
-    if (!course) {
+    if (!course || !course.published) {
       throw new NotFoundException('Course not found');
     }
 

@@ -42,9 +42,12 @@
       (function () {
         try {
           var stored = localStorage.getItem('vocabahn-theme');
+          var isDark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
           if (stored === 'light' || stored === 'dark') {
             document.documentElement.classList.add('theme-' + stored);
           }
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', isDark ? '#0a0a0a' : '#fafafa');
         } catch (e) {}
       })();
     </script>
