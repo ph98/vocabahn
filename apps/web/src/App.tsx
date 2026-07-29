@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { BadgeCheck, CircleUserRound, Monitor, Moon, Sun } from 'lucide-react';
+import { BadgeCheck, CircleUserRound, HelpCircle, Monitor, Moon, Sun } from 'lucide-react';
 import { MotionConfig, motion } from 'motion/react';
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type RefObject } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -25,6 +25,7 @@ const DashboardPage = lazy(() =>
 const KnownWordsPage = lazy(() =>
   import('./components/KnownWordsPage').then((m) => ({ default: m.KnownWordsPage })),
 );
+const HelpPage = lazy(() => import('./components/HelpPage').then((m) => ({ default: m.HelpPage })));
 const ReviewSession = lazy(() =>
   import('./components/ReviewSession').then((m) => ({ default: m.ReviewSession })),
 );
@@ -131,9 +132,10 @@ const ICON_REVIEW = 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z
 const ICON_DASHBOARD = 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z';
 const ICON_MORE = 'M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z';
 
-const MORE_PATHS = ['/known-words', '/profile'] as const;
+const MORE_PATHS = ['/known-words', '/help', '/profile'] as const;
 const MORE_ITEMS = [
   { to: '/known-words', label: 'Known words', icon: BadgeCheck },
+  { to: '/help',        label: 'Help & Guide', icon: HelpCircle },
   { to: '/profile',     label: 'Profile',      icon: CircleUserRound },
 ] as const;
 
@@ -604,6 +606,8 @@ export default function App() {
                 <Route path="/decks" element={<Navigate to="/library" replace />} />
                 <Route path="/decks/:id" element={<DeckDetailPage />} />
                 <Route path="/profile" element={<div className="mx-auto max-w-sm"><ProfilePage /></div>} />
+                <Route path="/help" element={<HelpPage />} />
+                <Route path="/guide" element={<Navigate to="/help" replace />} />
                 <Route path="/status" element={<div className="mx-auto max-w-sm"><StatusPage /></div>} />
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
@@ -616,6 +620,13 @@ export default function App() {
       )}
 
       <footer className="mt-auto flex w-full max-w-6xl items-center justify-center gap-3 border-t border-surface-800 pt-4 pb-6 text-xs text-surface-500">
+        <Link
+          to="/help"
+          className="hover:text-surface-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-colors font-medium text-surface-400"
+        >
+          Help & User Guide
+        </Link>
+        <span>·</span>
         <a
           href="https://github.com/ph98/vocabahn/blob/main/docs/changelog.md"
           target="_blank"
