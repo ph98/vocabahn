@@ -240,9 +240,33 @@ export class KnowledgeService {
   }
 
 
-  /** Undo multiple known words in parallel. */
+  /** Undo multiple known words in an atomic batch transaction. */
   async bulkUndo(userId: string, cardIds: string[]): Promise<void> {
-    await Promise.all(cardIds.map((id) => this.undoKnown(userId, id)));
+    if (!cardIds || cardIds.length === 0) return;
+
+    const cards = await this.prisma.card.findMany({
+      where: { id: { in: cardIds }, userId, knownState: { not: 'ACTIVE' } },
+      select: { id: true, dictionaryEntryId: true },
+    });
+    if (cards.length === 0) return;
+
+    const validCardIds = cards.map((c) => c.id);
+    const entryIds = [...new Set(cards.map((c) => c.dictionaryEntryId))];
+
+    await this.prisma.$transaction([
+      this.prisma.card.updateMany({
+        where: { id: { in: validCardIds } },
+        data: { knownState: 'ACTIVE', due: new Date() },
+      }),
+      this.prisma.knowledgeScore.updateMany({
+        where: {
+          userId,
+          dictionaryEntryId: { in: entryIds },
+          score: { gte: AUTO_GRADUATE_THRESHOLD },
+        },
+        data: { score: AUTO_GRADUATE_THRESHOLD - 0.1 },
+      }),
+    ]);
   }
 
   async undoKnown(userId: string, cardId: string): Promise<void> {
