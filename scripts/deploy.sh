@@ -4,6 +4,7 @@
 # First-time setup: bash scripts/deploy.sh --setup
 set -euo pipefail
 
+DEPLOY_ENV="${ENV:-production}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE="docker compose -f $REPO_DIR/docker-compose.prod.yml"
 SETUP_MODE=false
@@ -13,6 +14,11 @@ for arg in "$@"; do
 done
 
 cd "$REPO_DIR"
+
+NGINX_CONF="apps/web/nginx.production.conf"
+if [[ "$DEPLOY_ENV" == "staging" ]]; then
+  NGINX_CONF="apps/web/nginx.staging.conf"
+fi
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 log()  { echo -e "\033[1;34m[deploy]\033[0m $*"; }

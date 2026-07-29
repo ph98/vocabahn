@@ -3,6 +3,7 @@ name: CI & Deployment
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
 
@@ -28,22 +29,42 @@ jobs:
       - run: pnpm --filter @vocabahn/web test
       - run: pnpm audit --audit-level high
 
-  deploy:
-    name: Deploy to VPS
+  deploy-staging:
+    name: Deploy to Staging (staging.vocabahn.app)
     needs: ci
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Deploy to Staging via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USERNAME }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          port: ${{ secrets.VPS_PORT || 22 }}
+          host: ${{ secrets.STAGING_VPS_HOST || secrets.VPS_HOST }}
+          username: ${{ secrets.STAGING_VPS_USERNAME || secrets.VPS_USERNAME }}
+          key: ${{ secrets.STAGING_VPS_SSH_KEY || secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.STAGING_VPS_PORT || secrets.VPS_PORT || 22 }}
           script: |
-            cd ${{ secrets.VPS_WORK_DIR || '~/vocabahn' }}
+            cd ${{ secrets.STAGING_VPS_WORK_DIR || secrets.VPS_WORK_DIR || '~/vocabahn' }}
             git fetch origin main
             git reset --hard origin/main
-            bash scripts/deploy.sh
+            ENV=staging bash scripts/deploy.sh
+
+  deploy-production:
+    name: Deploy to Production (vocabahn.app)
+    needs: ci
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Production via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.PROD_VPS_HOST || secrets.VPS_HOST }}
+          username: ${{ secrets.PROD_VPS_USERNAME || secrets.VPS_USERNAME }}
+          key: ${{ secrets.PROD_VPS_SSH_KEY || secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.PROD_VPS_PORT || secrets.VPS_PORT || 22 }}
+          script: |
+            cd ${{ secrets.PROD_VPS_WORK_DIR || secrets.VPS_WORK_DIR || '~/vocabahn' }}
+            git fetch origin --tags
+            git checkout ${{ github.ref_name }}
+            ENV=production bash scripts/deploy.sh
+
 
