@@ -5,6 +5,7 @@ import {
   Get,
   HttpCode,
   NotFoundException,
+  Patch,
   Post,
   Query,
   Req,
@@ -18,8 +19,10 @@ import { ConfigService } from '@nestjs/config';
 import { Throttle } from '@nestjs/throttler';
 import {
   googleIdTokenSignInSchema,
+  updateCefrLevelSchema,
   type AuthTokens,
   type GoogleIdTokenSignIn,
+  type UpdateCefrLevelBody,
   type User,
 } from '@vocabahn/shared';
 import type { Request, Response } from 'express';
@@ -168,5 +171,14 @@ export class AuthController {
       throw new NotFoundException('User not found');
     }
     return user;
+  }
+
+  @Patch('me/cefr')
+  @UseGuards(JwtAuthGuard)
+  async updateCefrLevel(
+    @CurrentUserId() userId: string,
+    @Body(new ZodValidationPipe(updateCefrLevelSchema)) body: UpdateCefrLevelBody,
+  ): Promise<User> {
+    return this.auth.updateCefrLevel(userId, body.cefrLevel);
   }
 }

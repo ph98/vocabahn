@@ -66,6 +66,11 @@ export async function googleOneTapLogin(idToken: string): Promise<User> {
   return userSchema.parse(data);
 }
 
+export async function updateUserCefrLevel(cefrLevel: string | null): Promise<User> {
+  const { data } = await api.patch('/auth/me/cefr', { cefrLevel });
+  return userSchema.parse(data);
+}
+
 export async function searchDictionary(q: string) {
   const { data } = await api.get('/dictionary/search', { params: { q } });
   return dictionarySearchResponseSchema.parse(data).results;
