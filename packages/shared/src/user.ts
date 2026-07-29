@@ -26,3 +26,24 @@ export const authTokensSchema = z.object({
 });
 
 export type AuthTokens = z.infer<typeof authTokensSchema>;
+
+export const CEFR_LEVELS_LIST = [
+  'A1.1',
+  'A1.2',
+  'A2.1',
+  'A2.2',
+  'B1.1',
+  'B1.2',
+  'B2.1',
+  'B2.2',
+  'C1.1',
+  'C1.2',
+  'C2.1',
+  'C2.2',
+] as const;
+
+export const updateCefrLevelSchema = z.object({
+  cefrLevel: z.enum(CEFR_LEVELS_LIST).nullable(),
+});
+
+export type UpdateCefrLevelBody = z.infer<typeof updateCefrLevelSchema>;

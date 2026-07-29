@@ -6,8 +6,11 @@ import { AuthService } from './auth.service';
 import { EmailService } from './email.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
+import { KnowledgeModule } from '../knowledge/knowledge.module';
+
 @Module({
   imports: [
+    KnowledgeModule,
     JwtModule.registerAsync({
       global: true,
       inject: [ConfigService],

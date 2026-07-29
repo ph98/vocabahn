@@ -326,7 +326,7 @@ export class KnowledgeService {
   }
 
   /** Auto-marks unseen words at least two sub-levels below `levelIndex` as known. */
-  private async batchGraduateFillers(userId: string, levelIndex: number): Promise<AutoGraduation | null> {
+  async batchGraduateFillers(userId: string, levelIndex: number): Promise<AutoGraduation | null> {
     const fillerCeiling = levelIndex - 2;
     if (fillerCeiling < 0) return null;
 
