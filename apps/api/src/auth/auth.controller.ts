@@ -86,7 +86,7 @@ export class AuthController {
     }
   }
 
-  /** Mobile-ready sign-in: verify a Google ID token, return a JSON token pair. */
+  /** Mobile-ready sign-in: verify a Google ID token, return a JSON token pair. Reserved for native/mobile clients; uncalled by web app. */
   @Post('google/token')
   @HttpCode(200)
   async googleToken(

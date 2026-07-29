@@ -4,7 +4,7 @@ import { fetchEnrichmentQuota, fetchMe, logout, requestEmailSignIn } from '../ap
 import { useSettings } from '../hooks/useSettings';
 import { trackEvent } from '../lib/telemetry';
 import { prefersReducedMotion } from '../lib/motion';
-import { ShieldCheck, Mail } from 'lucide-react';
+import { ShieldCheck, Mail, Download } from 'lucide-react';
 import gsap from 'gsap';
 
 export function SignInOptions() {
@@ -178,6 +178,28 @@ export function ProfilePage() {
           <p className="mt-1 text-xs text-surface-500">
             New words you open are AI-enriched (definitions, images, audio). Resets at midnight.
           </p>
+        </div>
+      )}
+
+      {user && (
+        <div className="mt-4 border-t border-surface-800 pt-4">
+          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-surface-500">
+            Offline Data
+          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-surface-200">Offline Dictionary Pack</p>
+              <p className="text-xs text-surface-400">Download top 1,000 enriched entries as JSON</p>
+            </div>
+            <a
+              href="/api/v1/dictionary/offline-pack"
+              download="vocabahn-offline.json"
+              className="inline-flex items-center gap-2 rounded-xl border border-surface-700 bg-surface-800 px-3 py-2 text-xs font-medium text-surface-200 transition-colors hover:bg-surface-700 hover:text-white"
+            >
+              <Download className="size-4" />
+              Download
+            </a>
+          </div>
         </div>
       )}
 
