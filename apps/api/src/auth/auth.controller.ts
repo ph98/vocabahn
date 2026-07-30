@@ -21,12 +21,14 @@ import {
   googleIdTokenSignInSchema,
   updateCefrLevelSchema,
   type AuthTokens,
+  type AutoGraduation,
   type GoogleIdTokenSignIn,
   type UpdateCefrLevelBody,
   type User,
 } from '@vocabahn/shared';
 import type { Request, Response } from 'express';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
+import { KnowledgeService } from '../knowledge/knowledge.service';
 import { AuthService } from './auth.service';
 import {
   clearAuthCookies,
@@ -44,6 +46,7 @@ import { CurrentUserId, JwtAuthGuard } from './jwt-auth.guard';
 export class AuthController {
   constructor(
     private readonly auth: AuthService,
+    private readonly knowledge: KnowledgeService,
     private readonly config: ConfigService,
   ) {}
 
@@ -171,6 +174,15 @@ export class AuthController {
       throw new NotFoundException('User not found');
     }
     return user;
+  }
+
+  @Patch(['me', '/me'])
+  @UseGuards(JwtAuthGuard)
+  async updateMe(
+    @CurrentUserId() userId: string,
+    @Body(new ZodValidationPipe(updateCefrLevelSchema)) body: UpdateCefrLevelBody,
+  ): Promise<{ user: User; graduation: AutoGraduation | null }> {
+    return this.knowledge.setUserCefrLevel(userId, body.cefrLevel);
   }
 
   @Patch('me/cefr')

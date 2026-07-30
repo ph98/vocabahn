@@ -1,11 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
-import { fetchEnrichmentQuota, fetchMe, logout, requestEmailSignIn, updateUserCefrLevel } from '../api';
-import { CEFR_LEVELS_LIST } from '@vocabahn/shared';
+import { fetchEnrichmentQuota, fetchMe, logout, requestEmailSignIn } from '../api';
 import { useSettings } from '../hooks/useSettings';
 import { trackEvent } from '../lib/telemetry';
 import { prefersReducedMotion } from '../lib/motion';
 import { ShieldCheck, Mail, Download } from 'lucide-react';
+import { CEFRCalibrationCard } from './CEFRCalibrationCard';
+import { CEFRBadge } from './CEFRBadge';
 import gsap from 'gsap';
 
 export function SignInOptions() {
@@ -116,157 +117,156 @@ export function ProfilePage() {
     mutationFn: logout,
     onSuccess: () => queryClient.setQueryData(['me'], null),
   });
-  const cefrMutation = useMutation({
-    mutationFn: (level: string | null) => updateUserCefrLevel(level),
-    onSuccess: (updatedUser) => {
-      queryClient.setQueryData(['me'], updatedUser);
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-    },
-  });
 
   const { settings, updateSettings } = useSettings();
+  const [showCalibration, setShowCalibration] = useState(false);
 
   return (
     <section
       aria-label="Profile"
-      className="w-full rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20"
+      className="w-full space-y-6"
     >
-      <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-surface-400">Profile</h2>
-      {isPending && <p aria-live="polite">Checking session…</p>}
-      {!isPending && !user && <SignInOptions />}
-      {user && (
-        <div className="flex items-center gap-4">
-          {user.avatarUrl && (
-            <img
-              src={user.avatarUrl}
-              alt=""
-              referrerPolicy="no-referrer"
-              className="size-11 rounded-full ring-2 ring-surface-800"
-            />
-          )}
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-medium">{user.name ?? user.email}</p>
-            <p className="truncate text-sm text-surface-400">{user.email}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => signOut.mutate()}
-            disabled={signOut.isPending}
-            className="min-h-11 rounded-xl border border-surface-700 px-4 text-sm transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
-            Sign out
-          </button>
-        </div>
-      )}
-
-      {user && quota && (
-        <div className="mt-4 border-t border-surface-800 pt-4">
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-surface-500">
-            Daily enrichment
-          </p>
-          <div className="flex items-center gap-3">
-            <div
-              role="meter"
-              aria-label={`Enrichment usage: ${quota.used} of ${quota.cap} used today`}
-              aria-valuenow={quota.used}
-              aria-valuemin={0}
-              aria-valuemax={quota.cap}
-              className="h-2 flex-1 overflow-hidden rounded-full bg-surface-800"
-            >
-              <div
-                className="h-full rounded-full bg-indigo-500 transition-all"
-                style={{ width: `${Math.min((quota.used / quota.cap) * 100, 100)}%` }}
+      <div className="rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20">
+        <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-surface-400">Profile</h2>
+        {isPending && <p aria-live="polite">Checking session…</p>}
+        {!isPending && !user && <SignInOptions />}
+        {user && (
+          <div className="flex items-center gap-4">
+            {user.avatarUrl && (
+              <img
+                src={user.avatarUrl}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="size-11 rounded-full ring-2 ring-surface-800"
               />
+            )}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="truncate font-medium">{user.name ?? user.email}</p>
+                {user.cefrLevel && <CEFRBadge level={user.cefrLevel} size="sm" />}
+              </div>
+              <p className="truncate text-sm text-surface-400">{user.email}</p>
             </div>
-            <span className="shrink-0 text-xs tabular-nums text-surface-400">
-              {quota.used} / {quota.cap}
-            </span>
-          </div>
-          <p className="mt-1 text-xs text-surface-500">
-            New words you open are AI-enriched (definitions, images, audio). Resets at midnight.
-          </p>
-        </div>
-      )}
-
-      {user && (
-        <div className="mt-4 border-t border-surface-800 pt-4">
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-surface-500">
-            CEFR Level Calibration
-          </p>
-          <p className="mb-3 text-xs text-surface-400">
-            Set your current German proficiency level. Selecting a level seeds card ordering and auto-graduates basic filler words below your frontier.
-          </p>
-          <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
-            {CEFR_LEVELS_LIST.map((level) => (
-              <button
-                key={level}
-                type="button"
-                onClick={() => cefrMutation.mutate(user.cefrLevel === level ? null : level)}
-                disabled={cefrMutation.isPending}
-                className={`rounded-lg py-1.5 px-2 text-center text-xs font-bold font-mono transition-all ${
-                  user.cefrLevel === level
-                    ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400'
-                    : 'border border-surface-700 bg-surface-800 text-surface-300 hover:border-surface-600 hover:text-white'
-                }`}
-              >
-                {level}
-              </button>
-            ))}
-          </div>
-          {user.cefrLevel && (
             <button
               type="button"
-              onClick={() => cefrMutation.mutate(null)}
-              disabled={cefrMutation.isPending}
-              className="mt-2.5 text-xs text-surface-400 underline hover:text-surface-200"
+              onClick={() => signOut.mutate()}
+              disabled={signOut.isPending}
+              className="min-h-11 rounded-xl border border-surface-700 px-4 text-sm transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
-              Clear CEFR level (infer strictly from reviews)
+              Sign out
             </button>
-          )}
-        </div>
-      )}
-
-      {user && (
-        <div className="mt-4 border-t border-surface-800 pt-4">
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-surface-500">
-            Offline Data
-          </p>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-surface-200">Offline Dictionary Pack</p>
-              <p className="text-xs text-surface-400">Download top 1,000 enriched entries as JSON</p>
-            </div>
-            <a
-              href="/api/v1/dictionary/offline-pack"
-              download="vocabahn-offline.json"
-              className="inline-flex items-center gap-2 rounded-xl border border-surface-700 bg-surface-800 px-3 py-2 text-xs font-medium text-surface-200 transition-colors hover:bg-surface-700 hover:text-white"
-            >
-              <Download className="size-4" />
-              Download
-            </a>
           </div>
-        </div>
-      )}
+        )}
 
-      {user && (
-        <div className="mt-4 border-t border-surface-800 pt-4">
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-surface-500">
-            Preferences
-          </p>
-          <label className="flex items-center gap-3 cursor-pointer group">
-            <div className="relative">
-              <input
-                type="checkbox"
-                className="sr-only"
-                checked={settings.autoplayAudio}
-                onChange={(e) => updateSettings({ autoplayAudio: e.target.checked })}
-              />
-              <div className={`block w-10 h-6 rounded-full transition-colors ${settings.autoplayAudio ? 'bg-indigo-500' : 'bg-surface-700 group-hover:bg-surface-600'}`}></div>
-              <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.autoplayAudio ? 'translate-x-4' : ''}`}></div>
+        {user && quota && (
+          <div className="mt-4 border-t border-surface-800 pt-4">
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-surface-500">
+              Daily enrichment
+            </p>
+            <div className="flex items-center gap-3">
+              <div
+                role="meter"
+                aria-label={`Enrichment usage: ${quota.used} of ${quota.cap} used today`}
+                aria-valuenow={quota.used}
+                aria-valuemin={0}
+                aria-valuemax={quota.cap}
+                className="h-2 flex-1 overflow-hidden rounded-full bg-surface-800"
+              >
+                <div
+                  className="h-full rounded-full bg-indigo-500 transition-all"
+                  style={{ width: `${Math.min((quota.used / quota.cap) * 100, 100)}%` }}
+                />
+              </div>
+              <span className="shrink-0 text-xs tabular-nums text-surface-400">
+                {quota.used} / {quota.cap}
+              </span>
             </div>
-            <span className="text-sm text-surface-300">Autoplay audio during reviews</span>
-          </label>
-        </div>
+            <p className="mt-1 text-xs text-surface-500">
+              New words you open are AI-enriched (definitions, images, audio). Resets at midnight.
+            </p>
+          </div>
+        )}
+
+        {user && (
+          <div className="mt-4 border-t border-surface-800 pt-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
+                  CEFR Proficiency Level
+                </p>
+                <p className="text-xs text-surface-400 mt-0.5">
+                  {user.cefrLevel ? `Calibrated to ${user.cefrLevel}` : 'Not calibrated yet'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCalibration(!showCalibration)}
+                className="rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-3 py-1.5 text-xs font-semibold text-indigo-300 transition-colors hover:bg-indigo-500/20"
+              >
+                {showCalibration ? 'Close Calibration' : 'Calibrate Level'}
+              </button>
+            </div>
+
+            {user.cefrLevel && !showCalibration && (
+              <div className="flex items-center gap-2 rounded-xl bg-surface-950/60 p-3 border border-surface-850">
+                <CEFRBadge level={user.cefrLevel} size="md" />
+                <p className="text-xs text-surface-300">
+                  Card introduction ordering prioritizes new words matching this level.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {user && (
+          <div className="mt-4 border-t border-surface-800 pt-4">
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-surface-500">
+              Offline Data
+            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-surface-200">Offline Dictionary Pack</p>
+                <p className="text-xs text-surface-400">Download top 1,000 enriched entries as JSON</p>
+              </div>
+              <a
+                href="/api/v1/dictionary/offline-pack"
+                download="vocabahn-offline.json"
+                className="inline-flex items-center gap-2 rounded-xl border border-surface-700 bg-surface-800 px-3 py-2 text-xs font-medium text-surface-200 transition-colors hover:bg-surface-700 hover:text-white"
+              >
+                <Download className="size-4" />
+                Download
+              </a>
+            </div>
+          </div>
+        )}
+
+        {user && (
+          <div className="mt-4 border-t border-surface-800 pt-4">
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-surface-500">
+              Preferences
+            </p>
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <div className="relative">
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={settings.autoplayAudio}
+                  onChange={(e) => updateSettings({ autoplayAudio: e.target.checked })}
+                />
+                <div className={`block w-10 h-6 rounded-full transition-colors ${settings.autoplayAudio ? 'bg-indigo-500' : 'bg-surface-700 group-hover:bg-surface-600'}`}></div>
+                <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${settings.autoplayAudio ? 'translate-x-4' : ''}`}></div>
+              </div>
+              <span className="text-sm text-surface-300">Autoplay audio during reviews</span>
+            </label>
+          </div>
+        )}
+      </div>
+
+      {user && (showCalibration || !user.cefrLevel) && (
+        <CEFRCalibrationCard
+          user={user}
+          onDismiss={user.cefrLevel ? () => setShowCalibration(false) : undefined}
+        />
       )}
     </section>
   );

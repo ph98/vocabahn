@@ -7,7 +7,13 @@ import { DashboardPage } from '../DashboardPage';
 
 vi.mock('../../api', () => ({
   fetchDashboard: vi.fn(),
-  fetchMe: vi.fn(),
+  fetchMe: vi.fn().mockResolvedValue({
+    id: 'user-1',
+    email: 'test@example.com',
+    name: 'Test User',
+    avatarUrl: null,
+    cefrLevel: 'A1.1',
+  }),
 }));
 
 const { fetchDashboard, fetchMe } = await import('../../api');

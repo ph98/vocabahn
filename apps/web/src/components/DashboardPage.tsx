@@ -5,6 +5,7 @@ import { fetchDashboard, fetchMe } from '../api';
 import { ProgressBar } from './ProgressBar';
 import { ActivityHeatmap } from './ActivityHeatmap';
 import { CountUp } from './CountUp';
+import { CEFRCalibrationCard } from './CEFRCalibrationCard';
 import { useRef, type ComponentType } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
@@ -43,8 +44,8 @@ function StatCard({
 }
 
 export function DashboardPage() {
-  const { data, isPending, isError, refetch } = useQuery({ queryKey: ['dashboard'], queryFn: fetchDashboard });
   const { data: user } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
+  const { data, isPending, isError, refetch } = useQuery({ queryKey: ['dashboard'], queryFn: fetchDashboard });
   const containerRef = useRef<HTMLDivElement>(null);
 
   useGSAP(() => {
@@ -73,6 +74,10 @@ export function DashboardPage() {
       <h2 className="text-sm font-medium uppercase tracking-wide text-surface-400 pl-1">Dashboard</h2>
       {isPending && <p aria-live="polite" className="pl-1 text-surface-300">Loading dashboard…</p>}
       {isError && <p aria-live="polite" className="pl-1 text-accent-red">Couldn't load your dashboard.</p>}
+
+      {user && !user.cefrLevel && (
+        <CEFRCalibrationCard user={user} compact />
+      )}
 
       {data && (
         <div className="flex flex-col gap-5">
