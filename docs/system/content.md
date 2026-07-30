@@ -72,9 +72,6 @@ filters reviews to that deck and ensures card rows exist for all deck entries.
 ## Limitations
 
 - **C1 and C2 vocabulary is incomplete (issue #3).** C1 and C2 courses are explicitly flagged as `isComplete: false` and render "Incomplete / Beta" badges across the catalog, detail pages, and dashboard. The `generate:c1-c2` batch pipeline is established to continue classifying remaining high-frequency advanced words from `de_full.txt` into `data/german_cefr_wordlist.json`.
-- **No de-enrollment** (#24). `UserCourse` rows can be created but never deleted; there
-  is no endpoint and no UI. Cards created by an enrollment stay in the review
-  queue permanently.
 - Deleting a deck has no confirmation step (#28) (**observed**: a bare "Delete" button
   next to "View words").
 - `Course.published` is respected by `listCourses` but not by `getCourse` (#28), so an

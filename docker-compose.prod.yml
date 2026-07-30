@@ -68,6 +68,35 @@ services:
       - ./apps/web/nginx.production.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - api
+      - directus
+    networks:
+      - internal
+
+  directus:
+    image: directus/directus:11
+    restart: unless-stopped
+    ports: []
+    environment:
+      KEY: ${DIRECTUS_KEY}
+      SECRET: ${DIRECTUS_SECRET}
+      DB_CLIENT: pg
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: vocabahn
+      DB_USER: vocabahn
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_SEARCH_PATH: directus,public
+      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL}
+      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD}
+      PUBLIC_URL: https://admin.vocabahn.app
+      AUTH_GOOGLE_ENABLED: "true"
+      AUTH_GOOGLE_DRIVER: google
+      AUTH_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      AUTH_GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      AUTH_DISABLE_DEFAULT_URL_REDIRECT: "true"
+    depends_on:
+      db:
+        condition: service_healthy
     networks:
       - internal
 

@@ -9,6 +9,8 @@ import { JwtService } from '@nestjs/jwt';
 import type { User } from '@vocabahn/shared';
 import { OAuth2Client } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
+import { KnowledgeService } from '../knowledge/knowledge.service';
+import { cefrIndex } from '../knowledge/constants';
 import { ACCESS_TTL_MS, REFRESH_TTL_MS } from './cookies';
 import { EmailService } from './email.service';
 
@@ -29,6 +31,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
+    private readonly knowledge: KnowledgeService,
   ) {
     this.clientId = this.config.getOrThrow<string>('GOOGLE_CLIENT_ID');
     this.google = new OAuth2Client(
@@ -175,6 +178,20 @@ export class AuthService {
   async getUserById(id: string): Promise<User | null> {
     const user = await this.prisma.user.findUnique({ where: { id } });
     return user && this.toPublicUser(user);
+  }
+
+  async updateCefrLevel(userId: string, cefrLevel: string | null): Promise<User> {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { cefrLevel },
+    });
+    if (cefrLevel) {
+      const levelIdx = cefrIndex(cefrLevel);
+      if (levelIdx !== null) {
+        await this.knowledge.batchGraduateFillers(userId, levelIdx);
+      }
+    }
+    return this.toPublicUser(updated);
   }
 
   private toPublicUser(user: {

@@ -16,7 +16,7 @@ vi.mock('../../api', () => ({
   }),
 }));
 
-const { fetchDashboard } = await import('../../api');
+const { fetchDashboard, fetchMe } = await import('../../api');
 
 const DASHBOARD: DashboardResponse = {
   streak: 5,
@@ -45,6 +45,7 @@ const DASHBOARD: DashboardResponse = {
 describe('DashboardPage', () => {
   it('renders stats, heatmap, and an accessible activity list with no a11y violations', async () => {
     vi.mocked(fetchDashboard).mockResolvedValue(DASHBOARD);
+    vi.mocked(fetchMe).mockResolvedValue({ id: 'u1', email: 'test@example.com', name: 'Test', avatarUrl: null, cefrLevel: 'A1.1' });
     const { container } = renderWithProviders(<DashboardPage />);
 
     await waitFor(() => expect(screen.getByText('day streak')).toBeInTheDocument());

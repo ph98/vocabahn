@@ -81,6 +81,24 @@ export function DashboardPage() {
 
       {data && (
         <div className="flex flex-col gap-5">
+          {user && !user.cefrLevel && (
+            <div className="dashboard-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-surface-900/80 to-surface-950/80 p-5 backdrop-blur-md shadow-lg">
+              <div className="space-y-1">
+                <p className="text-sm font-bold text-indigo-300">Set your German CEFR Level</p>
+                <p className="text-xs text-surface-300">
+                  Calibrate card ordering and auto-graduate basic filler words by selecting your current level in profile settings.
+                </p>
+              </div>
+              <Link
+                to="/profile"
+                className="inline-flex items-center gap-1.5 shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-indigo-500"
+              >
+                Calibrate Level
+                <ChevronRight className="size-4" />
+              </Link>
+            </div>
+          )}
+
           {/* Bento Box Grid for Statistics */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="dashboard-card relative overflow-hidden rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/90 via-surface-900/80 to-surface-950/90 backdrop-blur-md p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.3)] sm:col-span-2 lg:col-span-2 flex flex-col justify-between">

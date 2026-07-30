@@ -10,6 +10,7 @@ import {
   dueCardsResponseSchema,
   entryFeedbackSchema,
   enrollResponseSchema,
+  unenrollResponseSchema,
   healthResponseSchema,
   importWordsResponseSchema,
   knownWordsResponseSchema,
@@ -74,6 +75,11 @@ export async function googleOneTapLogin(idToken: string): Promise<User> {
   return userSchema.parse(data);
 }
 
+export async function updateUserCefrLevel(cefrLevel: string | null): Promise<User> {
+  const { data } = await api.patch('/auth/me/cefr', { cefrLevel });
+  return userSchema.parse(data);
+}
+
 export async function searchDictionary(q: string) {
   const { data } = await api.get('/dictionary/search', { params: { q } });
   return dictionarySearchResponseSchema.parse(data).results;
@@ -98,6 +104,11 @@ export async function fetchCourse(slug: string) {
 export async function enrollCourse(slug: string) {
   const { data } = await api.post(`/courses/${encodeURIComponent(slug)}/enroll`);
   return enrollResponseSchema.parse(data);
+}
+
+export async function unenrollCourse(slug: string) {
+  const { data } = await api.post(`/courses/${encodeURIComponent(slug)}/unenroll`);
+  return unenrollResponseSchema.parse(data);
 }
 
 export async function fetchDueCards(courseId?: string, deckId?: string) {

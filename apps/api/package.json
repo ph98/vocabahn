@@ -17,12 +17,9 @@
     "seed:cefr-courses": "dotenv -e ../../.env -- tsx scripts/seed-cefr-courses.ts",
     "generate:c1-c2": "dotenv -e ../../.env -- tsx scripts/generate-c1-c2.ts",
     "seed:decks": "dotenv -e ../../.env -- tsx scripts/seed-decks.ts",
-    "stats": "dotenv -e ../../.env -- tsx scripts/stats.ts",
-    "admin": "dotenv -e ../../.env -- tsx scripts/admin.mts"
+    "stats": "dotenv -e ../../.env -- tsx scripts/stats.ts"
   },
   "dependencies": {
-    "@adminjs/express": "^6.1.1",
-    "@adminjs/prisma": "^5.0.4",
     "@google-cloud/text-to-speech": "^6.4.1",
     "@google/genai": "^2.13.0",
     "@nestjs/bullmq": "^11.0.4",
@@ -35,12 +32,9 @@
     "@prisma/client": "^6.8.0",
     "@sentry/node": "^10.68.0",
     "@vocabahn/shared": "workspace:*",
-    "adminjs": "^7.8.17",
     "bullmq": "^5.81.2",
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
-    "express-formidable": "^1.2.0",
-    "express-session": "^1.19.0",
     "fuse.js": "^7.5.0",
     "google-auth-library": "^10.9.1",
     "helmet": "^8.3.0",

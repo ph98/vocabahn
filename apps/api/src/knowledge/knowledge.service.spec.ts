@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AUTO_GRADUATE_PRIOR_THRESHOLD } from './constants';
 
 type MockPrisma = {
+  $transaction: ReturnType<typeof vi.fn>;
   card: {
     findUnique: ReturnType<typeof vi.fn>;
     findMany: ReturnType<typeof vi.fn>;
@@ -12,6 +13,7 @@ type MockPrisma = {
   };
   knowledgeScore: {
     upsert: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
   };
   reviewLog: {
     findMany: ReturnType<typeof vi.fn>;
@@ -28,6 +30,7 @@ describe('KnowledgeService', () => {
 
   beforeEach(() => {
     prismaMock = {
+      $transaction: vi.fn().mockImplementation((promises) => Promise.all(promises)),
       card: {
         findUnique: vi.fn(),
         findMany: vi.fn(),
@@ -36,6 +39,7 @@ describe('KnowledgeService', () => {
       },
       knowledgeScore: {
         upsert: vi.fn(),
+        updateMany: vi.fn(),
       },
       reviewLog: {
         findMany: vi.fn(),
@@ -157,8 +161,6 @@ describe('KnowledgeService', () => {
 
       const batchSpy = vi.spyOn(service, 'batchGraduateHighPrior');
 
-      await service.recomputeAfterReview('user-1', 'card-1');
-
       expect(batchSpy).toHaveBeenCalledWith('user-1', 5);
     });
   });
@@ -190,6 +192,42 @@ describe('KnowledgeService', () => {
       });
 
       expect(result.user.cefrLevel).toBe('B1.1');
+    });
+  });
+
+  describe('bulkUndo', () => {
+    it('returns early when cardIds array is empty', async () => {
+      await service.bulkUndo('user-1', []);
+      expect(prismaMock.card.findMany).not.toHaveBeenCalled();
+    });
+
+    it('performs single transaction batch update on matching cards', async () => {
+      prismaMock.card.findMany.mockResolvedValue([
+        { id: 'card-1', dictionaryEntryId: 'entry-1' },
+        { id: 'card-2', dictionaryEntryId: 'entry-2' },
+      ]);
+      prismaMock.card.updateMany.mockResolvedValue({ count: 2 });
+      prismaMock.knowledgeScore.updateMany.mockResolvedValue({ count: 2 });
+
+      await service.bulkUndo('user-1', ['card-1', 'card-2']);
+
+      expect(prismaMock.card.findMany).toHaveBeenCalledWith({
+        where: { id: { in: ['card-1', 'card-2'] }, userId: 'user-1', knownState: { not: 'ACTIVE' } },
+        select: { id: true, dictionaryEntryId: true },
+      });
+      expect(prismaMock.$transaction).toHaveBeenCalled();
+      expect(prismaMock.card.updateMany).toHaveBeenCalledWith({
+        where: { id: { in: ['card-1', 'card-2'] } },
+        data: expect.objectContaining({ knownState: 'ACTIVE' }),
+      });
+      expect(prismaMock.knowledgeScore.updateMany).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          dictionaryEntryId: { in: ['entry-1', 'entry-2'] },
+          score: { gte: expect.any(Number) },
+        },
+        data: expect.objectContaining({ score: expect.any(Number) }),
+      });
     });
   });
 });

@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { CourseDetail, CourseProgress, CourseSummary, FsrsState } from '@vocabahn/shared';
+import type { CourseDetail, CourseProgress, CourseSummary, FsrsState, UnenrollResponse } from '@vocabahn/shared';
 import { cefrIndex } from '../knowledge/constants';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -105,10 +105,23 @@ export class CoursesService {
       update: {},
     });
 
+    const courseEntryIds = course.words.map((w) => w.dictionaryEntryId);
+
     const { count } = await this.prisma.card.createMany({
-      data: course.words.map((w) => ({ userId, dictionaryEntryId: w.dictionaryEntryId })),
+      data: courseEntryIds.map((id) => ({ userId, dictionaryEntryId: id })),
       skipDuplicates: true,
     });
+
+    if (courseEntryIds.length > 0) {
+      await this.prisma.card.updateMany({
+        where: {
+          userId,
+          dictionaryEntryId: { in: courseEntryIds },
+          knownState: 'SUSPENDED',
+        },
+        data: { knownState: 'ACTIVE' },
+      });
+    }
 
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { cefrLevel: true } });
     const userLevelIndex = cefrIndex(user?.cefrLevel);
@@ -117,6 +130,77 @@ export class CoursesService {
     }
 
     return { enrolled: true, cardsCreated: count };
+  }
+
+  async unenroll(userId: string, slug: string): Promise<UnenrollResponse> {
+    const course = await this.prisma.course.findUnique({
+      where: { slug },
+      include: { words: { select: { dictionaryEntryId: true } } },
+    });
+    if (!course || !course.published) {
+      throw new NotFoundException('Course not found');
+    }
+
+    const deleted = await this.prisma.userCourse.deleteMany({
+      where: { userId, courseId: course.id },
+    });
+
+    if (deleted.count === 0) {
+      return { enrolled: false, cardsSuspended: 0 };
+    }
+
+    const courseEntryIds = course.words.map((w) => w.dictionaryEntryId);
+    if (courseEntryIds.length === 0) {
+      return { enrolled: false, cardsSuspended: 0 };
+    }
+
+    const [otherCourses, userDecks] = await Promise.all([
+      this.prisma.userCourse.findMany({
+        where: { userId },
+        select: {
+          course: {
+            select: {
+              words: { select: { dictionaryEntryId: true } },
+            },
+          },
+        },
+      }),
+      this.prisma.userDeck.findMany({
+        where: { userId },
+        select: {
+          words: { select: { dictionaryEntryId: true } },
+        },
+      }),
+    ]);
+
+    const stillNeededEntryIds = new Set<string>();
+    for (const c of otherCourses) {
+      for (const w of c.course.words) {
+        stillNeededEntryIds.add(w.dictionaryEntryId);
+      }
+    }
+    for (const d of userDecks) {
+      for (const w of d.words) {
+        stillNeededEntryIds.add(w.dictionaryEntryId);
+      }
+    }
+
+    const entryIdsToSuspend = courseEntryIds.filter((id) => !stillNeededEntryIds.has(id));
+
+    let cardsSuspended = 0;
+    if (entryIdsToSuspend.length > 0) {
+      const res = await this.prisma.card.updateMany({
+        where: {
+          userId,
+          dictionaryEntryId: { in: entryIdsToSuspend },
+          knownState: { not: 'SUSPENDED' },
+        },
+        data: { knownState: 'SUSPENDED' },
+      });
+      cardsSuspended = res.count;
+    }
+
+    return { enrolled: false, cardsSuspended };
   }
 
   private async cardStatesByEntry(userId: string, dictionaryEntryIds: string[]): Promise<Map<string, FsrsState>> {

@@ -54,17 +54,26 @@ Only the Nginx container (ports 80/443) exposes sockets directly to the host mac
 
 ### Subsequent Updates (Automated & Manual)
 
-#### Automated CI/CD Deployment (GitHub Actions)
-Whenever a pull request or commit is merged into `main`, GitHub Actions automatically runs the `ci` pipeline (tests, linting, build verification, security audit). Upon success, the `deploy` job triggers via SSH and runs `scripts/deploy.sh` on the VPS.
+#### Automated CI/CD Deployment (Single-Branch Tag-Driven Pipeline)
+
+Vocabahn uses a lightweight single-branch deployment model:
+1. **`main` Branch $\rightarrow$ Staging (`staging.vocabahn.app`)**
+   - Merging PRs or pushing commits into `main` automatically triggers deployment to the Staging environment (`staging.vocabahn.app`).
+   - Staging includes `X-Robots-Tag: noindex` headers to prevent search engine indexing.
+2. **Git Release Tags $\rightarrow$ Production (`vocabahn.app`)**
+   - Tagging a commit on `main` (e.g. `git tag v1.0.0 && git push origin v1.0.0`) or creating a GitHub Release triggers deployment to Production (`vocabahn.app`).
 
 **Required GitHub Repository Secrets** (`Settings` -> `Secrets and variables` -> `Actions`):
-- `VPS_HOST`: Public IP or hostname of your VPS server.
-- `VPS_USERNAME`: SSH username on the VPS (e.g., `ubuntu` or `root`).
-- `VPS_SSH_KEY`: Private SSH key authorized on the server.
+- `STAGING_VPS_HOST` / `VPS_HOST`: Public IP or hostname of your staging / primary VPS server.
+- `STAGING_VPS_USERNAME` / `VPS_USERNAME`: SSH username on the VPS.
+- `STAGING_VPS_SSH_KEY` / `VPS_SSH_KEY`: Private SSH key authorized on the server.
+- `PROD_VPS_HOST`: Production VPS IP or hostname.
+- `PROD_VPS_USERNAME`: Production SSH username.
+- `PROD_VPS_SSH_KEY`: Production SSH private key.
 - `VPS_WORK_DIR` *(optional)*: Remote working directory path (defaults to `~/vocabahn`).
 - `VPS_PORT` *(optional)*: SSH port (defaults to `22`).
 
-*Note for Fork Pull Requests*: CI checks run automatically on fork PRs without exposing secrets or triggering deployments. Deployment is only triggered when code is merged into `main` in the primary repository.
+*Note for Fork Pull Requests*: CI checks run automatically on fork PRs without exposing secrets or triggering deployments. Deployment is only triggered upon push to `main` or release tag `v*`.
 
 #### Manual Updates
 To manually trigger a deployment on the server, execute:
@@ -95,8 +104,10 @@ The following environment variables are configured in the `.env` file at the rep
 | `GOOGLE_CLIENT_SECRET` | OAuth API Client Secret | Google Cloud Developers Console |
 | `GOOGLE_CALLBACK_URL` | OAuth redirect URI | `https://yourdomain.com/api/v1/auth/google/redirect` |
 | `FRONTEND_URL` | Application root domain | `https://yourdomain.com` |
-| `ADMIN_PASSWORD` | Access key for AdminJS panel | Strong, unique password |
-| `ADMIN_COOKIE_PASSWORD` | Session encryption key for AdminJS | Generate via `openssl rand -hex 24` |
+| `DIRECTUS_KEY` | Directus secret key | Generate via `openssl rand -base64 32` |
+| `DIRECTUS_SECRET` | Directus system secret | Generate via `openssl rand -base64 32` |
+| `DIRECTUS_ADMIN_EMAIL` | Break-glass admin email | e.g. `admin@vocabahn.com` |
+| `DIRECTUS_ADMIN_PASSWORD` | Break-glass admin password | Strong, generated password |
 | `GEMINI_API_KEY` | Gemini API key | Google AI Studio Console |
 | `UNSPLASH_ACCESS_KEY` | Unsplash developer access token | Unsplash Developers Portal |
 | `GCP_PROJECT` | Google Cloud project ID | For Cloud TTS generation |

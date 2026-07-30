@@ -4,6 +4,7 @@
 # First-time setup: bash scripts/deploy.sh --setup
 set -euo pipefail
 
+DEPLOY_ENV="${ENV:-production}"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE="docker compose -f $REPO_DIR/docker-compose.prod.yml"
 SETUP_MODE=false
@@ -13,6 +14,11 @@ for arg in "$@"; do
 done
 
 cd "$REPO_DIR"
+
+NGINX_CONF="apps/web/nginx.production.conf"
+if [[ "$DEPLOY_ENV" == "staging" ]]; then
+  NGINX_CONF="apps/web/nginx.staging.conf"
+fi
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 log()  { echo -e "\033[1;34m[deploy]\033[0m $*"; }
@@ -29,7 +35,7 @@ if $SETUP_MODE; then
   [[ -f .env ]] || err ".env not found. Copy .env.example → .env and fill in all secrets before running --setup."
 
   # Verify required env vars are set
-  required_vars=(POSTGRES_PASSWORD JWT_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET ADMIN_PASSWORD ADMIN_COOKIE_PASSWORD)
+  required_vars=(POSTGRES_PASSWORD JWT_SECRET GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET DIRECTUS_KEY DIRECTUS_SECRET DIRECTUS_ADMIN_EMAIL DIRECTUS_ADMIN_PASSWORD)
   for v in "${required_vars[@]}"; do
     grep -qE "^${v}=.+" .env || err "$v is not set in .env"
   done

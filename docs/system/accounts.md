@@ -16,6 +16,17 @@ Four entry points, all landing on the same `User` upsert:
 | `POST /auth/google/token` | Verifies an ID token, returns the token pair as JSON instead of cookies | reserved for a native client; no web caller |
 | `POST /auth/email/request` → `GET /auth/email/verify` | 15-minute single-use magic link | email sign-in |
 
+### SMTP & Email Delivery
+Magic links are dispatched via `EmailService` (`apps/api/src/auth/email.service.ts`).
+- When `SMTP_HOST` is unset (development mode), magic links are logged to the API console.
+- In production, configure:
+  - `SMTP_HOST` (e.g., `smtp.sendgrid.net`, `smtp.mailgun.org`, `email-smtp.us-east-1.amazonaws.com`)
+  - `SMTP_PORT` (default `587`)
+  - `SMTP_SECURE` (`true` for TLS port 465, `false` for STARTTLS port 587)
+  - `SMTP_USER` & `SMTP_PASS`
+  - `SMTP_FROM` (e.g. `"Vocabahn <noreply@vocabahn.com>"`)
+- Ensure SPF (`v=spf1 include:... ~all`), DKIM, and DMARC DNS records are configured for `vocabahn.com` to guarantee inbox deliverability.
+
 `google/redirect` is deliberately `VERSION_NEUTRAL` — the path registered in
 the Google console is `/api/auth/google/redirect`, without `/v1`. Do not add
 versioning to it.
