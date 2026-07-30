@@ -38,8 +38,8 @@ There is no `apps/worker`. The enrichment queue consumer
 via `@nestjs/bullmq`'s `WorkerHost`, so API replicas are also queue consumers —
 scaling the API scales enrichment concurrency with it.
 
-AdminJS is not a service. It is a script, `apps/api/scripts/admin.mts`, run
-on demand with `pnpm admin`.
+Directus is a self-hosted admin panel containerized in production (`docker-compose.prod.yml`)
+and served via nginx at `admin.vocabahn.app`. It isolates system tables in a dedicated `directus` PostgreSQL schema.
 
 Infrastructure: PostgreSQL 16 and Redis 7. `docker-compose.yml` (development)
 starts only those two; API and web run on the host. `docker-compose.prod.yml`

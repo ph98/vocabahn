@@ -104,8 +104,10 @@ The following environment variables are configured in the `.env` file at the rep
 | `GOOGLE_CLIENT_SECRET` | OAuth API Client Secret | Google Cloud Developers Console |
 | `GOOGLE_CALLBACK_URL` | OAuth redirect URI | `https://yourdomain.com/api/v1/auth/google/redirect` |
 | `FRONTEND_URL` | Application root domain | `https://yourdomain.com` |
-| `ADMIN_PASSWORD` | Access key for AdminJS panel | Strong, unique password |
-| `ADMIN_COOKIE_PASSWORD` | Session encryption key for AdminJS | Generate via `openssl rand -hex 24` |
+| `DIRECTUS_KEY` | Directus secret key | Generate via `openssl rand -base64 32` |
+| `DIRECTUS_SECRET` | Directus system secret | Generate via `openssl rand -base64 32` |
+| `DIRECTUS_ADMIN_EMAIL` | Break-glass admin email | e.g. `admin@vocabahn.com` |
+| `DIRECTUS_ADMIN_PASSWORD` | Break-glass admin password | Strong, generated password |
 | `GEMINI_API_KEY` | Gemini API key | Google AI Studio Console |
 | `UNSPLASH_ACCESS_KEY` | Unsplash developer access token | Unsplash Developers Portal |
 | `GCP_PROJECT` | Google Cloud project ID | For Cloud TTS generation |
