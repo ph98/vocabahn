@@ -117,7 +117,6 @@ export function CEFRCalibrationCard({ user, onDismiss, compact = false }: CEFRCa
         {/* Level Choice Grid */}
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {MAIN_CEFR_LEVELS.map((main) => {
-            const isSelected = selectedMain === main && !showAdvancedSublevels;
             const info = LEVEL_DESCRIPTIONS[main];
             return (
               <button
