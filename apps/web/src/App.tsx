@@ -5,7 +5,7 @@ import { BadgeCheck, CircleUserRound, HelpCircle, Monitor, Moon, Sun } from 'luc
 import { MotionConfig, motion } from 'motion/react';
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type RefObject } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { fetchHealth, fetchMe, googleOneTapLogin } from './api';
+import { fetchAuthConfig, fetchHealth, fetchMe, googleOneTapLogin } from './api';
 import { useGoogleOneTap } from './hooks/useGoogleOneTap';
 import { prefersReducedMotion, springSnappy } from './lib/motion';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
@@ -38,6 +38,31 @@ const PrivacyPage = lazy(() => import('./components/PrivacyPage').then((m) => ({
 const NotFoundPage = lazy(() =>
   import('./components/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
 );
+
+function GoogleOneTapPrompt() {
+  const queryClient = useQueryClient();
+  const { data: authConfig } = useQuery({
+    queryKey: ['authConfig'],
+    queryFn: fetchAuthConfig,
+    staleTime: Infinity,
+  });
+  const mutation = useMutation({
+    mutationFn: googleOneTapLogin,
+    onSuccess: (user) => {
+      queryClient.setQueryData(['me'], user);
+    },
+  });
+
+  useGoogleOneTap({
+    clientId: authConfig?.googleClientId,
+    onSuccess: (credential) => {
+      trackEvent('login', { method: 'google_one_tap' });
+      mutation.mutate(credential);
+    },
+  });
+
+  return null;
+}
 
 /** Suspense fallback for lazy-loaded routes; announced to screen readers. */
 function RouteLoading() {
@@ -499,26 +524,6 @@ function EdgeSwipeBack() {
       ‹
     </div>
   );
-}
-
-
-function GoogleOneTapPrompt() {
-  const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: googleOneTapLogin,
-    onSuccess: (user) => {
-      queryClient.setQueryData(['me'], user);
-    },
-  });
-
-  useGoogleOneTap({
-    onSuccess: (credential) => {
-      trackEvent('login', { method: 'google_one_tap' });
-      mutation.mutate(credential);
-    },
-  });
-
-  return null;
 }
 
 export default function App() {

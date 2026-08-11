@@ -8,22 +8,23 @@ declare global {
 }
 
 interface UseGoogleOneTapProps {
+  clientId?: string | null;
   onSuccess: (credential: string) => void;
   onError?: () => void;
 }
 
-export function useGoogleOneTap({ onSuccess, onError }: UseGoogleOneTapProps) {
+export function useGoogleOneTap({ clientId: customClientId, onSuccess, onError }: UseGoogleOneTapProps) {
   const isInitialized = useRef(false);
 
   useEffect(() => {
     // Only run on the client side
     if (typeof window === 'undefined') return;
 
-    const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+    const clientId = customClientId || import.meta.env.VITE_GOOGLE_CLIENT_ID;
     if (!clientId) {
-      console.warn('VITE_GOOGLE_CLIENT_ID is not set, skipping Google One Tap.');
       return;
     }
+
 
     const initOneTap = () => {
       if (isInitialized.current || !window.google) return;

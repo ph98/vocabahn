@@ -20,6 +20,7 @@ import { Throttle } from '@nestjs/throttler';
 import {
   googleIdTokenSignInSchema,
   updateCefrLevelSchema,
+  type AuthConfig,
   type AuthTokens,
   type AutoGraduation,
   type GoogleIdTokenSignIn,
@@ -54,7 +55,16 @@ export class AuthController {
     return this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5173';
   }
 
+  /** Public auth config for web/mobile client initialization. */
+  @Get('config')
+  getAuthConfig(): AuthConfig {
+    return {
+      googleClientId: this.auth.getGoogleClientId(),
+    };
+  }
+
   /** Start the Google OAuth code flow (web). */
+
   @Get('google')
   startGoogleFlow(@Res() res: Response) {
     const state = randomUUID();

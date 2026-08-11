@@ -33,13 +33,21 @@ export class AuthService {
     private readonly email: EmailService,
     private readonly knowledge: KnowledgeService,
   ) {
-    this.clientId = this.config.getOrThrow<string>('GOOGLE_CLIENT_ID');
-    this.google = new OAuth2Client(
-      this.clientId,
-      this.config.getOrThrow<string>('GOOGLE_CLIENT_SECRET'),
-      this.config.getOrThrow<string>('GOOGLE_CALLBACK_URL'),
-    );
+    this.clientId =
+      this.config.get<string>('GOOGLE_CLIENT_ID') ??
+      this.config.get<string>('VITE_GOOGLE_CLIENT_ID') ??
+      '';
+    const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET') ?? '';
+    const callbackUrl =
+      this.config.get<string>('GOOGLE_CALLBACK_URL') ??
+      'http://localhost:3000/api/auth/google/redirect';
+    this.google = new OAuth2Client(this.clientId, clientSecret, callbackUrl);
   }
+
+  getGoogleClientId(): string | null {
+    return this.clientId || null;
+  }
+
 
   buildAuthUrl(state: string): string {
     return this.google.generateAuthUrl({
