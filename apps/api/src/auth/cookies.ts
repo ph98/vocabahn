@@ -7,10 +7,15 @@ export const OAUTH_STATE_COOKIE = 'vb_oauth_state';
 export const ACCESS_TTL_MS = 15 * 60 * 1000; // 15 min
 export const REFRESH_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
+const isSecure =
+  process.env.COOKIE_SECURE !== undefined
+    ? process.env.COOKIE_SECURE === 'true'
+    : process.env.NODE_ENV === 'production';
+
 const base: CookieOptions = {
   httpOnly: true,
   sameSite: 'lax',
-  secure: process.env.NODE_ENV === 'production',
+  secure: isSecure,
 };
 
 // Refresh cookie is scoped to the auth routes so it isn't sent on every request.

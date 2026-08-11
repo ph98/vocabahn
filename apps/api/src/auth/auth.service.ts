@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import {
   BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -23,6 +24,7 @@ export interface JwtPayload {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly google: OAuth2Client;
   private readonly clientId: string;
 
@@ -48,7 +50,6 @@ export class AuthService {
     return this.clientId || null;
   }
 
-
   buildAuthUrl(state: string): string {
     return this.google.generateAuthUrl({
       scope: ['openid', 'email', 'profile'],
@@ -67,11 +68,19 @@ export class AuthService {
 
   /** Mobile-ready flow: verify a Google ID token directly. */
   async signInWithIdToken(idToken: string): Promise<User> {
+    const clientIds = [
+      this.config.get<string>('GOOGLE_CLIENT_ID'),
+      this.config.get<string>('VITE_GOOGLE_CLIENT_ID'),
+      this.clientId,
+    ].filter((id): id is string => Boolean(id && id.trim() !== ''));
+
     const ticket = await this.google
-      .verifyIdToken({ idToken, audience: this.clientId })
-      .catch(() => {
+      .verifyIdToken({ idToken, audience: clientIds.length > 0 ? Array.from(new Set(clientIds)) : this.clientId })
+      .catch((err) => {
+        this.logger.error('Google ID token verification failed', err);
         throw new UnauthorizedException('Invalid Google ID token');
       });
+
     const payload = ticket.getPayload();
     if (!payload?.sub || !payload.email || payload.email_verified !== true) {
       throw new UnauthorizedException('Google account has no verified email');
