@@ -40,6 +40,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        navigateFallbackDenylist: [/^\/api/],
         // Due cards and dictionary entries are the data a review session
         // needs offline; cache them with a network-first strategy so a
         // stale-but-usable response is available when offline.
