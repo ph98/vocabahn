@@ -63,4 +63,11 @@ export const authTokensSchema = z.object({
 
 export type AuthTokens = z.infer<typeof authTokensSchema>;
 
+export const authConfigSchema = z.object({
+  googleClientId: z.string().nullable(),
+});
+
+export type AuthConfig = z.infer<typeof authConfigSchema>;
+
 export const CEFR_LEVELS_LIST = CEFR_LEVELS;
+

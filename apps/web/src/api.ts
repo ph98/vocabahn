@@ -1,4 +1,5 @@
 import {
+  authConfigSchema,
   courseDetailSchema,
   courseListResponseSchema,
   dashboardResponseSchema,
@@ -34,6 +35,12 @@ export async function fetchHealth() {
   const { data } = await api.get('/health');
   return healthResponseSchema.parse(data);
 }
+
+export async function fetchAuthConfig() {
+  const { data } = await api.get('/auth/config');
+  return authConfigSchema.parse(data);
+}
+
 
 /** Returns the signed-in user, or null when signed out (after one silent refresh attempt). */
 export async function fetchMe(): Promise<User | null> {
