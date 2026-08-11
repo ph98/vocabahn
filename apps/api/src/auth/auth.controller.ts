@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Logger,
   NotFoundException,
   Patch,
   Post,
@@ -45,6 +46,8 @@ import { CurrentUserId, JwtAuthGuard } from './jwt-auth.guard';
 @Throttle({ default: { limit: 10, ttl: 60_000 } })
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly auth: AuthService,
     private readonly knowledge: KnowledgeService,
@@ -64,7 +67,6 @@ export class AuthController {
   }
 
   /** Start the Google OAuth code flow (web). */
-
   @Get('google')
   startGoogleFlow(@Res() res: Response) {
     const state = randomUUID();
@@ -89,6 +91,9 @@ export class AuthController {
     clearOauthStateCookie(res);
 
     if (!code || !state || !expectedState || state !== expectedState) {
+      this.logger.warn(
+        `Google OAuth state mismatch: code=${Boolean(code)}, state=${state}, expectedState=${expectedState}`,
+      );
       res.redirect(`${this.frontendUrl}/?auth_error=state`);
       return;
     }
@@ -97,7 +102,8 @@ export class AuthController {
       const user = await this.auth.signInWithCode(code);
       setAuthCookies(res, this.auth.issueTokens(user.id));
       res.redirect(this.frontendUrl);
-    } catch {
+    } catch (err) {
+      this.logger.error('Google OAuth sign-in failed', err);
       res.redirect(`${this.frontendUrl}/?auth_error=google`);
     }
   }
