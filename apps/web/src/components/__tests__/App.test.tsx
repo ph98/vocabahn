@@ -16,7 +16,16 @@ vi.mock('../../api', async (importOriginal) => {
   };
 });
 
-const { fetchMe } = await import('../../api');
+const { ApiUnavailableError, fetchMe, fetchHealth } = await import('../../api');
+
+const SIGNED_IN_USER = {
+  id: 'user-1',
+  email: 'user@example.com',
+  name: 'Test User',
+  avatarUrl: null,
+  cefrLevel: null,
+  interests: [],
+};
 
 describe('App', () => {
   afterEach(() => {
@@ -126,5 +135,95 @@ describe('App', () => {
     expect(localStorage.getItem('vocabahn-theme')).toBeNull();
 
     import.meta.env.DEV = originalDev;
+  });
+});
+
+/**
+ * The auth gate has three answers, not two. Only the first of these means the
+ * user is signed out; the other two used to, which is what dropped signed-in
+ * people on the marketing page whenever the API blipped.
+ */
+describe('App auth gate', () => {
+  it('signs the user out when the API confirms a 401', async () => {
+    // `fetchMe` resolves null only for a 401 the silent refresh could not rescue.
+    vi.mocked(fetchMe).mockResolvedValue(null);
+
+    renderWithProviders(<App />);
+
+    await waitFor(() => expect(screen.getByText('Sign in with Google')).toBeInTheDocument());
+    expect(screen.queryByRole('heading', { name: /reach Vocabahn right now/i })).not.toBeInTheDocument();
+  });
+
+  it('shows an unavailable state, not the landing page, when the API never answers', async () => {
+    vi.mocked(fetchMe).mockRejectedValue(new ApiUnavailableError('The API did not answer the session request.'));
+
+    const { container } = renderWithProviders(<App />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /reach Vocabahn right now/i })).toBeInTheDocument(),
+    );
+    expect(screen.queryByText('Sign in with Google')).not.toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument();
+    // Nothing here suggests the session is gone, because it isn't.
+    expect(screen.getByText(/your account and your progress are safe/i)).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('shows an unavailable state on a 5xx', async () => {
+    vi.mocked(fetchMe).mockRejectedValue(
+      new ApiUnavailableError('The API answered the session request with 503.', { status: 503 }),
+    );
+
+    renderWithProviders(<App />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /reach Vocabahn right now/i })).toBeInTheDocument(),
+    );
+    expect(screen.queryByText('Sign in with Google')).not.toBeInTheDocument();
+  });
+
+  it('backs off instead of hammering the API it cannot reach', async () => {
+    vi.mocked(fetchMe).mockReset();
+    vi.mocked(fetchMe).mockRejectedValue(new ApiUnavailableError('The API did not answer the session request.'));
+
+    renderWithProviders(<App />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /reach Vocabahn right now/i })).toBeInTheDocument(),
+    );
+    // Long enough that a per-render retry loop would show up in the thousands.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    // The first check, plus at most the one the health poll asks for.
+    expect(vi.mocked(fetchMe).mock.calls.length).toBeLessThanOrEqual(2);
+  });
+
+  it('offers a manual retry that checks again', async () => {
+    vi.mocked(fetchMe).mockReset();
+    vi.mocked(fetchMe).mockRejectedValue(new ApiUnavailableError('The API did not answer the session request.'));
+
+    renderWithProviders(<App />);
+
+    const retry = await screen.findByRole('button', { name: 'Try again now' });
+    // It disables itself while a check is already in flight, so wait it out.
+    await waitFor(() => expect(retry).not.toBeDisabled());
+    const before = vi.mocked(fetchMe).mock.calls.length;
+    fireEvent.click(retry);
+
+    await waitFor(() => expect(vi.mocked(fetchMe).mock.calls.length).toBeGreaterThan(before));
+  });
+
+  it('comes back on the same route, without signing in again, once /health answers', async () => {
+    vi.mocked(fetchMe)
+      .mockRejectedValueOnce(new ApiUnavailableError('The API did not answer the session request.'))
+      .mockResolvedValue(SIGNED_IN_USER);
+
+    renderWithProviders(<App />, { route: '/terms' });
+
+    // The footer's health poll is the only thing that recovers the session.
+    await waitFor(() => expect(vi.mocked(fetchHealth)).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument(),
+    );
+    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
   });
 });

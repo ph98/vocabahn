@@ -51,26 +51,95 @@ export async function fetchAuthConfig() {
 }
 
 
-/** Returns the signed-in user, or null when signed out (after one silent refresh attempt). */
+/**
+ * The session request could not be answered.
+ *
+ * Deliberately distinct from `fetchMe` resolving to `null`, which is a
+ * *confirmed* signed-out state: this one says the API told us nothing about the
+ * session, so the cookie the browser is holding may well still be valid.
+ */
+export class ApiUnavailableError extends Error {
+  /** The status the API answered with, or `undefined` when it never answered at all. */
+  readonly status?: number;
+
+  constructor(message: string, options: { status?: number; cause?: unknown } = {}) {
+    super(message, { cause: options.cause });
+    this.name = 'ApiUnavailableError';
+    this.status = options.status;
+  }
+}
+
+/** The HTTP status the API answered with, or `undefined` when the request never got a response. */
+function answeredStatus(error: unknown): number | undefined {
+  return isAxiosError(error) ? error.response?.status : undefined;
+}
+
+/**
+ * Turns a failed session request into something the auth gate can act on.
+ *
+ * Only transport failures become {@link ApiUnavailableError}. A Zod parse
+ * failure — or any other non-axios throw — is passed through untouched, because
+ * "we can't reach the server" would be a lie about a contract break.
+ */
+function asSessionFailure(error: unknown): unknown {
+  if (!isAxiosError(error)) return error;
+  const status = answeredStatus(error);
+  return new ApiUnavailableError(
+    status === undefined
+      ? 'The API did not answer the session request.'
+      : `The API answered the session request with ${status}.`,
+    { status, cause: error },
+  );
+}
+
+/**
+ * True when the API's answer means the session itself is over: any 4xx except
+ * 429, which is the throttler pacing us and says nothing about the session.
+ */
+function isSessionRejected(error: unknown): boolean {
+  const status = answeredStatus(error);
+  return status !== undefined && status >= 400 && status < 500 && status !== 429;
+}
+
+/**
+ * The signed-in user, `null` when the session is genuinely over, or a throw
+ * when we could not find out which.
+ *
+ * Those three outcomes are deliberately distinct. This used to answer `null`
+ * for every failure — a refused connection, a 502, a throttler 429 — so that
+ * react-query would not retry into the throttler. But the shell reads a null
+ * user as "signed out", so any backend blip presented as a logout and dropped
+ * the user on the marketing landing page mid-session. Retry control now lives
+ * on the query (`hooks/useSession.ts`), which lets this be honest.
+ *
+ * @throws {ApiUnavailableError} when the API never answered, or answered with
+ *   something that says nothing about the session (5xx, 429, …).
+ */
 export async function fetchMe(): Promise<User | null> {
   try {
     const { data } = await api.get('/auth/me');
     return userSchema.parse(data);
   } catch (error) {
-    if (!isAxiosError(error) || error.response?.status !== 401) {
-      // Rate-limited or transient failure: settle into the signed-out state
-      // instead of throwing — a throw makes react-query retry, and stacked
-      // retries across remounts can storm the API into its throttler.
-      return null;
-    }
+    // A 401 is the only answer that is evidence about the session. Anything
+    // else is evidence about the API.
+    if (answeredStatus(error) !== 401) throw asSessionFailure(error);
+  }
+
+  // A 401 may only mean the short-lived access token expired, so spend exactly
+  // one silent refresh before concluding the session is over.
+  try {
+    await api.post('/auth/refresh');
+  } catch (error) {
+    if (isSessionRejected(error)) return null;
+    throw asSessionFailure(error);
   }
 
   try {
-    await api.post('/auth/refresh');
     const { data } = await api.get('/auth/me');
     return userSchema.parse(data);
-  } catch {
-    return null;
+  } catch (error) {
+    if (isSessionRejected(error)) return null;
+    throw asSessionFailure(error);
   }
 }
 

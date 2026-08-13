@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AppErrorBoundary } from './components/errors';
+import { installSessionQueryDefaults } from './hooks/useSession';
 import './index.css';
 import { initTelemetry } from './lib/telemetry';
 
@@ -16,6 +17,11 @@ initTelemetry();
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false } },
 });
+
+// Bounded exponential backoff for `['me']`, and no retry at all against a 4xx.
+// This is what keeps a failing session check off the throttler now that
+// `fetchMe` reports failures instead of swallowing them as "signed out".
+installSessionQueryDefaults(queryClient);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
