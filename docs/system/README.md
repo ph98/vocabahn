@@ -119,7 +119,9 @@ The learner-facing loop:
   is the exception — it is generated without anyone asking, so it is bounded
   differently: only learners with an active card and a review in the last 14
   days, at most one per learner per local day, enforced by a Redis `SET NX`
-  claim rather than a counter (`stories.md`).
+  claim rather than a counter (`stories.md`). No read path may spend that quota
+  implicitly: the story payload ships the entry fields its word popovers show
+  rather than looking each word up, because a lookup enriches.
 - **CEFR is 12 half sub-levels**, `A1.1` … `C2.2` (Goethe / Profile Deutsch),
   defined once in `apps/api/src/knowledge/constants.ts` and mirrored in the
   Gemini response schema. Anything treating CEFR as six flat levels is wrong.

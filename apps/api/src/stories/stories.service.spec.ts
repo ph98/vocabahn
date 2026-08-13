@@ -101,6 +101,35 @@ describe('StoriesService', () => {
     );
   });
 
+  /**
+   * A persisted target the way `storyInclude` loads it — everything the
+   * reader's word popover renders comes from this row, never from a second
+   * lookup through DictionaryService.
+   */
+  function targetRow(
+    id: string,
+    word: string,
+    translation: string,
+    overrides: Record<string, unknown> = {},
+  ) {
+    return {
+      dictionaryEntryId: id,
+      surfaceForm: word,
+      understood: null,
+      dictionaryEntry: {
+        id,
+        word,
+        translation,
+        emoji: null,
+        cefrLevel: 'A1.1',
+        audioUrl: `/api/static/audio/${id}.mp3`,
+        examples: [{ de: `Das ${word} ist da.`, en: `The ${translation} is there.` }],
+        lexiconEntry: { pos: 'noun', senses: [{ glosses: [translation, 'building'] }] },
+        ...overrides,
+      },
+    };
+  }
+
   function readyStory(overrides: Record<string, unknown> = {}) {
     return {
       id: 'story-1',
@@ -114,18 +143,8 @@ describe('StoriesService', () => {
       completedAt: null,
       createdAt: new Date('2026-01-01T00:00:00Z'),
       targets: [
-        {
-          dictionaryEntryId: 'e1',
-          surfaceForm: 'Haus',
-          understood: null,
-          dictionaryEntry: { id: 'e1', word: 'Haus', translation: 'house', emoji: '🏠' },
-        },
-        {
-          dictionaryEntryId: 'e2',
-          surfaceForm: 'grün',
-          understood: null,
-          dictionaryEntry: { id: 'e2', word: 'grün', translation: 'green', emoji: null },
-        },
+        targetRow('e1', 'Haus', 'house', { emoji: '🏠' }),
+        targetRow('e2', 'grün', 'green'),
       ],
       ...overrides,
     };
@@ -400,22 +419,13 @@ describe('StoriesService', () => {
     });
 
     it('omits targets that were never verified against the text', async () => {
+      const placeholder = targetRow('e9', 'Zettel', 'note');
       prisma.story.findUnique.mockResolvedValue(
         readyStory({
           targets: [
-            {
-              dictionaryEntryId: 'e1',
-              surfaceForm: 'Haus',
-              understood: null,
-              dictionaryEntry: { id: 'e1', word: 'Haus', translation: 'house', emoji: null },
-            },
+            targetRow('e1', 'Haus', 'house'),
             // Placeholder from creation that the processor never confirmed.
-            {
-              dictionaryEntryId: 'e9',
-              surfaceForm: '',
-              understood: null,
-              dictionaryEntry: { id: 'e9', word: 'Zettel', translation: 'note', emoji: null },
-            },
+            { ...placeholder, surfaceForm: '' },
           ],
         }),
       );
@@ -423,6 +433,57 @@ describe('StoriesService', () => {
       const story = await service.get('user-1', 'story-1');
 
       expect(story.targets.map((t) => t.entryId)).toEqual(['e1']);
+    });
+
+    it('carries the entry fields a word popover needs, without a second lookup', async () => {
+      // Hovering a word must not spend the learner's enrichment quota, so the
+      // story payload ships what the popover renders.
+      prisma.story.findUnique.mockResolvedValue(readyStory());
+
+      const story = await service.get('user-1', 'story-1');
+
+      expect(story.targets[0]).toEqual({
+        entryId: 'e1',
+        word: 'Haus',
+        surfaceForm: 'Haus',
+        translation: 'house',
+        emoji: '🏠',
+        pos: 'noun',
+        cefrLevel: 'A1.1',
+        gloss: 'house',
+        audioUrl: '/api/static/audio/e1.mp3',
+        example: { de: 'Das Haus ist da.', en: 'The house is there.' },
+        understood: null,
+      });
+    });
+
+    it('reports nulls for a target whose entry is not enriched yet', async () => {
+      // Enrichment is lazy, so a target can reach a story with nothing but its
+      // headword. The popover shows what exists rather than triggering a fetch.
+      prisma.story.findUnique.mockResolvedValue(
+        readyStory({
+          targets: [
+            targetRow('e1', 'Haus', 'house', {
+              translation: null,
+              cefrLevel: null,
+              audioUrl: null,
+              examples: [],
+              lexiconEntry: { pos: 'noun', senses: [] },
+            }),
+          ],
+        }),
+      );
+
+      const story = await service.get('user-1', 'story-1');
+
+      expect(story.targets[0]).toMatchObject({
+        word: 'Haus',
+        translation: null,
+        cefrLevel: null,
+        gloss: null,
+        audioUrl: null,
+        example: null,
+      });
     });
 
     it('surfaces the illustration with the attribution Unsplash requires', async () => {

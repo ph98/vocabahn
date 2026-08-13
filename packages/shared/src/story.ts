@@ -18,6 +18,14 @@ export type StoryStage = z.infer<typeof storyStageSchema>;
 export const storyOriginSchema = z.enum(['ON_DEMAND', 'DAILY']);
 export type StoryOrigin = z.infer<typeof storyOriginSchema>;
 
+// One example sentence for a target, shown in its popover. Only the two lines
+// the popover renders — the full entry is a click away.
+export const storyTargetExampleSchema = z.object({
+  de: z.string(),
+  en: z.string(),
+});
+export type StoryTargetExample = z.infer<typeof storyTargetExampleSchema>;
+
 export const storyTargetSchema = z.object({
   entryId: z.string(),
   // Headword, for linking through to the dictionary entry
@@ -26,6 +34,18 @@ export const storyTargetSchema = z.object({
   surfaceForm: z.string(),
   translation: z.string().nullable(),
   emoji: z.string().nullable(),
+  // Everything below is read straight off the already-persisted DictionaryEntry
+  // so the reader's popover needs no second request. Fetching the entry instead
+  // would trigger lazy enrichment and spend the learner's daily quota — on
+  // hover, which is not a thing they asked for. All null for a target whose
+  // entry has not been enriched yet; the popover shows what it has.
+  pos: z.string().nullable(),
+  cefrLevel: z.string().nullable(),
+  // First sense's first gloss from the lexicon, when there is one
+  gloss: z.string().nullable(),
+  // Pronunciation of the headword; null until enrichment synthesizes it
+  audioUrl: z.string().nullable(),
+  example: storyTargetExampleSchema.nullable(),
   // null until the story is completed; false = the learner tapped it
   understood: z.boolean().nullable(),
 });

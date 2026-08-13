@@ -45,10 +45,42 @@ const entrySelect = {
   },
 };
 
+// What a reader's word popover shows, read straight off the persisted
+// DictionaryEntry. Going through DictionaryService.getEntry would trigger lazy
+// enrichment and spend the learner's daily quota, so the story payload carries
+// the display fields instead — one round trip, no external call.
+//
+// The nested `take: 1`s keep this bounded: Prisma loads each relation level in
+// one query keyed on the parent ids, so the cost is fixed regardless of how
+// many targets a story has.
 const storyInclude = {
   targets: {
     include: {
-      dictionaryEntry: { select: { id: true, word: true, translation: true, emoji: true } },
+      dictionaryEntry: {
+        select: {
+          id: true,
+          word: true,
+          translation: true,
+          emoji: true,
+          cefrLevel: true,
+          audioUrl: true,
+          examples: {
+            select: { de: true, en: true },
+            orderBy: { order: 'asc' as const },
+            take: 1,
+          },
+          lexiconEntry: {
+            select: {
+              pos: true,
+              senses: {
+                select: { glosses: true },
+                orderBy: { order: 'asc' as const },
+                take: 1,
+              },
+            },
+          },
+        },
+      },
     },
   },
 };
@@ -332,14 +364,25 @@ export class StoriesService {
       // ones the processor has verified against the text.
       targets: story.targets
         .filter((t) => t.surfaceForm !== '')
-        .map((t) => ({
-          entryId: t.dictionaryEntryId,
-          word: t.dictionaryEntry.word,
-          surfaceForm: t.surfaceForm,
-          translation: t.dictionaryEntry.translation,
-          emoji: t.dictionaryEntry.emoji,
-          understood: t.understood,
-        })),
+        .map((t) => {
+          const entry = t.dictionaryEntry;
+          const example = entry.examples[0];
+          return {
+            entryId: t.dictionaryEntryId,
+            word: entry.word,
+            surfaceForm: t.surfaceForm,
+            translation: entry.translation,
+            emoji: entry.emoji,
+            pos: entry.lexiconEntry.pos,
+            cefrLevel: entry.cefrLevel,
+            // A sense can exist with no glosses; an empty string would render
+            // as a blank line in the popover, so nothing is nothing.
+            gloss: entry.lexiconEntry.senses[0]?.glosses[0] ?? null,
+            audioUrl: entry.audioUrl,
+            example: example ? { de: example.de, en: example.en } : null,
+            understood: t.understood,
+          };
+        }),
     };
   }
 

@@ -3,7 +3,7 @@ import { STORY_TOPICS, topicLabel, type Story, type StoryTarget } from '@vocabah
 import { isAxiosError } from 'axios';
 import { ExternalLink, Pause, Play } from 'lucide-react';
 import { MotionConfig } from 'motion/react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   completeStory,
@@ -16,6 +16,7 @@ import { useFadeIn } from '../lib/motion';
 import { segmentStory } from '../lib/story-text';
 import { trackEvent } from '../lib/telemetry';
 import { IllustrationEmptyQueue } from './Illustrations';
+import { StoryWord } from './StoryWord';
 import { UnsplashCredit } from './UnsplashCredit';
 
 // Surviving a reload matters here: every story costs a generation from the
@@ -274,9 +275,12 @@ export function StoryPage() {
   const [choosing, setChoosing] = useState(false);
   const [topic, setTopic] = useState<string | null>(null);
   const [notUnderstood, setNotUnderstood] = useState<Set<string>>(new Set());
-  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  // Which occurrence has its popover open — a word appearing twice is two
+  // triggers sharing one target, and only one popover is ever open.
+  const [openWord, setOpenWord] = useState<string | null>(null);
   const [showEnglish, setShowEnglish] = useState(false);
   const [announcement, setAnnouncement] = useState('');
+  const markedNoteId = useId();
 
   const { data: quota } = useQuery({
     queryKey: ['story-quota'],
@@ -318,7 +322,7 @@ export function StoryPage() {
       setLocalId(created.id);
       setChoosing(false);
       setNotUnderstood(new Set());
-      setActiveEntryId(null);
+      setOpenWord(null);
       setShowEnglish(false);
       queryClient.setQueryData(['story', created.id], created);
       void queryClient.invalidateQueries({ queryKey: ['story-quota'] });
@@ -364,11 +368,15 @@ export function StoryPage() {
     [story?.text, story?.targets],
   );
 
-  const activeTarget = story?.targets.find((t) => t.entryId === activeEntryId) ?? null;
   const isCompleted = !!story?.completedAt;
 
-  const toggleTarget = (target: StoryTarget) => {
-    setActiveEntryId((current) => (current === target.entryId ? null : target.entryId));
+  /**
+   * Records that a word didn't land. Deliberately separate from opening its
+   * popover: looking something up is curiosity, and `StoryTarget.understood` is
+   * the only comprehension signal the feature has, so a glance must not write
+   * to it. Only the toggle inside the popover reaches this.
+   */
+  const toggleMark = (target: StoryTarget) => {
     setNotUnderstood((prev) => {
       const next = new Set(prev);
       if (next.has(target.entryId)) {
@@ -388,7 +396,7 @@ export function StoryPage() {
     setLocalId(null);
     setChoosing(true);
     setNotUnderstood(new Set());
-    setActiveEntryId(null);
+    setOpenWord(null);
     setShowEnglish(false);
   };
 
@@ -445,7 +453,8 @@ export function StoryPage() {
             <p className="text-lg font-medium">Read today's news in German</p>
             <p className="mx-auto mt-2 max-w-prose text-sm text-surface-400">
               Pick a subject and we'll retell a real German article at your level, using the
-              words you're studying. Tap any word that doesn't land as you read.
+              words you're studying. Tap any word to see what it means, and mark the ones
+              that didn't land.
             </p>
 
             <TopicPicker value={topic} onChange={setTopic} disabled={generate.isPending} />
@@ -535,45 +544,28 @@ export function StoryPage() {
               <p lang="de" className="mt-4 text-lg leading-relaxed">
                 {segments.map((segment, i) =>
                   segment.target ? (
-                    <button
+                    <StoryWord
                       key={i}
-                      type="button"
-                      lang="de"
-                      aria-pressed={notUnderstood.has(segment.target.entryId)}
-                      onClick={() => toggleTarget(segment.target!)}
-                      className={`rounded underline decoration-dotted underline-offset-4 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
-                        notUnderstood.has(segment.target.entryId)
-                          ? 'bg-accent-amber/20 text-accent-amber decoration-accent-amber'
-                          : 'decoration-surface-500 hover:bg-surface-800'
-                      }`}
-                    >
-                      {segment.text}
-                    </button>
+                      target={segment.target}
+                      text={segment.text}
+                      open={openWord === String(i)}
+                      onOpenChange={(next) => setOpenWord(next ? String(i) : null)}
+                      marked={notUnderstood.has(segment.target.entryId)}
+                      onToggleMark={() => toggleMark(segment.target!)}
+                      markable={!isCompleted}
+                      markedNoteId={markedNoteId}
+                    />
                   ) : (
                     <span key={i}>{segment.text}</span>
                   ),
                 )}
               </p>
-
-              {activeTarget && (
-                <div className="mt-5 rounded-2xl border border-surface-800 bg-surface-950 p-4">
-                  <p className="flex items-center gap-2">
-                    {activeTarget.emoji && <span aria-hidden="true">{activeTarget.emoji}</span>}
-                    <span lang="de" className="font-medium">
-                      {activeTarget.word}
-                    </span>
-                    {activeTarget.translation && (
-                      <span className="text-surface-400">— {activeTarget.translation}</span>
-                    )}
-                  </p>
-                  <Link
-                    to={`/word/${encodeURIComponent(activeTarget.word)}`}
-                    className="mt-2 inline-block text-sm text-accent-indigo underline underline-offset-4"
-                  >
-                    Open full entry
-                  </Link>
-                </div>
-              )}
+              {/* Described, not named: the word's accessible name has to stay
+                  the German surface form. One node, shared by every marked
+                  trigger, and outside the lang="de" paragraph. */}
+              <span id={markedNoteId} className="sr-only">
+                Marked as didn't land
+              </span>
 
               {story.translation && (
                 <div className="mt-6 border-t border-surface-800 pt-4">

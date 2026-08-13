@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import type { Story } from '@vocabahn/shared';
 import { axe } from 'jest-axe';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,10 +12,20 @@ vi.mock('../../api', () => ({
   fetchLatestStory: vi.fn(),
   completeStory: vi.fn(),
   fetchStoryQuota: vi.fn().mockResolvedValue({ used: 1, cap: 10 }),
+  // Never called from a story. Looking a word up through the dictionary would
+  // trigger lazy enrichment and spend the learner's daily quota, so the story
+  // payload carries what the popover shows.
+  fetchDictionaryEntry: vi.fn(),
 }));
 
-const { createStory, fetchStory, fetchLatestStory, completeStory, fetchStoryQuota } =
-  await import('../../api');
+const {
+  createStory,
+  fetchStory,
+  fetchLatestStory,
+  completeStory,
+  fetchStoryQuota,
+  fetchDictionaryEntry,
+} = await import('../../api');
 
 /**
  * axe preloads media metadata before running, and jsdom never fires
@@ -55,14 +66,26 @@ const READY: Story = {
       surfaceForm: 'Haus',
       translation: 'house',
       emoji: '🏠',
+      pos: 'noun',
+      cefrLevel: 'A1.1',
+      gloss: 'building for living in',
+      audioUrl: '/api/static/audio/haus.mp3',
+      example: { de: 'Das Haus ist alt.', en: 'The house is old.' },
       understood: null,
     },
     {
+      // Everything below the headword is null: enrichment is lazy, so a target
+      // can reach a story with nothing but its spelling.
       entryId: 'e2',
       word: 'grün',
       surfaceForm: 'grün',
       translation: 'green',
       emoji: null,
+      pos: null,
+      cefrLevel: null,
+      gloss: null,
+      audioUrl: null,
+      example: null,
       understood: null,
     },
   ],
@@ -116,37 +139,7 @@ describe('StoryPage', () => {
     expect(await a11y(container)).toHaveNoViolations();
   });
 
-  it("marks a word as didn't land when tapped and shows its translation", async () => {
-    localStorage.setItem('vocabahn-story-id', 'story-1');
-    vi.mocked(fetchStory).mockResolvedValue(READY);
-
-    renderWithProviders(<StoryPage />);
-    const word = await screen.findByRole('button', { name: 'grün' });
-    expect(word).toHaveAttribute('aria-pressed', 'false');
-
-    fireEvent.click(word);
-
-    await waitFor(() => expect(word).toHaveAttribute('aria-pressed', 'true'));
-    expect(screen.getByText('— green')).toBeInTheDocument();
-    expect(screen.getByText("1 marked as didn't land.")).toBeInTheDocument();
-  });
-
-  it('unmarks a word when tapped again', async () => {
-    localStorage.setItem('vocabahn-story-id', 'story-1');
-    vi.mocked(fetchStory).mockResolvedValue(READY);
-
-    renderWithProviders(<StoryPage />);
-    const word = await screen.findByRole('button', { name: 'grün' });
-
-    fireEvent.click(word);
-    await waitFor(() => expect(word).toHaveAttribute('aria-pressed', 'true'));
-    fireEvent.click(word);
-
-    await waitFor(() => expect(word).toHaveAttribute('aria-pressed', 'false'));
-    expect(screen.getByText('2 of your words are in here.')).toBeInTheDocument();
-  });
-
-  it('sends the tapped words on finish and summarises them', async () => {
+  it('sends the marked words on finish and summarises them', async () => {
     localStorage.setItem('vocabahn-story-id', 'story-1');
     vi.mocked(fetchStory).mockResolvedValue(READY);
     vi.mocked(completeStory).mockResolvedValue({
@@ -160,6 +153,7 @@ describe('StoryPage', () => {
 
     const { container } = renderWithProviders(<StoryPage />);
     fireEvent.click(await screen.findByRole('button', { name: 'grün' }));
+    fireEvent.click(await screen.findByRole('button', { name: "Didn't land" }));
     fireEvent.click(screen.getByRole('button', { name: 'Finish reading' }));
 
     await waitFor(() => expect(completeStory).toHaveBeenCalledWith('story-1', ['e2']));
@@ -276,6 +270,177 @@ describe('StoryPage', () => {
     expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
 
     expect(await a11y(container)).toHaveNoViolations();
+  });
+
+  describe('word popover', () => {
+    /** Renders a READY story and hands back the "grün" trigger. */
+    async function readStory(story: Story = READY) {
+      localStorage.setItem('vocabahn-story-id', 'story-1');
+      vi.mocked(fetchStory).mockResolvedValue(story);
+      const result = renderWithProviders(<StoryPage />);
+      const word = await screen.findByRole('button', { name: 'grün' });
+      return { ...result, word, user: userEvent.setup() };
+    }
+
+    it('shows what the story already knows about the word, and marks nothing', async () => {
+      const { user } = await readStory();
+      const haus = screen.getAllByRole('button', { name: 'Haus' })[0]!;
+
+      await user.click(haus);
+
+      const popover = await screen.findByRole('dialog', { name: 'About Haus' });
+      expect(within(popover).getByText('noun')).toBeInTheDocument();
+      expect(within(popover).getByText('A1.1')).toBeInTheDocument();
+      expect(within(popover).getByText('house')).toBeInTheDocument();
+      expect(within(popover).getByText('Das Haus ist alt.')).toBeInTheDocument();
+      expect(within(popover).getByText('The house is old.')).toBeInTheDocument();
+      // German inside an English popover has to stay marked as German.
+      expect(within(popover).getByText('Das Haus ist alt.')).toHaveAttribute('lang', 'de');
+
+      // Looking is not a comprehension signal.
+      expect(haus).not.toHaveAccessibleDescription();
+      expect(screen.getByText('2 of your words are in here.')).toBeInTheDocument();
+    });
+
+    it('opens on hover after a short delay', async () => {
+      const { user, word } = await readStory();
+
+      await user.hover(word);
+
+      expect(await screen.findByRole('dialog', { name: 'About grün' })).toBeInTheDocument();
+    });
+
+    it('opens on keyboard focus', async () => {
+      const { word } = await readStory();
+
+      fireEvent.focusIn(word);
+
+      expect(await screen.findByRole('dialog', { name: 'About grün' })).toBeInTheDocument();
+    });
+
+    it('closes on Escape and hands focus back to the word', async () => {
+      const { user, word } = await readStory();
+      await user.click(word);
+      await screen.findByRole('dialog', { name: 'About grün' });
+
+      await user.keyboard('{Escape}');
+
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog', { name: 'About grün' })).not.toBeInTheDocument(),
+      );
+      expect(word).toHaveFocus();
+    });
+
+    it('puts the controls inside the popover in the tab order after the word', async () => {
+      const { user } = await readStory();
+      const haus = screen.getAllByRole('button', { name: 'Haus' })[0]!;
+      await user.click(haus);
+      await screen.findByRole('dialog', { name: 'About Haus' });
+
+      await user.tab();
+
+      // The popover is a DOM sibling of the trigger, not a portal, so Tab walks
+      // straight into it rather than on to the next word.
+      expect(screen.getByRole('button', { name: 'Pronounce Haus' })).toHaveFocus();
+      await user.tab();
+      expect(screen.getByRole('button', { name: "Didn't land" })).toHaveFocus();
+      await user.tab();
+      expect(screen.getByRole('link', { name: 'Open in dictionary' })).toHaveFocus();
+    });
+
+    it("marks and unmarks only from the popover's own control", async () => {
+      const { user, word } = await readStory();
+      await user.click(word);
+
+      const mark = await screen.findByRole('button', { name: "Didn't land" });
+      expect(mark).toHaveAttribute('aria-pressed', 'false');
+      await user.click(mark);
+
+      await waitFor(() => expect(mark).toHaveAttribute('aria-pressed', 'true'));
+      expect(screen.getByText("1 marked as didn't land.")).toBeInTheDocument();
+      // The word itself keeps its German accessible name and gains a
+      // description rather than a new name.
+      expect(word).toHaveAccessibleName('grün');
+      expect(word).toHaveAccessibleDescription("Marked as didn't land");
+
+      await user.click(mark);
+      await waitFor(() => expect(mark).toHaveAttribute('aria-pressed', 'false'));
+      expect(screen.getByText('2 of your words are in here.')).toBeInTheDocument();
+    });
+
+    it('keeps a marked word distinct in the text with the popover closed', async () => {
+      const { user, word } = await readStory();
+      await user.click(word);
+      await user.click(await screen.findByRole('button', { name: "Didn't land" }));
+
+      await user.keyboard('{Escape}');
+
+      await waitFor(() =>
+        expect(screen.queryByRole('dialog', { name: 'About grün' })).not.toBeInTheDocument(),
+      );
+      expect(word).toHaveAccessibleDescription("Marked as didn't land");
+      expect(word.className).toContain('text-accent-amber');
+    });
+
+    it('keeps only one popover open at a time', async () => {
+      const { user, word } = await readStory();
+      await user.click(word);
+      await screen.findByRole('dialog', { name: 'About grün' });
+
+      await user.click(screen.getAllByRole('button', { name: 'Haus' })[0]!);
+
+      expect(await screen.findByRole('dialog', { name: 'About Haus' })).toBeInTheDocument();
+      expect(screen.queryByRole('dialog', { name: 'About grün' })).not.toBeInTheDocument();
+    });
+
+    it('links through to the full dictionary entry', async () => {
+      const { user, word } = await readStory();
+      await user.click(word);
+
+      expect(await screen.findByRole('link', { name: 'Open in dictionary' })).toHaveAttribute(
+        'href',
+        '/word/gr%C3%BCn',
+      );
+    });
+
+    it('never looks the word up, so reading spends no enrichment quota', async () => {
+      const { user, word } = await readStory();
+
+      await user.hover(word);
+      await screen.findByRole('dialog', { name: 'About grün' });
+      await user.click(screen.getAllByRole('button', { name: 'Haus' })[0]!);
+      await screen.findByRole('dialog', { name: 'About Haus' });
+
+      expect(fetchDictionaryEntry).not.toHaveBeenCalled();
+    });
+
+    it('still gives a usable popover for a target with no enrichment yet', async () => {
+      // "grün" in the fixture has nothing but a headword and a translation.
+      const { user, container, word } = await readStory();
+
+      await user.click(word);
+
+      const popover = await screen.findByRole('dialog', { name: 'About grün' });
+      expect(within(popover).getByText('green')).toBeInTheDocument();
+      expect(within(popover).queryByRole('button', { name: /^Pronounce/ })).not.toBeInTheDocument();
+      expect(within(popover).getByRole('link', { name: 'Open in dictionary' })).toBeInTheDocument();
+      expect(within(popover).getByRole('button', { name: "Didn't land" })).toBeInTheDocument();
+
+      expect(await a11y(container)).toHaveNoViolations();
+    });
+
+    it('drops the marking control once the answers are already recorded', async () => {
+      const { user, word } = await readStory({
+        ...READY,
+        completedAt: '2026-01-01T00:05:00.000Z',
+      });
+
+      await user.click(word);
+
+      const popover = await screen.findByRole('dialog', { name: 'About grün' });
+      expect(within(popover).queryByRole('button', { name: "Didn't land" })).not.toBeInTheDocument();
+      expect(within(popover).getByRole('link', { name: 'Open in dictionary' })).toBeInTheDocument();
+    });
   });
 
   describe('topics', () => {

@@ -9,6 +9,11 @@ function target(surfaceForm: string, word = surfaceForm): StoryTarget {
     surfaceForm,
     translation: null,
     emoji: null,
+    pos: null,
+    cefrLevel: null,
+    gloss: null,
+    audioUrl: null,
+    example: null,
     understood: null,
   };
 }
