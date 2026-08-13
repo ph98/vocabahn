@@ -1,7 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import { useEffect, useRef, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { useFadeIn } from '../../lib/motion';
 
 export type ErrorTone = 'neutral' | 'warning' | 'danger';
 
@@ -38,8 +37,16 @@ export interface ErrorStateProps {
  *
  * The full-page form renders an `<h1>` and moves focus to it on mount, so a
  * screen-reader user is told what happened rather than landing in silence.
- * Entrance motion goes through `lib/motion`, so it is skipped entirely under
- * `prefers-reduced-motion`; nothing here animates unconditionally.
+ *
+ * The entrance is the CSS `.vb-fade-in` in `index.css`, not a GSAP hook. This
+ * component is reachable from the app shell — `AppErrorBoundary` wraps the
+ * whole tree, and the auth gate renders `ServerUnreachableState` directly — so
+ * anything it imports is in the entry chunk, and a GSAP import here alone was
+ * enough to put the animation library on a signed-out visitor's critical path.
+ * The `key` replays the entrance when the state being shown changes, which is
+ * what the hook's dependency array used to do. Same `prefers-reduced-motion`
+ * contract: the CSS rule is switched off there, and nothing animates
+ * unconditionally.
  */
 export function ErrorState({
   icon: Icon,
@@ -56,8 +63,6 @@ export function ErrorState({
   const rootRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
 
-  useFadeIn(rootRef, [title, inline]);
-
   useEffect(() => {
     if (inline) return;
     headingRef.current?.focus();
@@ -66,9 +71,10 @@ export function ErrorState({
   if (inline) {
     return (
       <div
+        key={title}
         ref={rootRef}
         role="status"
-        className="flex w-full items-start gap-3 rounded-2xl border border-surface-800 bg-surface-900/60 p-4 text-left"
+        className="vb-fade-in flex w-full items-start gap-3 rounded-2xl border border-surface-800 bg-surface-900/60 p-4 text-left"
       >
         <span
           className={`mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-surface-800 ${TONE_ICON[tone]}`}
@@ -88,8 +94,9 @@ export function ErrorState({
 
   return (
     <div
+      key={title}
       ref={rootRef}
-      className="flex min-h-[60vh] w-full flex-col items-center justify-center px-4 py-12 text-center"
+      className="vb-fade-in flex min-h-[60vh] w-full flex-col items-center justify-center px-4 py-12 text-center"
     >
       <div
         className={`relative mb-6 flex size-20 items-center justify-center rounded-3xl border border-surface-700/60 bg-surface-800/80 shadow-xl backdrop-blur-xl ${TONE_ICON[tone]}`}

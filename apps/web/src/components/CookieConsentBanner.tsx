@@ -1,26 +1,22 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getStoredConsent, setStoredConsent, type ConsentState } from '../lib/telemetry';
-import { prefersReducedMotion } from '../lib/motion';
-import gsap from 'gsap';
 
+/**
+ * The consent banner every first-time visitor sees.
+ *
+ * Its entrance is the CSS `.vb-rise-in` in `index.css`. It used to be a
+ * `gsap.fromTo`, and because this component is mounted unconditionally at the
+ * top of `App.tsx`, that single import was on its own enough to keep ~237 kB of
+ * GSAP source in the entry chunk — on the critical path of a page that shows
+ * the banner for a quarter of a second and never animates again.
+ */
 export function CookieConsentBanner() {
   const [consentState, setConsentState] = useState<ConsentState>('granted');
-  const bannerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setConsentState(getStoredConsent());
   }, []);
-
-  useEffect(() => {
-    if (consentState === 'pending' && bannerRef.current && !prefersReducedMotion()) {
-      gsap.fromTo(
-        bannerRef.current,
-        { y: 50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.4, ease: 'power3.out' }
-      );
-    }
-  }, [consentState]);
 
   if (consentState !== 'pending') {
     return null;
@@ -38,10 +34,9 @@ export function CookieConsentBanner() {
 
   return (
     <div
-      ref={bannerRef}
       role="region"
       aria-label="Cookie and Privacy Consent"
-      className="fixed bottom-4 inset-x-4 z-50 mx-auto max-w-2xl rounded-2xl border border-surface-700/80 bg-surface-900/95 p-5 shadow-2xl backdrop-blur-xl md:bottom-6"
+      className="vb-rise-in fixed bottom-4 inset-x-4 z-50 mx-auto max-w-2xl rounded-2xl border border-surface-700/80 bg-surface-900/95 p-5 shadow-2xl backdrop-blur-xl md:bottom-6"
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1 text-sm">

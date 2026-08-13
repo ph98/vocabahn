@@ -14,7 +14,7 @@ import {
   updateDeck,
   importWordsToDeck,
 } from '../api';
-import { useStaggerIn } from '../lib/motion';
+import { useStaggerIn } from '../lib/motion-gsap';
 import { trackEvent } from '../lib/telemetry';
 import { ProgressBar } from './ProgressBar';
 import { PullToRefresh } from './PullToRefresh';

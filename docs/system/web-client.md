@@ -3,9 +3,9 @@
 The SPA: routing, navigation, theming, motion, gestures, accessibility, and PWA
 behaviour.
 
-Code: `apps/web/src/App.tsx` (771 lines — shell, nav, and route table),
-`apps/web/src/components/`, `apps/web/src/hooks/`, `apps/web/src/lib/`,
-`apps/web/vite.config.ts`.
+Code: `apps/web/src/App.tsx` (shell and route table),
+`apps/web/src/components/AppNav.tsx`, `apps/web/src/components/`,
+`apps/web/src/hooks/`, `apps/web/src/lib/`, `apps/web/vite.config.ts`.
 
 ## Shell
 
@@ -15,11 +15,30 @@ simply are not mounted unless the session says so.
 
 | Status | Shown |
 | :--- | :--- |
-| `loading` | Nothing yet — the first check has not settled |
+| `loading` | `LandingPage`, if this device has never held a session; otherwise nothing yet |
 | `anonymous` | `LandingPage` plus the Google One Tap prompt |
 | `authenticated` | `AppNav` and the route table |
 | `unreachable` | `ServerUnreachableState` — see **Errors** |
 | `offline` | `OfflineState`, for a device with no connection and no known user |
+
+That first row is a performance measure, and it is narrower than it looks.
+`lib/session-hint.ts` keeps one bit in `localStorage` — written when the API
+confirms a user, cleared when it confirms there is none, and deliberately left
+alone by any *failure*, since a 502 is evidence about the API and not about the
+session. When the marker is absent, the shell renders the landing page straight
+away instead of holding first paint for the `/auth/me` round trip; when it is
+present, or when storage cannot be read at all, the shell waits exactly as it
+used to. So a signed-in user is never shown the marketing page over a session
+that may still be valid, which is the property the `anonymous` / `unreachable`
+distinction below exists to protect. The hint authorises nothing: routes still
+mount only on a confirmed `authenticated`, and One Tap is still only prompted
+on a confirmed `anonymous`.
+
+While `loading` *without* the landing page, the shell renders a `min-h-dvh`
+spacer. The footer is `mt-auto`, so without it the footer sits at the bottom of
+an empty viewport and is shoved off it the moment content arrives — a
+full-viewport shift of a visible element, and the single largest contributor to
+CLS on a returning user's load.
 
 The distinction between `anonymous` and `unreachable` is the point. `fetchMe()`
 answers `null` — signed out — only for a 401 the silent refresh could not
@@ -44,8 +63,12 @@ rather than an outage: it backs off, and never takes an already-signed-in user
 out of the app.
 
 Routes, all lazy-loaded behind one `RouteBoundary` — suspense fallback plus an
-error boundary, see **Errors** — except the dictionary, profile, and landing
-pages:
+error boundary, see **Errors**. `LandingPage` is the one eager import: it *is*
+the signed-out page, so putting it behind a second round trip would only delay
+the paint everything else here is arranged around. `AppNav` is lazy too, though
+it is not a route — it is the app's only eager consumer of `motion/react`, and
+it cannot render for the signed-out visitor whose numbers the budget is about;
+its `Suspense` fallback reserves the 64 px the desktop nav occupies in flow.
 
 ```
 /                 DashboardPage          /review           ReviewSession
@@ -81,18 +104,37 @@ meta tag. The nav popover cycles system → light → dark. In dev only,
 
 ## Motion
 
-Two libraries, split by job:
+Three tiers, and which one applies is decided by whether the code can run before
+first paint:
 
+- **CSS** for anything on the landing page's critical path: the landing intro,
+  the sign-in panel, the consent banner, the error states, the toast and the
+  story-word popover. `.vb-fade-in` / `.vb-rise-in` in `index.css`, staggered
+  with an inline `--vb-delay`. These start at first paint rather than at first
+  script execution, and they cost nothing to download.
 - **GSAP** (`@gsap/react`'s `useGSAP`) for imperative, gesture-coupled work: the
-  review card's drag transform and fly-off, nav entrance, popover entrance, the
-  edge-swipe indicator.
+  review card's drag transform and fly-off, nav entrance, popover entrance.
 - **Motion** (`motion/react`) for declarative layout and presence: the nav
   indicator's `layoutId`, rating-button stagger, session-summary reveal,
   `AnimatePresence` between the Show-answer and rating rows.
 
-`lib/motion.ts` exports the shared `spring` / `springSnappy` configs and a
-`prefersReducedMotion()` guard. Every GSAP call site checks it, and both
-`MotionConfig` usages set `reducedMotion="user"`.
+Neither library may be reachable from the entry chunk. `lib/motion.ts` therefore
+holds only the shared `spring` / `springSnappy` configs and the
+`prefersReducedMotion()` guard, and imports nothing: it is read by the shell, so
+a single `import gsap` in it was enough to put ~230 kB of animation library on
+the critical path of a page that may not animate at all. The GSAP-backed
+`useFadeIn` / `useStaggerIn` hooks live in `lib/motion-gsap.ts`, which only
+lazily-loaded routes import. Every GSAP call site checks
+`prefersReducedMotion()`, both `MotionConfig` usages set `reducedMotion="user"`,
+and the CSS classes are switched off under the same media query — one contract,
+three mechanisms.
+
+The landing page's `<h1>` is deliberately not animated. It is the LCP element,
+and an element that fades in does not count as painted until the fade finishes,
+so its own entrance was costing the animation's full duration in LCP
+(**observed**: 4.0 s → 2.9 s on the throttled mobile profile from removing it).
+Anything that becomes the largest element on a page should be treated the same
+way.
 
 `FollowTooltip.tsx` is the one hover/focus tooltip in the app — a GSAP-eased
 overlay that follows the pointer, or anchors above the trigger when opened by
@@ -113,7 +155,45 @@ alongside the toast's. See `stories.md`.
 Gestures: swipe-to-rate on the review card; `PullToRefresh` on the dashboard; and
 `EdgeSwipeBack`, a window-level touch handler that runs `navigate(-1)` on a
 right-swipe starting within 24 px of the left edge — disabled on `/review` so it
-cannot fight the card's own drag.
+cannot fight the card's own drag. `EdgeSwipeBack` writes `transform` and
+`opacity` onto its indicator directly rather than through GSAP: it is two
+properties tracking a finger, and it is mounted for every visitor including the
+signed-out one.
+
+## Typography
+
+Plus Jakarta Sans is **self-hosted** — `apps/web/public/fonts/`, declared as
+`@font-face` in `index.css`, preloaded from `index.html` with `crossorigin`
+(required even same-origin: fonts are fetched in CORS mode). It replaced a
+render-blocking `fonts.googleapis.com` stylesheet that cost 793 ms in front of
+first paint, and the preload is what removed the layout shift its late swap used
+to cause. Only the `latin` and `latin-ext` subsets ship, roman axis only —
+nothing in the app renders italic.
+
+Merriweather stays on Google Fonts, narrowed to `wght@400..700` and loaded
+non-render-blocking (`media="print"` flipped to `all` on load, with a `noscript`
+fallback). It is used on exactly two headings, both behind sign-in, so
+`unicode-range` matching means its ~98 kB file is never fetched on the landing
+page at all. Licence for the bundled font: `public/fonts/OFL.txt`.
+
+## Performance budget
+
+`apps/web/scripts/check-bundle-budget.mjs`, run in CI as
+`pnpm --filter @vocabahn/web size-budget` right after `pnpm build`, fails the
+build when a signed-out visitor's first paint gets heavier than the budget.
+
+It measures everything `dist/index.html` asks for up front — the entry script,
+every `modulepreload`, and the stylesheet — gzipped, as nginx serves them. That
+is deliberately not "the entry chunk": Rollup can shrink that by moving code
+into a sibling the HTML preloads in the same breath, which changes nothing about
+what the browser downloads. Budgets are 150 kB gzipped JS and 20 kB gzipped CSS,
+set just above what the tree actually achieves so the gate catches a regression
+rather than being a target nobody can hit. `--json` prints the measurement
+without asserting.
+
+The usual cause of a failure is a static import of something that should be
+lazy — most often a module that reaches an animation library, `DictionaryCard`,
+or the profile screen.
 
 ## Toasts
 
@@ -242,8 +322,22 @@ Implemented deliberately, not incidentally:
 
 ## PWA
 
-`vite-plugin-pwa`, `registerType: 'autoUpdate'`. Standalone display, maskable
-icons at 192/512, apple-touch-icon. Workbox runtime caching:
+`vite-plugin-pwa`, `registerType: 'autoUpdate'`, `injectRegister: 'script-defer'`
+— the default injects `registerSW.js` as a blocking `<script>`, 0.4 kB that cost
+152 ms of render-blocking time for a registration nothing on the first paint
+depends on. Standalone display, maskable icons at 192/512, apple-touch-icon.
+
+The precache is the app shell and nothing else: `og-image.png` (376 kB, only
+ever fetched by a crawler rendering a link preview) and the manifest's install
+icons (`includeManifestIcons: false` — the OS fetches those at install time, not
+the page) are excluded, which is most of the drop from **1549 KiB to 1024 KiB**
+on a first visit. Both are still deployed and still served; they are simply not
+downloaded over the connection the landing page is competing for. The latin font
+subset *is* precached — without it an offline session renders in the system
+fallback, and it costs nothing, since `index.html` preloads it on the same visit
+and nginx serves woff2 immutable.
+
+Workbox runtime caching:
 
 | Pattern | Strategy |
 | :--- | :--- |
@@ -389,10 +483,26 @@ term, to every hit. Full taxonomy in `analytics.md`.
   the light theme.
 - The review route binds arrow keys on `window` for its whole lifetime — no
   focus scoping (`learning.md`).
-- `DictionaryCard.tsx` is 1135 lines holding the search page, entry page,
+- `DictionaryCard.tsx` is 1199 lines holding the search page, entry page,
   entry body, all five tab panels, four morphology table renderers, the audio
   button, and the feedback widget. `EntryBody` is imported by `ReviewSession`, so
-  the file is on the critical path for two routes.
+  the file is on the critical path for two routes — though no longer for the
+  entry chunk, which is what #71 was about.
+- **The `api` chunk is 40 kB gzipped and eagerly loaded**, because the shell
+  needs `fetchMe`, `fetchHealth` and `fetchAuthConfig` from it and `api.ts` is
+  one module holding every endpoint. Almost all of that weight is `axios`
+  (~146 kB source) and `zod` (~149 kB source) rather than the schemas
+  themselves. `axios` is used with no interceptors — only `isAxiosError`, in two
+  places — so `fetch` could replace it, but the error shapes feed
+  `ApiUnavailableError` and `classifyError`, and the outage path has no
+  end-to-end coverage to swap them under (#71 item 5, deferred). Dropping
+  client-side `zod` validation is a different question and would contradict the
+  shared-package contract, which is the point of parsing at the boundary at all.
+- **`hero-bg.webp` is still fetched during the landing page's first load.** It
+  carries `loading="lazy"` and `fetchpriority="low"`, but Chrome's lazy-load
+  distance threshold is generous enough that a 100 kB image ~600 px below the
+  fold is requested anyway. The hint demotes it behind everything first paint
+  needs, which was the point; it does not remove it.
 - (#27) The dashboard is a vertical stack of full-width sections, not the bento grid
   the legacy backlog describes (**observed**).
 - Landing-page copy advertises studying offline and PWA install; both are real,

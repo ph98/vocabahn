@@ -29,6 +29,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @vocabahn/api prisma:generate
       - run: pnpm build
+      # Fails the build when a signed-out visitor's first paint gets heavier
+      # than the budget. Runs against the `dist` the step above just produced,
+      # so it measures what nginx will actually serve rather than a source
+      # estimate. Budget and reasoning: apps/web/scripts/check-bundle-budget.mjs.
+      - name: Landing-page bundle budget
+        run: pnpm --filter @vocabahn/web size-budget
       - run: pnpm lint
       - run: pnpm --filter @vocabahn/web test
       - run: pnpm audit --audit-level high
