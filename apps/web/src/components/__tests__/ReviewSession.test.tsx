@@ -20,7 +20,15 @@ vi.mock('../../api', () => ({
   submitFeedback: vi.fn(),
 }));
 
+// Analytics is gated off in test mode, so the real module can never prove what
+// a session sends. Mocking it makes the calls themselves assertable.
+vi.mock('../../lib/telemetry', () => ({
+  trackEvent: vi.fn(),
+  isFirstReviewSession: vi.fn(() => false),
+}));
+
 const { fetchDueCards, fetchDictionaryEntry, submitReview, syncReviews, undoLastReview } = await import('../../api');
+const { trackEvent, isFirstReviewSession } = await import('../../lib/telemetry');
 const { getQueueCount, getQueuedReviews } = await import('../../offline/queue');
 
 const CARD: ReviewCard = {
@@ -78,6 +86,12 @@ const SECOND_CARD: ReviewCard = {
   ...CARD,
   id: 'card-2',
   entry: { ...CARD.entry, id: 'entry-2', word: 'Baum', translation: 'tree' },
+};
+
+const THIRD_CARD: ReviewCard = {
+  ...CARD,
+  id: 'card-3',
+  entry: { ...CARD.entry, id: 'entry-3', word: 'Katze', translation: 'cat' },
 };
 
 /**
@@ -282,5 +296,131 @@ describe('ReviewSession undo', () => {
     await screen.findByRole('button', { name: 'Undo last rating' });
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+describe('ReviewSession analytics', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    globalThis.indexedDB = new IDBFactory();
+    forceReducedMotion();
+    setOnline(true);
+    vi.mocked(isFirstReviewSession).mockReturnValue(false);
+    vi.mocked(fetchDueCards).mockResolvedValue([CARD, SECOND_CARD, THIRD_CARD]);
+    vi.mocked(fetchDictionaryEntry).mockImplementation((word: string) =>
+      Promise.resolve({ ...ENTRY_DETAIL, id: `entry-${word}`, word }),
+    );
+    vi.mocked(submitReview).mockResolvedValue({ card: CARD, autoGraduated: null });
+    vi.mocked(undoLastReview).mockResolvedValue({ card: CARD, undoneRating: 'GOOD', revertedGraduation: false });
+    vi.mocked(syncReviews).mockResolvedValue(0);
+  });
+
+  /** Every event the component sent, as [name, params] pairs. */
+  const sentEvents = () => vi.mocked(trackEvent).mock.calls.map((call) => [call[0], call[1]]);
+
+  it('sends one aggregated summary for a whole session, never an event per card', async () => {
+    renderWithProviders(<ReviewSession />);
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+
+    rate('Good');
+    await waitFor(() => expect(screen.getByText('Baum')).toBeInTheDocument());
+    rate('Again');
+    await waitFor(() => expect(screen.getByText('Katze')).toBeInTheDocument());
+    rate('Easy');
+    await screen.findByLabelText('Session summary');
+
+    // Three cards rated, one event. This is the acceptance criterion: a
+    // 50-card session must not produce 50 hits.
+    expect(sentEvents()).toHaveLength(1);
+    const [name, params] = sentEvents()[0]!;
+    expect(name).toBe('review_session_complete');
+    expect(params).toMatchObject({
+      card_count: 3,
+      again_count: 1,
+      hard_count: 0,
+      good_count: 1,
+      easy_count: 1,
+      accuracy_pct: 67,
+      offline_queued_count: 0,
+      session_scope: 'all',
+    });
+  });
+
+  it('does not send a second summary when a rating is undone from the summary and redone', async () => {
+    vi.mocked(fetchDueCards).mockResolvedValue([CARD]);
+    renderWithProviders(<ReviewSession />);
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+
+    rate('Good');
+    await screen.findByLabelText('Session summary');
+    await clickUndo();
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+    rate('Again');
+    await screen.findByLabelText('Session summary');
+
+    expect(sentEvents().filter(([name]) => name === 'review_session_complete')).toHaveLength(1);
+  });
+
+  it('adds first_review_complete the first time a session is finished on this device', async () => {
+    vi.mocked(isFirstReviewSession).mockReturnValue(true);
+    vi.mocked(fetchDueCards).mockResolvedValue([CARD]);
+    renderWithProviders(<ReviewSession />);
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+
+    rate('Good');
+    await screen.findByLabelText('Session summary');
+
+    expect(sentEvents()).toEqual([
+      ['review_session_complete', expect.objectContaining({ card_count: 1 })],
+      ['first_review_complete', { card_count: 1 }],
+    ]);
+  });
+
+  it('reports a session left half-finished as an abandon, not a completion', async () => {
+    const { unmount } = renderWithProviders(<ReviewSession />);
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+
+    rate('Good');
+    await waitFor(() => expect(screen.getByText('Baum')).toBeInTheDocument());
+    unmount();
+
+    expect(sentEvents()).toEqual([
+      ['review_session_abandon', { card_count: 1, remaining_count: 2, session_scope: 'all' }],
+    ]);
+  });
+
+  it('says nothing about a session nobody rated a card in', async () => {
+    const { unmount } = renderWithProviders(<ReviewSession />);
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+    unmount();
+
+    expect(sentEvents()).toEqual([]);
+  });
+
+  it('counts offline ratings on the summary instead of sending one event each', async () => {
+    setOnline(false);
+    vi.mocked(fetchDueCards).mockResolvedValue([CARD, SECOND_CARD]);
+    renderWithProviders(<ReviewSession />);
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+
+    rate('Good');
+    await waitFor(() => expect(screen.getByText('Baum')).toBeInTheDocument());
+    rate('Good');
+    await screen.findByLabelText('Session summary');
+
+    expect(sentEvents()).toHaveLength(1);
+    expect(sentEvents()[0]![1]).toMatchObject({ card_count: 2, offline_queued_count: 2 });
+  });
+
+  it('scopes a deck session so the deck id never has to be sent', async () => {
+    vi.mocked(fetchDueCards).mockResolvedValue([CARD]);
+    renderWithProviders(<ReviewSession />, { route: '/review?deckId=deck-1' });
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+
+    rate('Good');
+    await screen.findByLabelText('Session summary');
+
+    expect(sentEvents()[0]![1]).toMatchObject({ session_scope: 'deck' });
+    expect(JSON.stringify(sentEvents())).not.toContain('deck-1');
   });
 });

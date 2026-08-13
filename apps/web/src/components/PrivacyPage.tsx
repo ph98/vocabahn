@@ -137,7 +137,8 @@ export function PrivacyPage() {
             </p>
             <ul className="list-disc list-inside space-y-2 pl-2 text-surface-400">
               <li><strong><code>vb_access</code> HTTP-Only Cookie:</strong> Secure, encrypted JWT token used solely to maintain signed-in sessions.</li>
-              <li><strong>Local Storage:</strong> Remembers your preferred UI color theme (Light/Dark/System) and offline review cache.</li>
+              <li><strong>Local Storage:</strong> Remembers your preferred UI color theme (Light/Dark/System), your analytics choice (<code>vocabahn_consent</code>), and your offline review cache.</li>
+              <li><strong>Analytics-only storage:</strong> <code>vocabahn_first_review_done</code> and <code>vocabahn_pending_login</code> exist purely to avoid double-counting analytics events. They are written <strong>only after</strong> you grant analytics consent, and never before.</li>
             </ul>
           </section>
 
@@ -154,6 +155,13 @@ export function PrivacyPage() {
               <li><strong>Google Gemini AI:</strong> Used to generate translations, CEFR levels, and mnemonics for vocabulary words.</li>
               <li><strong>ElevenLabs & Google TTS:</strong> Used to synthesize pronunciation audio files.</li>
               <li><strong>Unsplash API:</strong> Used to display dictionary illustration images.</li>
+              <li>
+                <strong>Google Analytics 4:</strong> Loaded only after you grant consent above, and never otherwise. It
+                receives counts and categories — how many cards a session had, how accurate it was, which CEFR level was
+                chosen — and <strong>never the German words you look up or study</strong>. Word pages are reported as
+                <code> /word/:word</code>, dictionary searches as a term <em>length</em> rather than a term, and no
+                account id, email or free text is ever sent.
+              </li>
             </ul>
             <p className="mt-3">
               <em>Note:</em> Personal user account data (such as user names, emails, or review histories) is <strong>never</strong> transmitted to third-party AI providers when generating vocabulary enrichments.

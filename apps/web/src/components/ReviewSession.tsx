@@ -11,7 +11,8 @@ import { useSettings } from '../hooks/useSettings';
 import { dequeueLatestReview, enqueueReview, flushQueue, getQueueCount } from '../offline/queue';
 import { useOnlineStatus } from '../offline/useOnlineStatus';
 import { prefersReducedMotion, spring, springSnappy } from '../lib/motion';
-import { trackEvent } from '../lib/telemetry';
+import type { ReviewScope } from '../lib/analytics-events';
+import { isFirstReviewSession, trackEvent } from '../lib/telemetry';
 import { AudioButton, EntryBody } from './DictionaryCard';
 import { CountUp } from './CountUp';
 
@@ -151,14 +152,6 @@ function SessionSummary({
   const recalled = stats.GOOD + stats.EASY;
   const accuracy = total > 0 ? Math.round((recalled / total) * 100) : 0;
 
-  useEffect(() => {
-    trackEvent('review_session_complete', {
-      total_cards: total,
-      accuracy_rate: accuracy,
-      deck_id: deckId ?? undefined,
-    });
-  }, [total, accuracy, deckId]);
-
   return (
     <motion.section
       initial={{ opacity: 0, scale: 0.94, y: 16 }}
@@ -291,6 +284,76 @@ export function ReviewSession() {
     });
   }, [isOnline, queryClient]);
 
+  const sessionScope: ReviewScope = deckId ? 'deck' : courseId ? 'course' : 'all';
+
+  /**
+   * Everything the two session-level analytics events report. A ref, not
+   * state: a review session sends exactly one summary event, never one per
+   * card, so these numbers only have to be readable at the two moments the
+   * session ends — including from an unmount cleanup, which a state closure
+   * would show stale.
+   */
+  const analyticsRef = useRef({
+    stats: { AGAIN: 0, HARD: 0, GOOD: 0, EASY: 0 } as Record<ReviewRating, number>,
+    remaining: 0,
+    startedAt: Date.now(),
+    /** Ratings that ended up in the IndexedDB queue instead of reaching the API. */
+    offlineQueued: 0,
+    completeReported: false,
+    scope: sessionScope,
+  });
+
+  // Declared before the completion effect so the snapshot it reads is current.
+  useEffect(() => {
+    const a = analyticsRef.current;
+    a.stats = stats;
+    a.remaining = Math.max(0, (queue?.length ?? 0) - index);
+    a.scope = sessionScope;
+  });
+
+  // Reaching the summary is the end of a session. Reported once: undoing from
+  // the summary and re-rating re-enters the same session, it does not start a
+  // second one. "Review more" resets the flag, because that genuinely does.
+  const sessionFinished = !!queue && queue.length > 0 && !card;
+  useEffect(() => {
+    const a = analyticsRef.current;
+    if (!sessionFinished || a.completeReported) return;
+    a.completeReported = true;
+
+    const cardCount = RATINGS.reduce((sum, r) => sum + a.stats[r], 0);
+    const recalled = a.stats.GOOD + a.stats.EASY;
+    trackEvent('review_session_complete', {
+      card_count: cardCount,
+      again_count: a.stats.AGAIN,
+      hard_count: a.stats.HARD,
+      good_count: a.stats.GOOD,
+      easy_count: a.stats.EASY,
+      accuracy_pct: cardCount > 0 ? Math.round((recalled / cardCount) * 100) : 0,
+      duration_sec: Math.round((Date.now() - a.startedAt) / 1000),
+      offline_queued_count: a.offlineQueued,
+      session_scope: a.scope,
+    });
+    if (isFirstReviewSession()) {
+      trackEvent('first_review_complete', { card_count: cardCount });
+    }
+  }, [sessionFinished]);
+
+  // Leaving mid-session is the drop-off signal; it is the same one event per
+  // session, just the other ending.
+  useEffect(() => {
+    const a = analyticsRef.current;
+    return () => {
+      if (a.completeReported) return;
+      const cardCount = RATINGS.reduce((sum, r) => sum + a.stats[r], 0);
+      if (cardCount === 0) return;
+      trackEvent('review_session_abandon', {
+        card_count: cardCount,
+        remaining_count: a.remaining,
+        session_scope: a.scope,
+      });
+    };
+  }, []);
+
   const [pendingUndo, setPendingUndo] = useState<PendingUndo | null>(null);
   // Awaited by undo so a fast tap can't run the dequeue before the enqueue it
   // is meant to cancel has actually landed in IndexedDB.
@@ -319,6 +382,7 @@ export function ReviewSession() {
         latencyMs: vars.latencyMs,
         reviewedAt: vars.reviewedAt,
       });
+      analyticsRef.current.offlineQueued += 1;
       refreshQueuedCount();
       setPendingUndo((p) => (p && p.cardId === vars.cardId ? { ...p, queuedOffline: true } : p));
     },
@@ -368,6 +432,7 @@ export function ReviewSession() {
     if (isOnline) {
       reviewMutation.mutate({ cardId: current.id, rating, latencyMs, reviewedAt });
     } else {
+      analyticsRef.current.offlineQueued += 1;
       enqueueRef.current = enqueueReview({ cardId: current.id, rating, latencyMs, reviewedAt }).then(
         refreshQueuedCount,
       );
@@ -387,6 +452,9 @@ export function ReviewSession() {
     if (!pendingUndo || reviewMutation.isPending || undoMutation.isPending) return;
     const action = pendingUndo;
     setPendingUndo(null);
+    if (action.queuedOffline) {
+      analyticsRef.current.offlineQueued = Math.max(0, analyticsRef.current.offlineQueued - 1);
+    }
     setStats((s) => ({ ...s, [action.rating]: Math.max(0, s[action.rating] - 1) }));
     if (action.graduatedCount > 0) {
       setAutoGraduatedCount((n) => Math.max(0, n - action.graduatedCount));
@@ -653,6 +721,10 @@ export function ReviewSession() {
           onReviewMore={() => {
             setIndex(0);
             setStats({ AGAIN: 0, HARD: 0, GOOD: 0, EASY: 0 });
+            // A new session: it gets its own summary event and its own clock.
+            analyticsRef.current.completeReported = false;
+            analyticsRef.current.startedAt = Date.now();
+            analyticsRef.current.offlineQueued = 0;
             // A fresh queue invalidates the stored index the undo points at.
             setPendingUndo(null);
             void queryClient.invalidateQueries({ queryKey: ['due-cards', courseId, deckId] });

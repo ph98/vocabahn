@@ -73,6 +73,16 @@ function EntryDetail({
     },
   });
 
+  // Once per word, with the status as it was on arrival — the poll above would
+  // otherwise re-report the same view every four seconds. Lives here rather
+  // than in `EntryBody`, which a review session renders once per card.
+  const viewedWord = useRef<string | null>(null);
+  useEffect(() => {
+    if (!entry || viewedWord.current === entry.word) return;
+    viewedWord.current = entry.word;
+    trackEvent('word_view', { enrichment_status: entry.enrichmentStatus });
+  }, [entry]);
+
   return (
     <div>
       <button
@@ -843,7 +853,7 @@ export function EntryBody({
   const addToDeckMutation = useMutation({
     mutationFn: (deckId: string) => addWordToDeck(deckId, entry.id),
     onSuccess: (_data, deckId) => {
-      trackEvent('custom_word_added', { word: entry.word, deck_id: deckId });
+      trackEvent('custom_word_added', { source: 'entry_page', word_count: 1 });
       void queryClient.invalidateQueries({ queryKey: ['deck', deckId] });
       setAddedToDeck(deckId);
       setTimeout(() => setAddedToDeck(null), 2000);
@@ -1113,6 +1123,16 @@ export function DictionaryCard() {
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // One event per settled search, not per keystroke: the query is already
+  // debounced, and the ref stops a re-render or a cache hit re-reporting it.
+  // The term itself is never sent — only its length and how well it did.
+  const searchTracked = useRef<string | null>(null);
+  useEffect(() => {
+    if (!results || debounced.length < 2 || searchTracked.current === debounced) return;
+    searchTracked.current = debounced;
+    trackEvent('dictionary_search', { term_length: debounced.length, result_count: results.length });
+  }, [debounced, results]);
 
   return (
     <>

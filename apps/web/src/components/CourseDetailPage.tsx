@@ -31,11 +31,9 @@ export function CourseDetailPage() {
   });
 
   const enroll = useMutation({
-    mutationFn: () => {
-      trackEvent('course_start', { course_slug: slug, cefr_level: course?.cefrLevel });
-      return enrollCourse(slug!);
-    },
+    mutationFn: () => enrollCourse(slug!),
     onSuccess: () => {
+      trackEvent('course_start', { course_slug: slug!, cefr_level: course?.cefrLevel ?? null });
       void queryClient.invalidateQueries({ queryKey: ['course', slug] });
       void queryClient.invalidateQueries({ queryKey: ['courses'] });
     },

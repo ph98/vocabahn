@@ -9,7 +9,7 @@ import {
 } from '../api';
 import { STORY_TOPICS } from '@vocabahn/shared';
 import { useSettings } from '../hooks/useSettings';
-import { trackEvent } from '../lib/telemetry';
+import { markPendingLogin, trackEvent } from '../lib/telemetry';
 import { prefersReducedMotion } from '../lib/motion';
 import { ShieldCheck, Mail, Download } from 'lucide-react';
 import { CEFRCalibrationCard } from './CEFRCalibrationCard';
@@ -22,11 +22,13 @@ export function SignInOptions() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const emailMutation = useMutation({
-    mutationFn: () => {
-      trackEvent('login', { method: 'email' });
-      return requestEmailSignIn(email.trim());
+    mutationFn: () => requestEmailSignIn(email.trim()),
+    // Requesting a link is not a sign-in — it is the top of the funnel, and it
+    // may never be followed. `login` is reported from /auth/verify's return.
+    onSuccess: () => {
+      trackEvent('landing_cta_click', { cta: 'email_magic_link' });
+      setSent(true);
     },
-    onSuccess: () => setSent(true),
   });
 
   useEffect(() => {
@@ -45,6 +47,8 @@ export function SignInOptions() {
         href="/api/v1/auth/google"
         rel="external"
         onClick={() => {
+          trackEvent('landing_cta_click', { cta: 'google' });
+          markPendingLogin('google');
           window.location.href = '/api/v1/auth/google';
         }}
         className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-medium text-surface-900 transition-all hover:bg-surface-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.98]"

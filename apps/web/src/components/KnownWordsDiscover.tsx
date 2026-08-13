@@ -20,14 +20,9 @@ export function KnownWordsDiscover() {
   };
 
   const bulkMarkMutation = useMutation({
-    mutationFn: (ids: string[]) => {
-      trackEvent('diagnostic_quiz_complete', {
-        quiz_score: ids.length,
-        calibrated_cefr_frontier: 'A1',
-      });
-      return bulkMarkKnownWords(ids);
-    },
-    onSuccess: () => {
+    mutationFn: (ids: string[]) => bulkMarkKnownWords(ids),
+    onSuccess: (_result, ids) => {
+      trackEvent('known_words_bulk_mark', { word_count: ids.length });
       setSelected(new Set());
       invalidate();
     },
