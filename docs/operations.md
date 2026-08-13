@@ -83,7 +83,12 @@ cd vocabahn
 bash scripts/deploy.sh
 ```
 This deployment script performs the following sequentially:
-1. Pulls the latest changes from Git.
+1. Pulls the latest changes from Git, **when the checkout is on a branch that can
+   fast-forward**. On a detached HEAD (how the production tag deploy checks out),
+   or when the branch has diverged from its upstream, it logs the revision it
+   found and deploys that instead of aborting — CI has already pinned the
+   revision with `git reset --hard origin/main` or `git checkout <tag>` before
+   invoking the script. Set `SKIP_GIT_PULL=true` to skip the pull outright.
 2. Rebuilds and upgrades the Docker container images.
 3. Automatically runs `scripts/backup.sh` to record a pre-deploy database snapshot.
 4. Performs a zero-downtime container swap using a timeout configuration.

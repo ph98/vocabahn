@@ -69,8 +69,22 @@ fi
 [[ -f ssl/cert.pem ]]    || err "ssl/cert.pem not found. Run: bash scripts/deploy.sh --setup"
 [[ -f ssl/key.pem ]]     || err "ssl/key.pem not found. Run: bash scripts/deploy.sh --setup"
 
-log "Pulling latest code..."
-git pull --ff-only
+# The caller may already have pinned the revision — CI does
+# `git reset --hard origin/main` for staging and `git checkout <tag>` for
+# production, the latter leaving a detached HEAD. In both cases a pull is at
+# best redundant and at worst deploys something other than the revision CI
+# tested, so a pull that cannot fast-forward is a reason to carry on with what
+# is checked out, not to abort the deploy.
+if [[ "${SKIP_GIT_PULL:-}" == "true" ]]; then
+  log "Skipping git pull — caller pinned $(git rev-parse --short HEAD)"
+elif ! git symbolic-ref -q HEAD >/dev/null; then
+  log "Detached HEAD — deploying the checked-out revision $(git rev-parse --short HEAD)"
+elif git pull --ff-only; then
+  ok "Updated to $(git rev-parse --short HEAD)"
+else
+  log "git pull --ff-only did not apply (no upstream, or diverged from it)."
+  log "Deploying the revision already checked out: $(git rev-parse --short HEAD)"
+fi
 
 log "Building images..."
 $COMPOSE build --pull
