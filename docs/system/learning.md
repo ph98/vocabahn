@@ -57,6 +57,42 @@ The web session (`ReviewSession.tsx`) is a single scrolling card, not a flip:
   `role="status"` banner reports offline state, queued count, and
   "N words auto-marked as known" with a link to undo.
 
+## Undoing the last rating
+
+One rating deep, no history. An **Undo** button sits in the session chrome next
+to the "Review" heading whenever the previous rating is still undoable —
+including on the summary screen, so the last card of a session is reachable —
+bound to `u` and Cmd/Ctrl+Z. It is disabled while the submit or the undo itself
+is in flight, and cleared by "Review more" (a fresh queue invalidates the stored
+index).
+
+Undo steps `index` back to the rated card unrevealed, decrements that rating's
+session tally, and subtracts whatever the rating added to the auto-graduated
+banner. Where the rollback goes depends on where the review landed:
+
+- **Synced** — `POST /reviews/:cardId/undo` → `CardsService.undoLastReview`.
+- **Still queued offline** — `dequeueLatestReview(cardId)` pops the newest
+  matching item out of IndexedDB and refreshes the count. Calling the API here
+  would 404, or undo an older *synced* review of the same card. If the item is
+  gone (flushed between rating and undo), the call falls through to the API.
+
+`undoLastReview` finds the caller's newest `ReviewLog` for the card (404 if the
+card isn't theirs, 409 if there is no log), then reuses `replayCard` with a
+`deleteLogId`: the delete, every surviving log's rewritten snapshot and the
+card's final state go in one transaction. It cannot restore the previous log's
+columns instead — every snapshot is the state *after* its own review. A card
+whose only review is undone returns to `emptyFsrsCard()` state, due now.
+
+Afterwards `recomputeAfterReview` re-scores the card, and if the undone review
+was the one that graduated it (`knownState` still `AUTO_KNOWN`), `undoKnown`
+puts it back to `ACTIVE` — which, as on the Known Words page, sets `due` to now
+rather than the replayed date and pulls the score to `AUTO_GRADUATE_THRESHOLD −
+0.1`.
+
+The session invalidates `courses`, `dashboard` and `known-words` after an undo,
+and marks `due-cards` stale without refetching — a refetch mid-session would
+swap the queue out from under the index just stepped back to.
+
 ## Offline reviews
 
 `apps/web/src/offline/queue.ts` — IndexedDB `vocabahn-offline`, store
@@ -145,6 +181,10 @@ Note what the labels mean: **"Known" on the dashboard counts cards in `AUTO_KNOW
   `ReviewLog` row with no `latencyMs`.
 - Session summary's "Back to courses" points at `/courses`, which only redirects
   to `/library`.
+- **Undo is one deep and session-local.** Leaving `/review` drops it; there is no
+  way to reach back past the previous rating.
+- Undo fires and forgets: if `POST /reviews/:cardId/undo` fails, the session has
+  already stepped back and only shows a notice — the server keeps the review.
 - Listening mode does not exist (not planned; no issue) — no audio-only prompt path anywhere in the web
   app.
 - Known-words management is implemented (`KnownWordsPage.tsx` and

@@ -1,5 +1,11 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import type { AutoGraduation, ReviewCard, ReviewRating, SyncReviewItem } from '@vocabahn/shared';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import type {
+  AutoGraduation,
+  ReviewCard,
+  ReviewRating,
+  SyncReviewItem,
+  UndoReviewResponse,
+} from '@vocabahn/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   buildReviewLogSnapshot,
@@ -121,6 +127,56 @@ export class CardsService {
   }
 
   /**
+   * Rolls back the caller's most recent review of one card.
+   *
+   * Each `ReviewLog` row snapshots the state *after* its own review, so the
+   * previous row cannot simply be copied back onto the card. Instead the newest
+   * log is deleted and the card is replayed from `emptyFsrsCard()` through what
+   * remains — the same path offline sync takes, and the only one that keeps the
+   * log the source of truth.
+   */
+  async undoLastReview(userId: string, cardId: string): Promise<UndoReviewResponse> {
+    const card = await this.findOwnedCard(userId, cardId);
+    if (!card) {
+      throw new NotFoundException('Card not found');
+    }
+
+    // Scoped to this user's own reviews; `reviewedAt` can tie after an
+    // out-of-order sync, so break ties on the (monotonic) cuid.
+    const lastLog = await this.prisma.reviewLog.findFirst({
+      where: { cardId, userId },
+      orderBy: [{ reviewedAt: 'desc' }, { id: 'desc' }],
+      select: { id: true, rating: true },
+    });
+    if (!lastLog) {
+      throw new ConflictException('No review to undo for this card');
+    }
+
+    // Deleting the log and rewriting the card happen in replayCard's single
+    // transaction, so the card can never be left describing a review that no
+    // longer exists.
+    await this.replayCard(userId, cardId, [], { deleteLogId: lastLog.id });
+    await this.knowledge.recomputeAfterReview(userId, cardId);
+
+    // A review that crossed the auto-graduation threshold left the card
+    // AUTO_KNOWN with a far-future due date. The recompute above ran while it
+    // was still AUTO_KNOWN — `recomputeAfterReview` only graduates ACTIVE cards
+    // — so nothing has re-graduated it in between, and undoKnown can put it
+    // back the same way the Known Words page does.
+    const revertedGraduation = card.knownState === 'AUTO_KNOWN';
+    if (revertedGraduation) {
+      await this.knowledge.undoKnown(userId, cardId);
+    }
+
+    const restored = await this.findOwnedCard(userId, cardId);
+    if (!restored) {
+      throw new NotFoundException('Card not found');
+    }
+
+    return { card: this.toReviewCard(restored), undoneRating: lastLog.rating, revertedGraduation };
+  }
+
+  /**
    * Syncs reviews completed offline. Each card touched is fully
    * replayed from an empty FSRS state through its complete ReviewLog history
    * (existing + newly-synced, sorted by `reviewedAt`) — the log is the source
@@ -150,21 +206,38 @@ export class CardsService {
     return { synced: valid.length };
   }
 
-  private async replayCard(userId: string, cardId: string, newItems: SyncReviewItem[]): Promise<void> {
+  /**
+   * Rewrites one card's whole scheduling history from `emptyFsrsCard()`:
+   * existing logs, plus `newItems`, minus `options.deleteLogId`, in
+   * `reviewedAt` order. The deletion, every log's rewritten snapshot and the
+   * card's final state land in one transaction.
+   */
+  private async replayCard(
+    userId: string,
+    cardId: string,
+    newItems: SyncReviewItem[],
+    options: { deleteLogId?: string } = {},
+  ): Promise<void> {
     const existingLogs = await this.prisma.reviewLog.findMany({
       where: { cardId },
       orderBy: { reviewedAt: 'asc' },
       select: { id: true, rating: true, latencyMs: true, reviewedAt: true },
     });
+    const keptLogs = options.deleteLogId
+      ? existingLogs.filter((l) => l.id !== options.deleteLogId)
+      : existingLogs;
 
     type Entry = { id?: string; rating: ReviewRating; latencyMs: number | null; reviewedAt: Date };
     const merged: Entry[] = [
-      ...existingLogs.map((l) => ({ id: l.id, rating: l.rating, latencyMs: l.latencyMs, reviewedAt: l.reviewedAt })),
+      ...keptLogs.map((l) => ({ id: l.id, rating: l.rating, latencyMs: l.latencyMs, reviewedAt: l.reviewedAt })),
       ...newItems.map((i) => ({ rating: i.rating, latencyMs: i.latencyMs ?? null, reviewedAt: new Date(i.reviewedAt) })),
     ].sort((a, b) => a.reviewedAt.getTime() - b.reviewedAt.getTime());
 
     let fsrsCard = emptyFsrsCard();
     const ops = [];
+    if (options.deleteLogId) {
+      ops.push(this.prisma.reviewLog.delete({ where: { id: options.deleteLogId } }));
+    }
     for (const entry of merged) {
       const { card: updated } = this.scheduler.next(fsrsCard, entry.reviewedAt, ratingToFsrs(entry.rating));
       const snapshot = buildReviewLogSnapshot(updated, entry.reviewedAt);

@@ -38,6 +38,37 @@ export async function enqueueReview(item: SyncReviewItem): Promise<void> {
   });
 }
 
+/**
+ * Removes the newest queued review for `cardId` — the undo path for a rating
+ * given offline, which exists only here and never reached the server.
+ *
+ * Returns `false` when nothing matched, which means the review has already
+ * been flushed and the caller must undo it through the API instead. Calling
+ * the API blindly would 404, or undo an older, already-synced review.
+ */
+export async function dequeueLatestReview(cardId: string): Promise<boolean> {
+  return withStore('readwrite', (store) => {
+    return new Promise<boolean>((resolve, reject) => {
+      // Keys are auto-incrementing, so walking them in reverse is newest-first.
+      const request = store.openCursor(null, 'prev');
+      request.onsuccess = () => {
+        const cursor = request.result;
+        if (!cursor) {
+          resolve(false);
+          return;
+        }
+        if ((cursor.value as SyncReviewItem).cardId === cardId) {
+          cursor.delete();
+          resolve(true);
+          return;
+        }
+        cursor.continue();
+      };
+      request.onerror = () => reject(request.error);
+    });
+  });
+}
+
 export async function getQueuedReviews(): Promise<SyncReviewItem[]> {
   return withStore('readonly', (store) => {
     return new Promise<SyncReviewItem[]>((resolve, reject) => {
