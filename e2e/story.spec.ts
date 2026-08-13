@@ -34,14 +34,27 @@ const READY_STORY = {
       surfaceForm: 'Haus',
       translation: 'house',
       emoji: '🏠',
+      pos: 'noun',
+      cefrLevel: 'A1.1',
+      gloss: 'building for living in',
+      // A real file would be a network fetch from the browser under test.
+      audioUrl: null,
+      example: { de: 'Das Haus ist alt.', en: 'The house is old.' },
       understood: null,
     },
     {
+      // Nothing but a headword and a translation — enrichment is lazy, so a
+      // target can reach a story before its entry has been filled in.
       entryId: 'e2',
       word: 'grün',
       surfaceForm: 'grün',
       translation: 'green',
       emoji: null,
+      pos: null,
+      cefrLevel: null,
+      gloss: null,
+      audioUrl: null,
+      example: null,
       understood: null,
     },
   ],
@@ -143,7 +156,7 @@ test.describe('Micro-story', () => {
     await expect(page.getByText('Ein grüner Tag')).toBeVisible({ timeout: 15000 });
   });
 
-  test("tapping a word marks it as didn't land and reveals its translation", async ({ page }) => {
+  test("tapping a word opens its entry, and marking is a separate press", async ({ page }) => {
     await page.route('**/api/v1/stories/story-1/complete', async (route) => {
       const body = route.request().postDataJSON() as { notUnderstood: string[] };
       expect(body.notUnderstood).toEqual(['e2']);
@@ -167,15 +180,49 @@ test.describe('Micro-story', () => {
 
     const word = page.getByRole('button', { name: 'grün', exact: true });
     await expect(word).toBeVisible({ timeout: 4000 });
-    await expect(word).toHaveAttribute('aria-pressed', 'false');
+    await expect(word).toHaveAttribute('aria-expanded', 'false');
 
     await word.click();
 
-    await expect(word).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByText('— green')).toBeVisible();
+    // Looking is not marking: the popover opens and nothing is recorded yet.
+    const popover = page.getByRole('dialog', { name: 'About grün' });
+    await expect(popover).toBeVisible();
+    await expect(popover.getByText('green')).toBeVisible();
+    await expect(page.getByText('2 of your words are in here.')).toBeVisible();
+
+    await popover.getByRole('button', { name: "Didn't land" }).click();
+    await expect(page.getByText("1 marked as didn't land.")).toBeVisible();
+
+    // Escape dismisses and hands focus back to the word.
+    await page.keyboard.press('Escape');
+    await expect(popover).toBeHidden();
+    await expect(word).toBeFocused();
 
     await page.getByRole('button', { name: 'Finish reading' }).click();
 
     await expect(page.getByText("1 of 2 words didn't land.")).toBeVisible({ timeout: 4000 });
+  });
+
+  test('a studied word stays inside the viewport at 375 px', async ({ page }) => {
+    await page.route('**/api/v1/stories/story-1', (route) => route.fulfill(json({ story: READY_STORY })));
+    await page.addInitScript(() => localStorage.setItem('vocabahn-story-id', 'story-1'));
+    await page.setViewportSize({ width: 375, height: 700 });
+    await page.goto('/story');
+
+    // "Das Haus …" is the first word of the first line and "Haus" the last of
+    // the last — the two positions a centred popover spills out of.
+    for (const name of ['Haus', 'grün']) {
+      const word = page.getByRole('button', { name, exact: true }).first();
+      await expect(word).toBeVisible({ timeout: 4000 });
+      await word.click();
+
+      const popover = page.getByRole('dialog', { name: `About ${name}` });
+      await expect(popover).toBeVisible();
+      const box = (await popover.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(375);
+
+      await page.keyboard.press('Escape');
+    }
   });
 });

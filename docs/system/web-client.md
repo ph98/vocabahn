@@ -70,6 +70,15 @@ read-only text, `pointer-events: none`, no focus trap. The activity heatmap and
 the progress bars both use it. Anything needing focusable controls inside the
 overlay wants a popover, not this.
 
+`StoryWord.tsx` is the other side of that line and the only popover in the app:
+an entry summary anchored to a studied word in a story, holding an audio button,
+a dictionary link and a toggle. Because it has controls it is `role="dialog"`,
+it is a DOM sibling of its trigger so Tab reaches them, and it keeps its own
+placement (shift back from the viewport edge, flip above the line) rather than
+stretching `FollowTooltip` to cover both jobs. Its entrance is CSS
+(`.vb-word-popover` in `index.css`), switched off under `prefers-reduced-motion`
+alongside the toast's. See `stories.md`.
+
 Gestures: swipe-to-rate on the review card; `PullToRefresh` on the dashboard; and
 `EdgeSwipeBack`, a window-level touch handler that runs `navigate(-1)` on a
 right-swipe starting within 24 px of the left edge — disabled on `/review` so it
@@ -251,13 +260,14 @@ service worker for the new revision and then reloads (`lib/app-update.ts`) —
 - The `offline-pack` endpoint has **no client consumer** (#23). There is no download
   control anywhere in the UI, so the top-1000 pack is unreachable
   (`dictionary.controller.ts`).
-- Test coverage is thin (#28): 145 Vitest cases across 20 files (with `jest-axe`
-  wired up in `src/test/`), and 18 Playwright specs across `landing`,
+- Test coverage is thin (#28): 162 Vitest cases across 21 files (with `jest-axe`
+  wired up in `src/test/`), and 19 Playwright specs across `landing`,
   `dictionary`, `review`, `story`. Most routes are untested; of the error paths,
   only the boundary and the error states themselves are covered.
 - The toast region's clearance of the mobile nav rests on the CSS custom
-  properties above, not on a rendered check — jsdom has no layout, and no
-  Playwright spec covers a 375 px viewport.
+  properties above, not on a rendered check — jsdom has no layout, and the one
+  Playwright spec that measures at 375 px covers the story word popover, not the
+  toasts.
 - (#28) The PWA manifest hardcodes `theme_color: '#0a0a0a'` (dark) while `theme.ts`
   updates the meta tag dynamically, so an installed app's chrome does not follow
   the light theme.

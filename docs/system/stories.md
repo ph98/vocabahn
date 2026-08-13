@@ -1,13 +1,14 @@
 # Micro-stories
 
 A short German text, retold from a real German news article on a subject the
-learner chose, using the words they are currently studying. The learner reads it
-and taps the words that didn't land.
+learner chose, using the words they are currently studying. The learner reads
+it, taps any studied word to see its entry, and marks the ones that didn't land.
 
 Code: `apps/api/src/stories/`, `apps/web/src/components/StoryPage.tsx`,
-`apps/web/src/lib/story-text.ts`, `packages/shared/src/story.ts`,
-`apps/api/src/sources/` for the articles (`sources.md`), `apps/api/src/tts/`
-for narration, and `apps/api/src/images/` for the illustration.
+`apps/web/src/components/StoryWord.tsx`, `apps/web/src/lib/story-text.ts`,
+`packages/shared/src/story.ts`, `apps/api/src/sources/` for the articles
+(`sources.md`), `apps/api/src/tts/` for narration, and `apps/api/src/images/`
+for the illustration.
 
 This is the only place a learner interacts with an LLM directly. Everywhere else
 AI runs behind the scenes (`enrichment.md`).
@@ -24,8 +25,8 @@ AI runs behind the scenes (`enrichment.md`).
 3. `StoryProcessor` (in-process, concurrency 2) sets `GENERATING`, calls Gemini,
    verifies the result, synthesizes narration, replaces the placeholder targets
    with verified ones, and sets `READY`.
-4. The learner reads, taps words, and finishes. `POST /stories/:id/complete`
-   writes `understood` on every target.
+4. The learner reads, marks the words that didn't land, and finishes.
+   `POST /stories/:id/complete` writes `understood` on every target.
 
 ## Topics and sources
 
@@ -178,6 +179,39 @@ Two details carry the correctness:
 
 A word occurring twice yields two tappable spans sharing one target.
 
+## Looking a word up mid-story
+
+`StoryWord.tsx` renders each target as a trigger with a popover holding what the
+story already knows about the entry: emoji and headword, part of speech, CEFR
+level, translation and first sense gloss, one example sentence, a pronunciation
+button, a **Didn't land** toggle, and a link through to `/word/:word`.
+
+**Nothing is fetched.** `StoryTarget` carries `pos`, `cefrLevel`, `gloss`,
+`audioUrl` and one `example`, read straight off the persisted `DictionaryEntry`
+in `storyInclude`. Going through `DictionaryService.getEntry` would trigger lazy
+enrichment (`enrichment.md`), so a reader running the mouse across a paragraph
+could spend their whole daily quota on words they only glanced at. Enrichment is
+lazy, so a target can arrive with nothing but a headword and a translation —
+those fields are then null and the popover shows what it has.
+
+**Looking is not marking.** Opening the popover records nothing; `understood`
+only moves when the toggle inside it is pressed. Before this the same click did
+both, so every curious glance wrote to the feature's only comprehension signal.
+On touch that makes tap open the popover rather than mark the word.
+
+It is deliberately not the shared `FollowTooltip` (`web-client.md`), which is
+read-only and never takes focus. This one holds controls, so it is a
+`role="dialog"` popover: hover or keyboard focus opens it, Escape closes it and
+hands focus back to the word, and it is a DOM sibling of the trigger — not a
+portal — so Tab walks straight into it. It is positioned `absolute` against the
+word rather than `fixed`, because the story container carries a GSAP transform
+that would re-root a fixed descendant, and it is shifted back horizontally and
+flipped above the line when the viewport edge is in the way.
+
+A marked word stays amber in the running text with the popover closed, and
+carries `aria-describedby` pointing at one shared visually-hidden note — a
+description, so the trigger's accessible name stays the German surface form.
+
 ## Narrating the wait
 
 `Story.stage` is `WRITING` or `NARRATING`, and is only reported while the status
@@ -248,9 +282,9 @@ is fixed on the `<img>` itself, nothing below it moves when the file arrives.
 
 ## The comprehension signal
 
-`StoryTarget.understood` is the record: `false` for a word the learner tapped,
-`true` for every other target in a completed story, `null` until completion.
-`respondedAt` timestamps it.
+`StoryTarget.understood` is the record: `false` for a word the learner marked
+**Didn't land**, `true` for every other target in a completed story, `null`
+until completion. `respondedAt` timestamps it.
 
 **Nothing consumes this.** It feeds neither FSRS nor `KnowledgeScore`, and
 tapping a word changes no card's schedule. The rows exist so the signal can be
@@ -322,6 +356,20 @@ would read as a bug.
   URL is stored. Nothing re-checks or re-fetches it: if Unsplash later removes
   the photo the figure disappears on the client and the story keeps no record
   that it ever had one.
+- The word popover shows the first sense gloss and one example. The usage note,
+  collocations, false friends, mnemonic and image are still only on the entry
+  page, behind **Open in dictionary**.
+- A target whose entry has never been enriched shows a headword, a translation
+  if one exists, and the two buttons. Nothing offers to enrich it from here, by
+  design — the story view must not spend quota.
+- The popover's placement is computed in `StoryWord.tsx` rather than by the
+  native Popover API or a positioning library: jsdom has neither, so the native
+  route could not be covered by the Vitest suite, and no positioning library is
+  in `apps/web/package.json`. The 375 px clamp is verified by a Playwright spec
+  instead, which CI does not run.
+- The popover does not trap focus: Tab past its last control leaves it and
+  closes it. Deliberate — reading should continue — but it is not modal-dialog
+  behaviour despite `role="dialog"`.
 - Stories accumulate; nothing prunes old rows.
 - `completedAt` can be rewritten by calling `complete` again — the endpoint is
   idempotent by overwrite, not append. There is no history of a learner's

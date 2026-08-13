@@ -166,10 +166,30 @@ body {
   }
 }
 
-/* Same contract as `prefersReducedMotion()` in lib/motion.ts: the toast still
-   appears, it just does not slide or scale. */
+/* The entrance for a story word's popover. It lives on the inner surface, not
+   on the positioned wrapper, so this transform never fights the one keeping the
+   popover inside the viewport. */
+.vb-word-popover {
+  animation: vb-word-popover-in 140ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top center;
+}
+
+@keyframes vb-word-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.25rem) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Same contract as `prefersReducedMotion()` in lib/motion.ts: both still
+   appear, they just do not slide or scale. */
 @media (prefers-reduced-motion: reduce) {
-  .vb-toast {
+  .vb-toast,
+  .vb-word-popover {
     animation: none;
   }
 }
