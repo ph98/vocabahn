@@ -36,6 +36,29 @@
 
 :root {
   color-scheme: light dark;
+
+  /* --- Floating-UI geometry -------------------------------------------------
+     One source of truth for the space the fixed mobile nav and the toast region
+     occupy. Anything else that floats over the page (a feedback button, a
+     banner) should anchor against these rather than re-deriving the numbers.
+     Mirrored in TypeScript as TOAST_REGION in `components/Toast.tsx`. */
+
+  /* Height of the fixed bottom nav on mobile; 0 once the nav goes in-flow. */
+  --vb-mobile-nav-height: max(calc(5rem + env(safe-area-inset-bottom, 0px)), 5.5rem);
+  /* Bottom edge of the toast region — clears the nav with a small gap. */
+  --vb-toast-inset-bottom: calc(var(--vb-mobile-nav-height) + 0.75rem);
+  --vb-toast-max-width: 26rem;
+  /* Above the nav and its popover, both of which sit at z-50. */
+  --vb-toast-z: 60;
+}
+
+/* From `md` up the nav is part of the document flow, so toasts only need to
+   clear the viewport edge. */
+@media (min-width: 768px) {
+  :root {
+    --vb-mobile-nav-height: 0px;
+    --vb-toast-inset-bottom: 1.5rem;
+  }
 }
 
 :root.theme-light {
@@ -82,7 +105,55 @@ body {
 
 /* Extra bottom padding when the mobile bottom nav is visible */
 .pb-mobile-nav {
-  padding-bottom: max(calc(5rem + env(safe-area-inset-bottom)), 5.5rem);
+  padding-bottom: var(--vb-mobile-nav-height);
+}
+
+/* --- Toast region ----------------------------------------------------------
+   Fixed, centred, above the mobile nav. `pointer-events: none` on the region so
+   the empty space around a toast stays clickable; each toast opts back in. */
+.vb-toast-region {
+  position: fixed;
+  inset-inline: 0;
+  bottom: var(--vb-toast-inset-bottom);
+  z-index: var(--vb-toast-z);
+  padding-inline: 1rem;
+  pointer-events: none;
+}
+
+.vb-toast-list {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: var(--vb-toast-max-width);
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+}
+
+.vb-toast {
+  pointer-events: auto;
+  animation: vb-toast-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes vb-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Same contract as `prefersReducedMotion()` in lib/motion.ts: the toast still
+   appears, it just does not slide or scale. */
+@media (prefers-reduced-motion: reduce) {
+  .vb-toast {
+    animation: none;
+  }
 }
 
 @media (min-width: 640px) {
