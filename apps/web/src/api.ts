@@ -20,6 +20,7 @@ import {
   storyResponseSchema,
   submitReviewResponseSchema,
   syncReviewsResponseSchema,
+  undoReviewResponseSchema,
   userSchema,
   type AutoGraduation,
   type CreateDeckBody,
@@ -137,6 +138,16 @@ export async function submitReview(
 ) {
   const { data } = await api.post(`/reviews/${encodeURIComponent(cardId)}`, body);
   return submitReviewResponseSchema.parse(data);
+}
+
+/**
+ * Rolls back the most recent review of a card that already reached the server.
+ * A review still sitting in the offline queue must be dropped with
+ * `dequeueLatestReview` instead — it has no server-side row to undo.
+ */
+export async function undoLastReview(cardId: string) {
+  const { data } = await api.post(`/reviews/${encodeURIComponent(cardId)}/undo`);
+  return undoReviewResponseSchema.parse(data);
 }
 
 export async function syncReviews(reviews: SyncReviewItem[]) {

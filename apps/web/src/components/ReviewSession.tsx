@@ -6,9 +6,9 @@ import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { useDrag } from '@use-gesture/react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { fetchDictionaryEntry, fetchDueCards, submitReview } from '../api';
+import { fetchDictionaryEntry, fetchDueCards, submitReview, undoLastReview } from '../api';
 import { useSettings } from '../hooks/useSettings';
-import { enqueueReview, flushQueue, getQueueCount } from '../offline/queue';
+import { dequeueLatestReview, enqueueReview, flushQueue, getQueueCount } from '../offline/queue';
 import { useOnlineStatus } from '../offline/useOnlineStatus';
 import { prefersReducedMotion, spring, springSnappy } from '../lib/motion';
 import { trackEvent } from '../lib/telemetry';
@@ -60,6 +60,22 @@ const RATING_OFFSET: Record<ReviewRating, { x: number; y: number }> = {
 
 const SWIPE_THRESHOLD = 100;
 const FLY_DISTANCE = 500;
+
+/**
+ * The one rating a session can take back. Only the most recent rating is
+ * undoable — there is no multi-step history — and it is dropped when the
+ * session is left or restarted.
+ */
+type PendingUndo = {
+  cardId: string;
+  /** Queue position of the rated card, so undo can step straight back to it. */
+  index: number;
+  rating: ReviewRating;
+  /** The review lives only in the IndexedDB queue; undoing must not call the API. */
+  queuedOffline: boolean;
+  /** Words this rating auto-graduated, to subtract from the session banner. */
+  graduatedCount: number;
+};
 
 function CardFront({ entry, revealed }: { entry: CardEntry; revealed: boolean }) {
   return (
@@ -275,13 +291,23 @@ export function ReviewSession() {
     });
   }, [isOnline, queryClient]);
 
+  const [pendingUndo, setPendingUndo] = useState<PendingUndo | null>(null);
+  // Awaited by undo so a fast tap can't run the dequeue before the enqueue it
+  // is meant to cancel has actually landed in IndexedDB.
+  const enqueueRef = useRef<Promise<unknown>>(Promise.resolve());
+
   const reviewMutation = useMutation({
     mutationFn: (vars: { cardId: string; rating: ReviewRating; latencyMs?: number; reviewedAt: string }) =>
       submitReview(vars.cardId, { rating: vars.rating, latencyMs: vars.latencyMs }),
-    onSuccess: ({ autoGraduated }) => {
+    onSuccess: ({ autoGraduated }, vars) => {
       void queryClient.invalidateQueries({ queryKey: ['courses'] });
       if (autoGraduated && autoGraduated.count > 0) {
         setAutoGraduatedCount((n) => n + autoGraduated.count);
+        // Remember how much of the banner this rating is responsible for, so
+        // undoing it takes exactly that back off.
+        setPendingUndo((p) =>
+          p && p.cardId === vars.cardId ? { ...p, graduatedCount: p.graduatedCount + autoGraduated.count } : p,
+        );
       }
     },
     // Offline (or a flaky connection): queue the review for sync on reconnect
@@ -294,6 +320,32 @@ export function ReviewSession() {
         reviewedAt: vars.reviewedAt,
       });
       refreshQueuedCount();
+      setPendingUndo((p) => (p && p.cardId === vars.cardId ? { ...p, queuedOffline: true } : p));
+    },
+  });
+
+  const undoMutation = useMutation({
+    mutationFn: async (action: PendingUndo) => {
+      await enqueueRef.current;
+      if (action.queuedOffline) {
+        // The review never reached the server — drop it from the queue so it
+        // can't be resurrected by the next flush.
+        const dropped = await dequeueLatestReview(action.cardId);
+        refreshQueuedCount();
+        if (dropped) return;
+        // It was flushed between rating and undo; fall through to the API.
+      }
+      await undoLastReview(action.cardId);
+    },
+    onSettled: () => {
+      // Same keys the review path touches — scheduling, progress and the
+      // known-words list all move when a review is rolled back.
+      void queryClient.invalidateQueries({ queryKey: ['courses'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['known-words'] });
+      // Mark the queue stale without refetching: a refetch mid-session would
+      // swap the cards out from under the index we just stepped back to.
+      void queryClient.invalidateQueries({ queryKey: ['due-cards'], refetchType: 'none' });
     },
   });
 
@@ -316,12 +368,34 @@ export function ReviewSession() {
     if (isOnline) {
       reviewMutation.mutate({ cardId: current.id, rating, latencyMs, reviewedAt });
     } else {
-      void enqueueReview({ cardId: current.id, rating, latencyMs, reviewedAt }).then(refreshQueuedCount);
+      enqueueRef.current = enqueueReview({ cardId: current.id, rating, latencyMs, reviewedAt }).then(
+        refreshQueuedCount,
+      );
     }
+    setPendingUndo({ cardId: current.id, index, rating, queuedOffline: !isOnline, graduatedCount: 0 });
     setStats((s) => ({ ...s, [rating]: s[rating] + 1 }));
     setRevealed(false);
     revealedAt.current = null;
     setIndex((i) => i + 1);
+  };
+
+  // Undo stays available until the next rating; wait for an in-flight submit so
+  // the rollback can't race the review it is rolling back.
+  const canUndo = pendingUndo !== null && !reviewMutation.isPending && !undoMutation.isPending;
+
+  const undoLastRating = () => {
+    if (!pendingUndo || reviewMutation.isPending || undoMutation.isPending) return;
+    const action = pendingUndo;
+    setPendingUndo(null);
+    setStats((s) => ({ ...s, [action.rating]: Math.max(0, s[action.rating] - 1) }));
+    if (action.graduatedCount > 0) {
+      setAutoGraduatedCount((n) => Math.max(0, n - action.graduatedCount));
+    }
+    setRevealed(false);
+    revealedAt.current = null;
+    undoAnnouncementRef.current = `Undid ${RATING_LABELS[action.rating]}. `;
+    setIndex(action.index);
+    undoMutation.mutate(action);
   };
 
   const rate = (rating: ReviewRating) => {
@@ -395,10 +469,14 @@ export function ReviewSession() {
   // results.
   const [announcement, setAnnouncement] = useState('');
   const lastRatingRef = useRef<ReviewRating | null>(null);
+  const undoAnnouncementRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!queue) return;
-    const prefix = lastRatingRef.current ? `Rated ${RATING_LABELS[lastRatingRef.current]}. ` : '';
+    const prefix =
+      undoAnnouncementRef.current ??
+      (lastRatingRef.current ? `Rated ${RATING_LABELS[lastRatingRef.current]}. ` : '');
+    undoAnnouncementRef.current = null;
     lastRatingRef.current = null;
     if (card) {
       setAnnouncement(`${prefix}Card ${index + 1} of ${queue.length}: ${card.entry.word}.`);
@@ -458,10 +536,47 @@ export function ReviewSession() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [card, revealed]);
 
+  // Undo shortcut: `u`, or the platform's Cmd/Ctrl+Z. Bound separately from the
+  // rating keys because it also has to work on the summary screen, where the
+  // last card of the session is still undoable.
+  useEffect(() => {
+    if (!canUndo) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      const chord = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z';
+      const plainU = e.key.toLowerCase() === 'u' && !e.metaKey && !e.ctrlKey && !e.altKey;
+      if (!chord && !plainU) return;
+      e.preventDefault();
+      undoLastRating();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [canUndo, pendingUndo]);
+
   return (
     <MotionConfig reducedMotion="user">
     <section aria-label="Review session" className="space-y-4">
-      <h2 className="text-sm font-medium uppercase tracking-wide text-surface-400">Review</h2>
+      <div className="flex min-h-11 items-center justify-between gap-3">
+        <h2 className="text-sm font-medium uppercase tracking-wide text-surface-400">Review</h2>
+        {pendingUndo !== null && (
+          <button
+            type="button"
+            onClick={undoLastRating}
+            disabled={!canUndo}
+            aria-label="Undo last rating"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-surface-700 px-3 py-2 text-sm font-medium text-surface-200 transition-colors hover:border-surface-600 hover:bg-surface-800 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            <span aria-hidden="true">↺</span>
+            Undo
+            <kbd
+              aria-hidden="true"
+              className="ml-0.5 hidden rounded border border-surface-700 px-1 text-[10px] font-normal text-surface-500 sm:inline"
+            >
+              U
+            </kbd>
+          </button>
+        )}
+      </div>
 
       <p aria-live="polite" className="sr-only">
         {announcement}
@@ -476,6 +591,16 @@ export function ReviewSession() {
           {!isOnline ? "You're offline — reviews are saved on this device" : 'Syncing offline reviews…'}
           {queuedCount > 0 && ` (${queuedCount} queued)`}
         </div>
+      )}
+
+      {undoMutation.isError && (
+        <p
+          role="status"
+          aria-live="polite"
+          className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2.5 text-sm text-accent-red"
+        >
+          Couldn't undo that rating on the server — it may still count toward scheduling.
+        </p>
       )}
 
       {autoGraduatedCount > 0 && (
@@ -528,6 +653,8 @@ export function ReviewSession() {
           onReviewMore={() => {
             setIndex(0);
             setStats({ AGAIN: 0, HARD: 0, GOOD: 0, EASY: 0 });
+            // A fresh queue invalidates the stored index the undo points at.
+            setPendingUndo(null);
             void queryClient.invalidateQueries({ queryKey: ['due-cards', courseId, deckId] });
           }}
         />

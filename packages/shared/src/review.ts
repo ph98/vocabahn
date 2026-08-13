@@ -58,6 +58,20 @@ export const submitReviewResponseSchema = z.object({
 });
 export type SubmitReviewResponse = z.infer<typeof submitReviewResponseSchema>;
 
+// ── Undo the last rating ────────────────────────────────────────────────────
+// Rolls back the caller's most recent review of one card. The card comes back
+// with the FSRS state it had before that review, recomputed by replaying the
+// remaining ReviewLog rows.
+
+export const undoReviewResponseSchema = z.object({
+  card: reviewCardSchema,
+  /** The rating that was rolled back, so a session can decrement its tally. */
+  undoneRating: reviewRatingSchema,
+  /** True when the undone review had auto-graduated the word and that was reverted too. */
+  revertedGraduation: z.boolean(),
+});
+export type UndoReviewResponse = z.infer<typeof undoReviewResponseSchema>;
+
 // ── Offline review sync ─────────────────────────────────────────────────────
 // Reviews completed while offline are queued client-side with their original
 // timestamp, then replayed in timestamp order; server-side FSRS state is

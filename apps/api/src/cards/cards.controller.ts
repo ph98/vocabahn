@@ -7,6 +7,7 @@ import {
   type SubmitReviewResponse,
   type SyncReviewsBody,
   type SyncReviewsResponse,
+  type UndoReviewResponse,
 } from '@vocabahn/shared';
 import { CurrentUserId, JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ZodValidationPipe } from '../common/zod-validation.pipe';
@@ -34,6 +35,15 @@ export class CardsController {
     @CurrentUserId() userId: string,
   ): Promise<SyncReviewsResponse> {
     return this.cards.syncReviews(userId, body.reviews);
+  }
+
+  /** Rolls back the caller's most recent review of this card. */
+  @Post(':cardId/undo')
+  async undo(
+    @Param('cardId') cardId: string,
+    @CurrentUserId() userId: string,
+  ): Promise<UndoReviewResponse> {
+    return this.cards.undoLastReview(userId, cardId);
   }
 
   @Post(':cardId')
