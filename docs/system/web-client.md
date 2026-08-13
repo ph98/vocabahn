@@ -3,14 +3,45 @@
 The SPA: routing, navigation, theming, motion, gestures, accessibility, and PWA
 behaviour.
 
-Code: `apps/web/src/App.tsx` (539 lines — shell, nav, and route table),
-`apps/web/src/components/`, `apps/web/src/lib/`, `apps/web/vite.config.ts`.
+Code: `apps/web/src/App.tsx` (771 lines — shell, nav, and route table),
+`apps/web/src/components/`, `apps/web/src/hooks/`, `apps/web/src/lib/`,
+`apps/web/vite.config.ts`.
 
 ## Shell
 
-`App.tsx` gates on `useQuery(['me'])`. Signed out → `LandingPage` plus a Google
-One Tap prompt. Signed in → `AppNav` and the route table. There is no router
-guard: the routes simply are not mounted when there is no user.
+`App.tsx` gates on `useSession()` (`hooks/useSession.ts`), which turns the
+`['me']` query into one of five answers. There is no router guard: the routes
+simply are not mounted unless the session says so.
+
+| Status | Shown |
+| :--- | :--- |
+| `loading` | Nothing yet — the first check has not settled |
+| `anonymous` | `LandingPage` plus the Google One Tap prompt |
+| `authenticated` | `AppNav` and the route table |
+| `unreachable` | `ServerUnreachableState` — see **Errors** |
+| `offline` | `OfflineState`, for a device with no connection and no known user |
+
+The distinction between `anonymous` and `unreachable` is the point. `fetchMe()`
+answers `null` — signed out — only for a 401 the silent refresh could not
+rescue; a refused connection, a 5xx or a throttler 429 throws
+`ApiUnavailableError` instead (`accounts.md`). Anything else would render the
+marketing page at a signed-in user mid-session, over a session cookie that is
+still perfectly valid.
+
+Nothing about an outage clears client state. The last known user is kept, the
+router is untouched, and the IndexedDB review queue is not involved at all, so
+recovery puts the user back on the same route with the same session. Recovery
+is automatic: the footer's `/health` poll is already running (it lives outside
+every auth branch), and the outage page watches it rather than starting a
+second loop — when the API answers again, the session is re-checked once.
+
+Retry lives on the query, not in the return value: `installSessionQueryDefaults`
+(called from `main.tsx`) gives `['me']` three retries with exponential backoff
+and no retry at all against a 4xx. It is a query default rather than a
+`useQuery` option because several components observe `['me']` and per-observer
+retry settings would disagree about a shared fetch. A 429 is treated as pacing
+rather than an outage: it backs off, and never takes an already-signed-in user
+out of the app.
 
 Routes, all lazy-loaded behind one `RouteBoundary` — suspense fallback plus an
 error boundary, see **Errors** — except the dictionary, profile, and landing
@@ -187,8 +218,11 @@ the built `dist` is CommonJS for NestJS while the browser needs ESM. Shared-sche
 edits hot-reload.
 
 `__APP_VERSION__` is injected from the root `package.json`, rendered in the
-footer, and linked to the changelog on GitHub. A polled health dot
-(5 s interval) sits beside it.
+footer, and linked to the changelog on GitHub. A polled health dot sits beside
+it: `hooks/useHealth.ts`, 5 s interval, `retry: false` so one failed check does
+not become four. That poll is the app's only one — `useHealthSignal()` reads its
+result without issuing a request of its own, which is how the outage page knows
+when to try again.
 
 The footer wraps at narrow widths and carries, in order: Help & User Guide, the
 version/changelog link, Terms, Privacy Policy, a **"Source on GitHub"** link to
@@ -213,7 +247,7 @@ nav, no signed-in user, so a signed-out visitor sees the same page.
 | `ResourceNotFoundState` | The route exists but the deck / course / word does not |
 | `ForbiddenState` | 403 — someone else's private deck |
 | `ServerErrorState` | 5xx, or an uncaught render error |
-| `ServerUnreachableState` | The API never answered |
+| `ServerUnreachableState` | The API never answered — including at the auth gate |
 | `OfflineState` | The device has no network |
 | `NewVersionAvailableState` | A dynamic import failed because this tab is on an old build |
 | `MaintenanceState` | Planned downtime, when something says so |
@@ -229,6 +263,14 @@ fails inside a working page does not blow away the screen. The full-page form
 renders the `<h1>` and moves focus to it on mount — the same "you are somewhere
 new" signal `RouteAnnouncer` gives for ordinary navigation. Entrance motion goes
 through `lib/motion`, so nothing animates under `prefers-reduced-motion`.
+
+The auth gate is the one caller that reaches for a state directly rather than
+through `classifyError`: it already knows the shape of what failed, and it
+needs `ServerUnreachableState`'s retry affordances (`isRetrying`,
+`retryInSeconds`, `autoRetrying`) wired to the health poll. A gate failure that
+is *not* an `ApiUnavailableError` — a response that would not parse, say — goes
+through `ErrorStateForError` instead, because "we can't reach the server" would
+be a lie about it.
 
 Two boundaries make throws reachable. `RouteBoundary` wraps each lazy route
 tree (it owns the `Suspense` fallback as well) and clears itself when the
@@ -264,17 +306,25 @@ term, to every hit. Full taxonomy in `analytics.md`.
   renders the marketing page instead. The 404 page itself works for signed-out
   visitors (its CTA says "Go to the home page", not "dashboard") — it is simply
   not routed to.
-- **The offline state is defined but not wired to `useOnlineStatus`.**
-  `OfflineState` is reached from a failed request while `navigator.onLine` is
-  false, not from a route-level offline check.
+- **The offline state is wired only at the auth gate.** `useSession` shows
+  `OfflineState` when the device is offline and no user has been confirmed
+  yet; everywhere else `OfflineState` is still only reached from a failed
+  request while `navigator.onLine` is false, not from a route-level check.
+- **A signed-in user is taken out of the app during a backend outage**, even
+  mid-review. Queued ratings survive in IndexedDB and sync on recovery, and the
+  route is restored, but the in-memory position in a review session is not.
+  Going *offline* is different: the last known user is kept and the routes stay
+  mounted, which is what makes offline review work.
 - **No route for the email magic link** (#13) — see `accounts.md`.
 - The `offline-pack` endpoint has **no client consumer** (#23). There is no download
   control anywhere in the UI, so the top-1000 pack is unreachable
   (`dictionary.controller.ts`).
-- Test coverage is thin (#28): 176 Vitest cases across 21 files (with `jest-axe`
+- Test coverage is thin (#28): __COUNT__ (with `jest-axe`
   wired up in `src/test/`), and 19 Playwright specs across `landing`,
   `dictionary`, `review`, `story`. Most routes are untested; of the error paths,
-  only the boundary and the error states themselves are covered.
+  only the boundary, the error states themselves, and the auth gate are covered.
+  No end-to-end spec stops the API and watches the client recover — the outage
+  path is covered at the unit and component level only.
 - The toast region's clearance of the mobile nav rests on the CSS custom
   properties above, not on a rendered check — jsdom has no layout, and the one
   Playwright spec that measures at 375 px covers the story word popover, not the

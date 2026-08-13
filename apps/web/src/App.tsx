@@ -5,15 +5,22 @@ import { BadgeCheck, BookOpen, CircleUserRound, HelpCircle, Monitor, Moon, Sun }
 import { MotionConfig, motion } from 'motion/react';
 import { lazy, useEffect, useRef, useState, type ComponentType, type RefObject } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { fetchAuthConfig, fetchHealth, fetchMe, googleOneTapLogin } from './api';
+import { ApiUnavailableError, fetchAuthConfig, googleOneTapLogin } from './api';
 import { useGoogleOneTap } from './hooks/useGoogleOneTap';
+import { HEALTH_POLL_INTERVAL_MS, useHealthPoll, useHealthSignal } from './hooks/useHealth';
+import { useSession, useSessionUser } from './hooks/useSession';
 import { prefersReducedMotion, springSnappy } from './lib/motion';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
 import { ProfilePage } from './components/ProfilePage';
 import { LandingPage } from './components/LandingPage';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
 import { ToastProvider } from './components/Toast';
-import { RouteBoundary } from './components/errors';
+import {
+  ErrorStateForError,
+  OfflineState,
+  RouteBoundary,
+  ServerUnreachableState,
+} from './components/errors';
 import { type Theme, useTheme, resolveTheme } from './lib/theme';
 import { trackPageView, trackEvent, markPendingLogin, flushPendingLogin } from './lib/telemetry';
 
@@ -229,7 +236,7 @@ function MorePanel({ onClose, buttonRef }: {
 /** Single nav that adapts to viewport: fixed bottom bar on mobile, in-flow pill row on desktop. */
 function AppNav() {
   const { pathname } = useLocation();
-  const { data: user } = useQuery({ queryKey: ['me'], queryFn: fetchMe, retry: false });
+  const user = useSessionUser();
   const navRef = useRef<HTMLElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
   const logoMarkRef = useRef<HTMLImageElement>(null);
@@ -458,13 +465,15 @@ function GitHubMark(props: { className?: string }) {
   );
 }
 
-/** Small status dot reflecting overall API/db/redis health, linking to /status. */
+/**
+ * Small status dot reflecting overall API/db/redis health, linking to /status.
+ *
+ * It sits in the footer, outside every auth branch, so its poll keeps running
+ * during an outage — which is what {@link SessionUnavailable} rides on to bring
+ * the app back without a second polling loop.
+ */
 function StatusLink() {
-  const { data, isError } = useQuery({
-    queryKey: ['health'],
-    queryFn: fetchHealth,
-    refetchInterval: 5000,
-  });
+  const { data, isError } = useHealthPoll();
   const up = !isError && data?.services.database === 'up' && data?.services.redis === 'up';
 
   return (
@@ -477,6 +486,61 @@ function StatusLink() {
     </NavLink>
   );
 }
+
+/**
+ * What the shell shows when it cannot tell whether anyone is signed in.
+ *
+ * Deliberately not a sign-in prompt and not the landing page: the session
+ * cookie is untouched, so nothing here clears client state and the app comes
+ * back on whatever route the user was already on. Recovery rides on the
+ * footer's `/health` poll — when the API starts answering again, the session is
+ * re-checked once — rather than adding a second loop against a struggling API.
+ */
+function SessionUnavailable({
+  error,
+  isChecking,
+  onRetry,
+}: {
+  error: unknown;
+  isChecking: boolean;
+  onRetry: () => void;
+}) {
+  const health = useHealthSignal();
+  const apiAnswered = health.isSuccess;
+  const wasAnswering = useRef(false);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (apiAnswered && !wasAnswering.current) onRetry();
+    wasAnswering.current = apiAnswered;
+  }, [apiAnswered, onRetry]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // A failure that is not an outage — a response we could not parse, say — gets
+  // the state that actually describes it rather than a comforting lie.
+  if (!(error instanceof ApiUnavailableError)) {
+    return <ErrorStateForError error={error} onRetry={onRetry} />;
+  }
+
+  const lastCheckedAt = Math.max(health.dataUpdatedAt, health.errorUpdatedAt);
+  const retryInSeconds = lastCheckedAt
+    ? Math.ceil((lastCheckedAt + HEALTH_POLL_INTERVAL_MS - now) / 1000)
+    : null;
+
+  return (
+    <ServerUnreachableState
+      isRetrying={isChecking || health.isFetching}
+      retryInSeconds={retryInSeconds}
+      autoRetrying
+      onRetry={onRetry}
+    />
+  );
+}
+
 /**
  * Invisible left-edge detector that triggers navigate(-1) on a right-swipe
  * starting within 24 px of the left edge. Disabled on /review so it doesn't
@@ -547,7 +611,8 @@ function EdgeSwipeBack() {
 }
 
 export default function App() {
-  const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe, retry: false });
+  const session = useSession();
+  const signedIn = session.status === 'authenticated';
   const mainRef = useRef<HTMLElement>(null);
   const [theme, setTheme] = useTheme();
 
@@ -574,7 +639,10 @@ export default function App() {
 
   return (
     <ToastProvider>
-      {!isPending && !user && <GoogleOneTapPrompt />}
+      {/* Only when the API has actually said there is no session — never while
+          it is simply not answering, which would ask a signed-in user to sign
+          in again. */}
+      {session.status === 'anonymous' && <GoogleOneTapPrompt />}
       <CookieConsentBanner />
       <a
         href="#main"
@@ -603,10 +671,10 @@ export default function App() {
         id="main"
         ref={mainRef}
         tabIndex={-1}
-        className={`flex min-h-dvh flex-col items-center gap-6 ${user ? 'max-md:pb-mobile-nav md:pb-safe' : 'pb-safe'} text-surface-100 outline-none`}
+        className={`flex min-h-dvh flex-col items-center gap-6 ${signedIn ? 'max-md:pb-mobile-nav md:pb-safe' : 'pb-safe'} text-surface-100 outline-none`}
       >
         <AuthErrorBanner />
-        {!isPending && !user && (
+        {session.status === 'anonymous' && (
         <div className="w-full max-w-6xl space-y-10 mt-8 md:mt-16 px-4 xl:px-0">
           <RouteBoundary>
             <Routes>
@@ -619,7 +687,23 @@ export default function App() {
         </div>
       )}
 
-      {user && (
+      {/* The API could not tell us who this is. The routes stay unmounted, but
+          so does the landing page — nothing about the session has been lost. */}
+      {session.status === 'unreachable' && (
+        <div className="w-full max-w-6xl px-4 xl:px-0">
+          <SessionUnavailable error={session.error} isChecking={session.isChecking} onRetry={session.recheck} />
+        </div>
+      )}
+
+      {/* No connection and no user we have met before: the device is the
+          problem, and the advice is different from an outage's. */}
+      {session.status === 'offline' && (
+        <div className="w-full max-w-6xl px-4 xl:px-0">
+          <OfflineState onRetry={session.recheck} />
+        </div>
+      )}
+
+      {signedIn && (
         <>
           <AppNav />
           <div className="w-full max-w-6xl">

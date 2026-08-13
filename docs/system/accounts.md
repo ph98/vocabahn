@@ -55,10 +55,11 @@ rejects a refresh token used as an access token by checking the `type` claim.
 The guard is opt-in per controller, not global.
 
 Refresh rotates both tokens. The client's `fetchMe()` makes exactly one silent
-`POST /auth/refresh` attempt on a 401, then settles into the signed-out state.
-On any non-401 error it returns null rather than throwing — deliberately, so
-react-query does not retry-storm the throttler across remounts
-(`apps/web/src/api.ts:35`).
+`POST /auth/refresh` attempt on a 401, and returns `null` — the signed-out
+answer — only if that refresh is itself rejected with a 4xx. Every other
+failure (no response, 5xx, a throttler 429) throws `ApiUnavailableError`, so a
+backend outage cannot present as a sign-out. Retry-storm protection lives on
+the query instead of in the return value: see **Shell** in `web-client.md`.
 
 ## Rate limiting and quotas
 
