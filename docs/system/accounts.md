@@ -70,9 +70,18 @@ the query instead of in the return value: see **Shell** in `web-client.md`.
   (`enrichment.service.ts`). Configurable via `ENRICHMENT_DAILY_CAP`.
   **Observed** on the profile page as `0 / 50`.
 
-`POST /auth/email/request` always returns 204, including for malformed
-addresses, to avoid email enumeration. Previous unused OTPs for an address are
-invalidated when a new one is issued.
+`POST /auth/email/request` returns 204 for any well-formed *or* malformed
+address, to avoid email enumeration. Previous unused OTPs for an address are
+invalidated when a new one is issued. It does **not** return 204 when the SMTP
+send itself throws — `sendMagicLink` is awaited inside the handler, so a relay
+that rejects the connection surfaces as a 500 (**observed** against a local
+SMTP server refusing the configured credentials). That is what lets the live
+monitoring suite detect a broken mail path.
+
+The auth controller's throttle is ten requests per minute per IP, and one
+signed-out page load already costs three of them: `/auth/me`, the silent
+`/auth/refresh` behind it, and `/auth/config`. See `monitoring.md` for how the
+live suite paces itself around that.
 
 ## HTTP hardening
 

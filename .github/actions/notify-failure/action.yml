@@ -1,0 +1,83 @@
+name: Notify monitoring failure
+description: >-
+  Routes a failed monitoring run to a human. Always files or updates a GitHub
+  issue (no secret required, so alerting can never be silently unconfigured) and
+  additionally posts to a webhook when one is set.
+
+inputs:
+  title:
+    description: Short description of what failed, e.g. "Production health check".
+    required: true
+  environment:
+    description: staging | production
+    required: true
+  target-url:
+    description: The URL that was being checked.
+    required: false
+    default: ''
+  webhook-url:
+    description: Optional Slack/Discord-compatible incoming webhook.
+    required: false
+    default: ''
+  github-token:
+    description: Token used to file the alert issue. The default GITHUB_TOKEN is enough.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # One open issue per (check, environment). A flapping check comments on the
+    # existing issue instead of filing a new one every half hour, which is what
+    # turns an alert channel into noise people stop reading.
+    - name: File or update the alert issue
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        GH_REPO: ${{ github.repository }}
+        ALERT_TITLE: ${{ inputs.title }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        TARGET_URL: ${{ inputs.target-url }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        issue_title="[monitoring] $ALERT_TITLE failing on $ENVIRONMENT"
+        body=$(printf '%s\n' \
+          "**$ALERT_TITLE** failed against \`${TARGET_URL:-unknown target}\`." \
+          "" \
+          "- Environment: \`$ENVIRONMENT\`" \
+          "- Run: $RUN_URL" \
+          "- Commit: \`${GITHUB_SHA:-unknown}\`" \
+          "" \
+          "Traces and screenshots, when the failure produced any, are attached to the run as artifacts." \
+          "Close this issue once the environment is healthy; the next failure will open a fresh one.")
+
+        existing=$(gh issue list --state open --label monitoring --search "$issue_title" \
+          --json number,title --jq ".[] | select(.title == \"$issue_title\") | .number" | head -n1)
+
+        if [[ -n "$existing" ]]; then
+          gh issue comment "$existing" --body "$body"
+          echo "Commented on existing alert issue #$existing"
+        else
+          # The label may not exist yet on a fresh repository.
+          gh label create monitoring --description "Automated uptime and e2e monitoring alerts" \
+            --color B60205 2>/dev/null || true
+          gh issue create --title "$issue_title" --label monitoring --body "$body"
+        fi
+
+    - name: Post to the alert webhook
+      if: inputs.webhook-url != ''
+      shell: bash
+      env:
+        WEBHOOK_URL: ${{ inputs.webhook-url }}
+        ALERT_TITLE: ${{ inputs.title }}
+        ENVIRONMENT: ${{ inputs.environment }}
+        TARGET_URL: ${{ inputs.target-url }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        # `content` is what Discord reads, `text` is what Slack reads; sending
+        # both means one secret works with either without a format flag.
+        message="🔴 $ALERT_TITLE failed on $ENVIRONMENT (${TARGET_URL:-unknown target}) — $RUN_URL"
+        payload=$(jq -nc --arg m "$message" '{text: $m, content: $m}')
+        curl --silent --show-error --fail --max-time 20 \
+          -H 'Content-Type: application/json' -d "$payload" "$WEBHOOK_URL"

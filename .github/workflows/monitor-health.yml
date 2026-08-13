@@ -1,0 +1,51 @@
+# Layer 1 — is it up? One request, every five minutes, per environment.
+#
+# Five minutes is the floor GitHub's scheduler offers, and it honours crons on a
+# best-effort basis: under load a run can be delayed by many minutes or dropped.
+# That is acceptable for catching a sustained outage and is not a substitute for
+# sub-minute, multi-region synthetic monitoring if that is ever needed.
+name: Monitor — health
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: monitor-health
+  cancel-in-progress: false
+
+env:
+  STAGING_URL: ${{ vars.STAGING_URL || 'https://staging.vocabahn.app' }}
+  PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://vocabahn.app' }}
+
+jobs:
+  health:
+    name: Health — ${{ matrix.environment }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: [staging, production]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Alerts only after two consecutive failed probes — see the script.
+      - name: Probe /api/v1/health
+        env:
+          TARGET_URL: ${{ matrix.environment == 'production' && env.PRODUCTION_URL || env.STAGING_URL }}
+        run: bash scripts/health-check.sh "$TARGET_URL"
+
+      - name: Alert on failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
+        with:
+          title: Health check
+          environment: ${{ matrix.environment }}
+          target-url: ${{ matrix.environment == 'production' && env.PRODUCTION_URL || env.STAGING_URL }}
+          webhook-url: ${{ secrets.MONITOR_ALERT_WEBHOOK_URL }}
+          github-token: ${{ github.token }}

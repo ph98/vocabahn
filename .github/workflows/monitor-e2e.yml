@@ -1,0 +1,90 @@
+# Layer 2 — can somebody actually use it? The full unmocked journey, every
+# half hour: request a magic link, read it out of a real mailbox, sign in,
+# survive a reload, rotate the token pair, search the dictionary, rate a card.
+#
+# Deliberately separate from `monitor-health.yml`: this run costs a browser, a
+# mailbox round trip and a couple of minutes, and answers a different question.
+name: Monitor — e2e
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Which environment to exercise
+        type: choice
+        options: [both, staging, production]
+        default: both
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  STAGING_URL: ${{ vars.STAGING_URL || 'https://staging.vocabahn.app' }}
+  PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://vocabahn.app' }}
+
+jobs:
+  staging:
+    name: Live e2e — staging
+    if: github.event_name != 'workflow_dispatch' || inputs.environment != 'production'
+    runs-on: ubuntu-latest
+    # One monitoring account per environment: overlapping runs would invalidate
+    # each other's magic links. Never cancel a run in flight — a cancelled
+    # monitoring run tells you nothing.
+    concurrency:
+      group: monitor-e2e-staging
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/playwright
+        with:
+          project: monitor
+          base-url: ${{ env.STAGING_URL }}
+          artifact-name: monitor-staging-report
+          monitor-email: ${{ secrets.MONITOR_EMAIL_STAGING }}
+          monitor-imap-host: ${{ secrets.MONITOR_IMAP_HOST }}
+          monitor-imap-port: ${{ secrets.MONITOR_IMAP_PORT }}
+          monitor-imap-user: ${{ secrets.MONITOR_IMAP_USER }}
+          monitor-imap-password: ${{ secrets.MONITOR_IMAP_PASSWORD }}
+          monitor-imap-mailbox: ${{ secrets.MONITOR_IMAP_MAILBOX }}
+      - name: Alert on failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
+        with:
+          title: Live e2e monitoring
+          environment: staging
+          target-url: ${{ env.STAGING_URL }}
+          webhook-url: ${{ secrets.MONITOR_ALERT_WEBHOOK_URL }}
+          github-token: ${{ github.token }}
+
+  production:
+    name: Live e2e — production
+    if: github.event_name != 'workflow_dispatch' || inputs.environment != 'staging'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: monitor-e2e-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/playwright
+        with:
+          project: monitor
+          base-url: ${{ env.PRODUCTION_URL }}
+          artifact-name: monitor-production-report
+          monitor-email: ${{ secrets.MONITOR_EMAIL_PRODUCTION }}
+          monitor-imap-host: ${{ secrets.MONITOR_IMAP_HOST }}
+          monitor-imap-port: ${{ secrets.MONITOR_IMAP_PORT }}
+          monitor-imap-user: ${{ secrets.MONITOR_IMAP_USER }}
+          monitor-imap-password: ${{ secrets.MONITOR_IMAP_PASSWORD }}
+          monitor-imap-mailbox: ${{ secrets.MONITOR_IMAP_MAILBOX }}
+      - name: Alert on failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
+        with:
+          title: Live e2e monitoring
+          environment: production
+          target-url: ${{ env.PRODUCTION_URL }}
+          webhook-url: ${{ secrets.MONITOR_ALERT_WEBHOOK_URL }}
+          github-token: ${{ github.token }}

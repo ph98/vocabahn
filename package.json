@@ -21,14 +21,17 @@
     "stats": "pnpm --filter @vocabahn/api stats",
     "health": "curl http://localhost:3000/api/v1/health",
     "release": "bash scripts/release.sh",
-    "e2e": "playwright test",
-    "e2e:ui": "playwright test --ui"
+    "e2e": "playwright test --project=chromium --project=mobile-safari",
+    "e2e:ui": "playwright test --project=chromium --ui",
+    "e2e:monitor": "playwright test --project=monitor",
+    "health:remote": "bash scripts/health-check.sh"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.0",
     "eslint": "^10.8.0",
     "eslint-plugin-jsx-a11y": "^6.10.2",
+    "imapflow": "^1.7.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.65.0"
   },

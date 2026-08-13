@@ -26,6 +26,7 @@ is known and unplanned.
 | `content.md` | CEFR courses, user decks, source datasets, seed scripts |
 | `web-client.md` | Routes, navigation, theming, motion, gestures, a11y, PWA |
 | `analytics.md` | GA4 event taxonomy, consent gating, what is deliberately not sent |
+| `monitoring.md` | Mocked PR e2e vs. unmocked live monitoring, health checks, deploy gates, alerting |
 
 ## Topology
 
@@ -161,7 +162,9 @@ ledger designed from a single producer would be designed wrong.
 
 - Written from static reading of the code plus screenshots of a running
   instance. No load testing, no runtime verification of error paths.
-- Test coverage has grown but is still partial: 19 Playwright specs across 4
-  files, 225 Vitest cases across 24 files in `apps/web`, and 223 across 22 files
-  in `apps/api`. Playwright is not run by CI. Absence of a bug here does not
-  mean the tests would catch it.
+- Test coverage has grown but is still partial: 25 mocked Playwright specs
+  across 5 files (run twice, chromium and mobile-safari), 8 unmocked
+  live-monitoring specs across 2 files, 225 Vitest cases across 24 files in
+  `apps/web`, and 223 across 22 files in `apps/api`. Absence of a bug here does
+  not mean the tests would catch it — the mocked Playwright specs in particular
+  stub the API away entirely (`monitoring.md`).
