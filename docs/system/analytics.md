@@ -13,6 +13,28 @@ Code: `apps/web/src/lib/analytics-events.ts` (the taxonomy),
 `apps/web/src/components/CookieConsentBanner.tsx`,
 `apps/web/src/components/PrivacyPage.tsx`.
 
+## Configuration is baked in at build time
+
+`initGA4()` reads `import.meta.env.VITE_GA_MEASUREMENT_ID` and Sentry reads
+`VITE_SENTRY_DSN`. Vite substitutes both **when the bundle is built**, so they
+have to be present in the build container — setting them on the server after
+the image exists does nothing.
+
+`.env` and `.env.*` are `.dockerignore`d, so the only route in is a build arg.
+`apps/web/Dockerfile` declares `ARG`/`ENV` for each, and
+`docker-compose.prod.yml` passes them under `web.build.args`, defaulting to
+empty. Changing either value means **rebuilding the image**, not restarting it.
+
+Both values are public by design — they ship in client JavaScript however they
+arrive — which is why they belong in the image while `.env`'s server secrets do
+not.
+
+With either unset the app builds and runs normally with that integration simply
+off: `initGA4()` returns on its first line, and `trackError` returns no event
+id, so the 500 page omits its support reference. That silence is indistinguish-
+able from a working install, so a deployment that expects analytics should
+confirm it in GA4 DebugView rather than assume (#99).
+
 ## How it is enforced
 
 `analytics-events.ts` exports `AnalyticsEventMap`, a map from event name to the

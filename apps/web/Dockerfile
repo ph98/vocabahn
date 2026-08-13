@@ -19,6 +19,13 @@ ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 # feedback trigger.
 ARG VITE_USERSNAP_API_KEY
 ENV VITE_USERSNAP_API_KEY=$VITE_USERSNAP_API_KEY
+# Analytics and error tracking. Both are public by design — they ship in client
+# JavaScript either way — so unlike `.env`'s server secrets they belong in the
+# image. Unset builds a working app with GA4 and Sentry simply switched off.
+ARG VITE_GA_MEASUREMENT_ID
+ENV VITE_GA_MEASUREMENT_ID=$VITE_GA_MEASUREMENT_ID
+ARG VITE_SENTRY_DSN
+ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 RUN pnpm --filter @vocabahn/shared build \
  && pnpm --filter @vocabahn/web build
 
