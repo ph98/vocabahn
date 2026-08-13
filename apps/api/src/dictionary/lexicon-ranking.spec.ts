@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { compareLexiconCandidates, isLemma } from './lexicon-ranking';
 
 describe('lexicon-ranking', () => {

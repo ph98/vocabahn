@@ -1,0 +1,162 @@
+import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
+import { Logger } from '@nestjs/common';
+import type { Job } from 'bullmq';
+import { topicLabel } from '@vocabahn/shared';
+import { PrismaService } from '../prisma/prisma.service';
+import { TtsProvider } from '../tts/tts.provider';
+import { StoryProvider } from './providers/story.provider';
+import { STORY_MIN_TARGETS, STORY_QUEUE, type StoryJobData } from './stories.constants';
+import { validateTargets } from './story-targets';
+
+// Same rate limit as enrichment — both share the Gemini quota.
+@Processor(STORY_QUEUE, {
+  concurrency: 2,
+  limiter: { max: 5, duration: 1_000 },
+})
+export class StoryProcessor extends WorkerHost {
+  private readonly logger = new Logger(StoryProcessor.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storyProvider: StoryProvider,
+    private readonly tts: TtsProvider,
+  ) {
+    super();
+  }
+
+  async process(job: Job<StoryJobData>): Promise<void> {
+    const { storyId } = job.data;
+    const story = await this.prisma.story.findUnique({
+      where: { id: storyId },
+      include: {
+        targets: {
+          include: { dictionaryEntry: { select: { id: true, word: true, translation: true } } },
+        },
+        // The summary lives only on the source item; the story snapshots the
+        // attribution, not the prose the model is grounded in.
+        sourceItem: { select: { summary: true } },
+      },
+    });
+    if (!story) {
+      this.logger.warn(`story ${storyId} no longer exists — dropping job`);
+      return;
+    }
+
+    await this.prisma.story.update({
+      where: { id: storyId },
+      data: { status: 'GENERATING', stage: 'WRITING', error: null },
+    });
+
+    const entries = story.targets.map((t) => t.dictionaryEntry);
+
+    // Retelling a real item while weaving in eight prescribed words is a harder
+    // brief than inventing freely, and a thin summary can leave too few words
+    // placeable. On the final attempt the source is dropped so the learner ends
+    // up with a readable topical story rather than a FAILED one — the topic is
+    // most of why they opened it, and the article was the bonus.
+    const isLastAttempt = job.attemptsMade >= (job.opts.attempts ?? 1) - 1;
+    const useSource = story.sourceTitle && story.sourceUrl && !isLastAttempt;
+    if (story.sourceTitle && isLastAttempt) {
+      this.logger.warn(`story ${storyId}: dropping the source on the final attempt`);
+    }
+
+    // A real API failure throws → the job retries with backoff.
+    const generated = await this.storyProvider.generate({
+      words: entries.map((e) => ({ word: e.word, translation: e.translation })),
+      cefrLevel: story.cefrLevel ?? 'A2.1',
+      topic: topicLabel(story.topic),
+      source: useSource
+        ? {
+            title: story.sourceTitle!,
+            summary: story.sourceItem?.summary ?? '',
+            sourceName: story.sourceName ?? 'a German news outlet',
+          }
+        : null,
+    });
+    if (!generated) {
+      throw new Error('Story generation is not configured (GEMINI_API_KEY missing)');
+    }
+
+    const verified = validateTargets(generated.text, generated.targets, entries);
+    if (verified.length < STORY_MIN_TARGETS) {
+      // Too few studied words actually landed in the text. Throwing sends this
+      // back through the queue for a fresh attempt rather than shipping a story
+      // with nothing to tap.
+      throw new Error(
+        `only ${verified.length}/${entries.length} target words verified in the generated text`,
+      );
+    }
+
+    // Narration is polish, not the product — a TTS outage must not cost the
+    // learner the story (or their quota), so failure just means no audio.
+    await this.prisma.story.update({ where: { id: storyId }, data: { stage: 'NARRATING' } });
+    const audioUrl = await this.safe(() =>
+      this.tts.synthesize(`story-${storyId}`, generated.text),
+    );
+
+    await this.prisma.$transaction([
+      // Drop the placeholders; keep only words the text really contains.
+      this.prisma.storyTarget.deleteMany({ where: { storyId } }),
+      this.prisma.story.update({
+        where: { id: storyId },
+        data: {
+          title: generated.title,
+          text: generated.text,
+          translation: generated.translation,
+          audioUrl,
+          status: 'READY',
+          stage: null,
+          error: null,
+          // The text no longer retells the article, so it must not be credited
+          // to it. Clearing the link as well keeps the item eligible for this
+          // learner's next story rather than burning it on one they never read.
+          ...(useSource
+            ? {}
+            : {
+                sourceItemId: null,
+                sourceTitle: null,
+                sourceUrl: null,
+                sourceName: null,
+                sourcePublished: null,
+              }),
+          targets: {
+            create: verified.map((t) => ({
+              dictionaryEntryId: t.entryId,
+              surfaceForm: t.surfaceForm,
+            })),
+          },
+        },
+      }),
+    ]);
+
+    this.logger.log(
+      `generated story ${storyId} with ${verified.length} target words` +
+        `${audioUrl ? ' and narration' : ''}`,
+    );
+  }
+
+  /** Run an optional step; log and swallow its error so it can't fail the job. */
+  private async safe<T>(fn: () => Promise<T>): Promise<T | null> {
+    try {
+      return await fn();
+    } catch (err) {
+      this.logger.warn(
+        `optional story step failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
+  }
+
+  @OnWorkerEvent('failed')
+  async onFailed(job: Job<StoryJobData>, err: Error): Promise<void> {
+    // Mark FAILED only once retries are exhausted, so the client keeps polling
+    // through intermediate attempts.
+    if (job.attemptsMade < (job.opts.attempts ?? 1)) return;
+    await this.prisma.story
+      .update({
+        where: { id: job.data.storyId },
+        data: { status: 'FAILED', error: err.message?.slice(0, 500) },
+      })
+      .catch(() => undefined);
+  }
+}

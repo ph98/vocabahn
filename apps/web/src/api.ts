@@ -15,6 +15,9 @@ import {
   healthResponseSchema,
   importWordsResponseSchema,
   knownWordsResponseSchema,
+  latestStoryResponseSchema,
+  storyQuotaSchema,
+  storyResponseSchema,
   submitReviewResponseSchema,
   syncReviewsResponseSchema,
   userSchema,
@@ -228,4 +231,51 @@ export async function fetchKnowledgeSuggestions(limit = 50) {
 
 export async function bulkMarkKnownWords(dictionaryEntryIds: string[]): Promise<void> {
   await api.post('/knowledge/bulk-mark-known', { dictionaryEntryIds });
+}
+
+// ── Micro-stories ───────────────────────────────────────────────────────────
+
+/**
+ * Starts generation and returns the story in PENDING; poll fetchStory until
+ * READY. Omitting the topic lets the server pick from the learner's interests.
+ */
+export async function createStory(topic?: string) {
+  const { data } = await api.post('/stories', {
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    ...(topic ? { topic } : {}),
+  });
+  return storyResponseSchema.parse(data).story;
+}
+
+/**
+ * The learner's most recent unfinished story, or null. This is how a story the
+ * scheduler wrote overnight is found on a device that never saw it created.
+ */
+export async function fetchLatestStory() {
+  const { data } = await api.get('/stories/latest');
+  return latestStoryResponseSchema.parse(data).story;
+}
+
+export async function updateInterests(interests: string[]) {
+  const { data } = await api.patch('/auth/me/interests', { interests });
+  return userSchema.parse(data);
+}
+
+export async function fetchStory(id: string) {
+  const { data } = await api.get(`/stories/${encodeURIComponent(id)}`);
+  return storyResponseSchema.parse(data).story;
+}
+
+export async function completeStory(id: string, notUnderstood: string[]) {
+  const { data } = await api.post(`/stories/${encodeURIComponent(id)}/complete`, {
+    notUnderstood,
+  });
+  return storyResponseSchema.parse(data).story;
+}
+
+export async function fetchStoryQuota() {
+  const { data } = await api.get('/stories/quota', {
+    params: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+  });
+  return storyQuotaSchema.parse(data);
 }

@@ -3,7 +3,7 @@ import type { Response } from 'express';
 import { createReadStream, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
-import { AUDIO_DIR, TtsProvider } from './providers/tts.provider';
+import { AUDIO_DIR, TtsProvider } from '../tts/tts.provider';
 
 @Controller('static/audio')
 export class StaticAudioController {
@@ -34,8 +34,17 @@ export class StaticAudioController {
     const key = safeFilename.slice(0, -4);
     let textToSynthesize: string | null = null;
 
+    const storyMatch = key.match(/^story-(.+)$/);
     const exampleMatch = key.match(/^(.+)-ex(\d+)$/);
-    if (exampleMatch) {
+    if (storyMatch) {
+      const story = await this.prisma.story.findUnique({
+        where: { id: storyMatch[1]! },
+        select: { text: true },
+      });
+      if (story?.text) {
+        textToSynthesize = story.text;
+      }
+    } else if (exampleMatch) {
       const entryId = exampleMatch[1]!;
       const exampleIndex = parseInt(exampleMatch[2]!, 10);
       const entry = await this.prisma.dictionaryEntry.findUnique({

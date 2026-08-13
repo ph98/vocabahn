@@ -1,6 +1,6 @@
 # Vocabahn — System Description
 
-What this codebase does, as of 2026-07-26. Present tense only: if something is
+What this codebase does, as of 2026-08-12. Present tense only: if something is
 described here, it exists in the code. Planned work lives in GitHub issues, not
 in this directory.
 
@@ -20,6 +20,8 @@ is known and unplanned.
 | `dictionary.md` | Lexicon → active dictionary, search, lemma resolution, morphology tables |
 | `enrichment.md` | Stub → BullMQ job → Gemini / ElevenLabs / Unsplash → polling client |
 | `learning.md` | Cards, FSRS, review session, offline sync, knowledge scores, auto-graduation |
+| `stories.md` | Micro-stories retold from real articles, topics, daily scheduling, narration |
+| `sources.md` | German publisher feeds, topic taxonomy, parsing, retention |
 | `content.md` | CEFR courses, user decks, source datasets, seed scripts |
 | `web-client.md` | Routes, navigation, theming, motion, gestures, a11y, PWA |
 
@@ -56,18 +58,28 @@ additionally builds and runs `api` and `web`.
                     ┌───────────────▼──────────────────────────┐
                     │ apps/api  (prefix /api, URI version v1)  │
                     │                                          │
-   PostgreSQL ◀─────┤ Prisma  ·  20 models                     │
+   PostgreSQL ◀─────┤ Prisma  ·  21 models                     │
                     │                                          │
        Redis  ◀─────┤ BullMQ queue + quota counters            │
                     │        │                                 │
                     │        ▼ same process                    │
-                    │ EnrichmentProcessor (concurrency 2)      │
+                    │ EnrichmentProcessor  (concurrency 2)     │
+                    │ StoryProcessor       (concurrency 2)     │
+                    │ SourceProcessor      (every 2 h)         │
+                    │ StoryDigestProcessor (hourly sweep)      │
                     └────────┬─────────────────────────────────┘
                              │
         Gemini ◀─────────────┼──────────▶ ElevenLabs → Google TTS fallback
-                             ▼
+                             │
                           Unsplash        writes static/audio/*.mp3
+                             ▼
+      tagesschau · kicker · Sportschau · heise · wissenschaft.de · Spektrum
+                     (RSS, read-only, title + summary only)
 ```
+
+Four queue consumers now run in the API process, not one. Two are repeatable
+schedulers registered at boot with fixed job ids, so N replicas still produce
+one poll and one sweep (`sources.md`, `stories.md`).
 
 The learner-facing loop:
 
@@ -82,6 +94,13 @@ The learner-facing loop:
 5. Rating a card writes a `ReviewLog` row, advances FSRS state, then recomputes
    that word's knowledge score, which may auto-graduate it or a batch of other
    words (`learning.md`).
+6. Requesting a story picks a subject and a real German article on it, then
+   enqueues a second BullMQ job that retells the article at the learner's level
+   around their current words and narrates it, polled the same way
+   (`stories.md`, `sources.md`).
+7. Independently of any request, an hourly sweep writes each active learner one
+   story timed to 07:00 in their own timezone, so it is waiting when they open
+   the app (`stories.md`).
 
 ## Invariants that hold across subsystems
 
@@ -93,21 +112,37 @@ The learner-facing loop:
   every response through the exported Zod schema. Changing a response shape
   without changing the schema surfaces as a client-side parse error, not a
   silent mismatch.
-- **Paid APIs fire only on view.** Nothing bulk-enriches. Roughly 10k entries
-  are promoted but unenriched by design.
+- **Paid APIs fire on demand, with one scheduled exception.** Nothing
+  bulk-enriches: roughly 10k entries are promoted but unenriched by design.
+  Enrichment (triggered by viewing an entry) and on-demand story generation
+  (triggered by asking) each carry a per-user daily Redis cap. The daily story
+  is the exception — it is generated without anyone asking, so it is bounded
+  differently: only learners with an active card and a review in the last 14
+  days, at most one per learner per local day, enforced by a Redis `SET NX`
+  claim rather than a counter (`stories.md`).
 - **CEFR is 12 half sub-levels**, `A1.1` … `C2.2` (Goethe / Profile Deutsch),
   defined once in `apps/api/src/knowledge/constants.ts` and mirrored in the
   Gemini response schema. Anything treating CEFR as six flat levels is wrong.
-- **All day boundaries are UTC**, everywhere. See the limitation in
+- **All day boundaries are UTC**, everywhere — except the daily story sweep,
+  which is deliberately per-learner local (`User.timezone`), because "a story
+  waiting when you wake up" has no meaning in UTC. Its Redis claim key is keyed
+  on the learner's local date for the same reason. See the limitation in
   `learning.md`.
 
 ## Relationship to the ADRs
 
 `docs/adr/0001` and `0002` propose a different architecture — a per-user
 evidence ledger as the hub, with experiences (stories, drills) emitting
-evidence and a deterministic planner composing sessions. **None of it is
-built.** Both ADRs are `proposed`. Cards plus FSRS are the hub today, and the
-"knowledge model" that exists is a derived score (`learning.md`), not a ledger.
+evidence and a deterministic planner composing sessions. Both ADRs remain
+`proposed`, and **the architecture they describe is not built**: there is no
+evidence ledger and no planner. Cards plus FSRS are still the hub, and the
+"knowledge model" that exists is a derived score (`learning.md`).
+
+One piece has since landed independently. Micro-stories (`stories.md`) are a
+non-card experience that records a per-word comprehension signal
+(`StoryTarget.understood`). That signal is deliberately inert — nothing reads
+it — and it is feature-local rather than a general event schema, because a
+ledger designed from a single producer would be designed wrong.
 
 ## Limitations of this directory
 

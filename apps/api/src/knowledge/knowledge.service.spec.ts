@@ -161,6 +161,8 @@ describe('KnowledgeService', () => {
 
       const batchSpy = vi.spyOn(service, 'batchGraduateHighPrior');
 
+      await service.recomputeAfterReview('user-1', 'card-1');
+
       expect(batchSpy).toHaveBeenCalledWith('user-1', 5);
     });
   });

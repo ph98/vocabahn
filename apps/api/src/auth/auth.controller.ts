@@ -21,11 +21,13 @@ import { Throttle } from '@nestjs/throttler';
 import {
   googleIdTokenSignInSchema,
   updateCefrLevelSchema,
+  updateInterestsSchema,
   type AuthConfig,
   type AuthTokens,
   type AutoGraduation,
   type GoogleIdTokenSignIn,
   type UpdateCefrLevelBody,
+  type UpdateInterestsBody,
   type User,
 } from '@vocabahn/shared';
 import type { Request, Response } from 'express';
@@ -208,5 +210,15 @@ export class AuthController {
     @Body(new ZodValidationPipe(updateCefrLevelSchema)) body: UpdateCefrLevelBody,
   ): Promise<User> {
     return this.auth.updateCefrLevel(userId, body.cefrLevel);
+  }
+
+  /** Topics the learner wants their stories drawn from (`stories.md`). */
+  @Patch('me/interests')
+  @UseGuards(JwtAuthGuard)
+  async updateInterests(
+    @CurrentUserId() userId: string,
+    @Body(new ZodValidationPipe(updateInterestsSchema)) body: UpdateInterestsBody,
+  ): Promise<User> {
+    return this.auth.updateInterests(userId, body.interests);
   }
 }

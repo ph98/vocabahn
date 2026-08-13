@@ -3,7 +3,7 @@
 German vocabulary learning app: a shared AI-enriched dictionary, FSRS spaced-repetition flashcards, and curated courses — built as a mobile-first PWA.
 
 ## About this Project
-Vocabahn pairs a community-shared German dictionary, enriched on demand by an LLM, with FSRS spaced-repetition flashcards and CEFR-aligned courses. A derived per-user knowledge model graduates words out of study automatically. Comprehensible-input stories, production drills, and a session planner are described in `docs/legacy/prd.md` but are not implemented.
+Vocabahn pairs a community-shared German dictionary, enriched on demand by an LLM, with FSRS spaced-repetition flashcards and CEFR-aligned courses. A derived per-user knowledge model graduates words out of study automatically. Micro-stories retell real German news articles, on subjects the learner picks, at their CEFR level and around their current words — one is written for each learner every morning in their own timezone. Reading records which words didn't land. Production drills and a session planner are described in `docs/legacy/prd.md` but are not implemented.
 
 ## Tech Stack
 - Backend: NestJS 11, Prisma, PostgreSQL, Redis, BullMQ (queue worker runs inside the API process — there is no separate worker app)

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import type { User } from '@vocabahn/shared';
+import { STORY_TOPIC_SLUGS, type User } from '@vocabahn/shared';
 import { OAuth2Client } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
@@ -217,8 +217,25 @@ export class AuthService {
     name: string | null;
     avatarUrl: string | null;
     cefrLevel: string | null;
+    interests?: string[];
   }): User {
     const { id, email, name, avatarUrl, cefrLevel } = user;
-    return { id, email, name, avatarUrl, cefrLevel };
+    return { id, email, name, avatarUrl, cefrLevel, interests: user.interests ?? [] };
+  }
+
+  /**
+   * Stores the topics a learner wants their stories to be about. Unknown slugs
+   * are dropped rather than rejected: the taxonomy can shrink between a client
+   * build and the server, and a stale chip should not fail the whole save.
+   */
+  async updateInterests(userId: string, interests: string[]): Promise<User> {
+    const known = [...new Set(interests)].filter((slug) =>
+      (STORY_TOPIC_SLUGS as string[]).includes(slug),
+    );
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { interests: known },
+    });
+    return this.toPublicUser(updated);
   }
 }
