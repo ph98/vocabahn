@@ -3,7 +3,7 @@ import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
 import { BadgeCheck, BookOpen, CircleUserRound, HelpCircle, Monitor, Moon, Sun } from 'lucide-react';
 import { MotionConfig, motion } from 'motion/react';
-import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type RefObject } from 'react';
+import { lazy, useEffect, useRef, useState, type ComponentType, type RefObject } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { fetchAuthConfig, fetchHealth, fetchMe, googleOneTapLogin } from './api';
 import { useGoogleOneTap } from './hooks/useGoogleOneTap';
@@ -13,6 +13,7 @@ import { ProfilePage } from './components/ProfilePage';
 import { LandingPage } from './components/LandingPage';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
 import { ToastProvider } from './components/Toast';
+import { RouteBoundary } from './components/errors';
 import { type Theme, useTheme, resolveTheme } from './lib/theme';
 import { trackPageView, trackEvent } from './lib/telemetry';
 
@@ -64,11 +65,6 @@ function GoogleOneTapPrompt() {
   });
 
   return null;
-}
-
-/** Suspense fallback for lazy-loaded routes; announced to screen readers. */
-function RouteLoading() {
-  return <p aria-live="polite">Loading…</p>;
 }
 
 function AuthVerifyPage() {
@@ -602,14 +598,14 @@ export default function App() {
         <AuthErrorBanner />
         {!isPending && !user && (
         <div className="w-full max-w-6xl space-y-10 mt-8 md:mt-16 px-4 xl:px-0">
-          <Suspense fallback={<RouteLoading />}>
+          <RouteBoundary>
             <Routes>
               <Route path="/auth/verify" element={<AuthVerifyPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="*" element={<LandingPage />} />
             </Routes>
-          </Suspense>
+          </RouteBoundary>
         </div>
       )}
 
@@ -617,7 +613,7 @@ export default function App() {
         <>
           <AppNav />
           <div className="w-full max-w-6xl">
-            <Suspense fallback={<RouteLoading />}>
+            <RouteBoundary>
               <Routes>
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/dictionary" element={<DictionaryCard />} />
@@ -640,7 +636,7 @@ export default function App() {
                 <Route path="/auth/verify" element={<AuthVerifyPage />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
-            </Suspense>
+            </RouteBoundary>
           </div>
         </>
       )}

@@ -160,9 +160,14 @@ export function trackEvent(eventName: string, params: Record<string, unknown> = 
   }
 }
 
-/** Track client-side exceptions in Sentry. */
-export function trackError(error: Error | unknown, context?: Record<string, unknown>) {
+/**
+ * Track client-side exceptions in Sentry. Returns the event id when one was
+ * actually sent, so an error page can show a reference a support request can
+ * be matched against. Undefined when Sentry is not configured for this build.
+ */
+export function trackError(error: Error | unknown, context?: Record<string, unknown>): string | undefined {
   if (import.meta.env.VITE_SENTRY_DSN && isAnalyticsEnabled()) {
-    Sentry.captureException(error, { extra: context });
+    return Sentry.captureException(error, { extra: context });
   }
+  return undefined;
 }

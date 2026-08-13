@@ -5,6 +5,7 @@ import { Link, useParams } from 'react-router-dom';
 import { enrollCourse, fetchCourse, unenrollCourse } from '../api';
 import { trackEvent } from '../lib/telemetry';
 import { ProgressBar } from './ProgressBar';
+import { ErrorStateForError } from './errors';
 
 const STATE_LABELS: Record<FsrsState, string> = {
   NEW: 'New',
@@ -23,7 +24,7 @@ const STATE_COLORS: Record<FsrsState, string> = {
 export function CourseDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const queryClient = useQueryClient();
-  const { data: course, isPending, isError, refetch } = useQuery({
+  const { data: course, isPending, isError, error, refetch } = useQuery({
     queryKey: ['course', slug],
     queryFn: () => fetchCourse(slug!),
     enabled: !!slug,
@@ -59,7 +60,16 @@ export function CourseDetailPage() {
       </Link>
 
       {isPending && <p aria-live="polite">Loading course…</p>}
-      {isError && <p aria-live="polite" className="text-accent-red">Couldn't load this course.</p>}
+      {isError && (
+        <ErrorStateForError
+          error={error}
+          resource="course"
+          backTo="/library"
+          backLabel="Back to the library"
+          onRetry={() => void refetch()}
+          inline
+        />
+      )}
 
       {course && (
         <div className="rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20">
