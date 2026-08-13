@@ -92,7 +92,13 @@ Generated TTS files are served as static assets from `/api/static`.
 - Learners can set and calibrate their own CEFR level (#25) during onboarding or via Profile Settings (`PATCH /auth/me` or `POST /knowledge/level`), seeding prior scores and triggering filler/high-prior auto-graduations immediately. Level inference also continues to update `User.cefrLevel` as reviews progress.
 - reCAPTCHA is not integrated anywhere, despite being described in the legacy
   PRD. `ContactMessage` exists as a model with no controller.
-- Server-side user preferences do not exist. The only setting, "Autoplay audio
-  during reviews", lives in `localStorage` under `vocabahn-settings`
-  (`hooks/useSettings.ts`) and therefore does not follow the user across
-  devices.
+- Server-side user preferences exist for exactly one setting. The daily study
+  reminder (`reminderEnabled`, `reminderHour`, `reminderMinute`, and the
+  `timezone` they are read in) lives on the `User` row, because the server is
+  what sends it — see `notifications.md`. Everything else, including "Autoplay
+  audio during reviews", is still `localStorage` under `vocabahn-settings`
+  (`hooks/useSettings.ts`) and does not follow the user across devices.
+- `User.timezone` is written only by `PUT /notifications/settings`. A learner
+  who has never opened the reminder settings has none stored, and both
+  per-learner-local sweeps fall back to UTC for them (`stories.md`,
+  `notifications.md`).

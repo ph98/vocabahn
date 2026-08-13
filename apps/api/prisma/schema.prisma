@@ -21,18 +21,55 @@ model User {
   // Topic slugs from STORY_TOPICS the learner wants to read about. Empty means
   // no preference stated, which the story picker reads as "any topic".
   interests String[] @default([])
+  // ── Daily study reminder (notifications.md) ──
+  // Server-side by necessity: the sender is the server, so a localStorage flag
+  // could not switch it off. Default false — nobody is opted in by upgrading.
+  reminderEnabled Boolean @default(false)
+  // Learner-local wall clock the reminder aims at. Interpreted in `timezone`,
+  // falling back to UTC when that has never been sent.
+  reminderHour    Int     @default(19)
+  reminderMinute  Int     @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  cards           Card[]
-  reviewLogs      ReviewLog[]
-  knowledgeScores KnowledgeScore[]
-  courses         UserCourse[]
-  feedback        EntryFeedback[]
-  decks           UserDeck[]
-  stories         Story[]
-  quizAttempts    QuizAttempt[]
-  quizReports     QuizQuestionReport[]
+  cards             Card[]
+  reviewLogs        ReviewLog[]
+  knowledgeScores   KnowledgeScore[]
+  courses           UserCourse[]
+  feedback          EntryFeedback[]
+  decks             UserDeck[]
+  stories           Story[]
+  quizAttempts      QuizAttempt[]
+  quizReports       QuizQuestionReport[]
+  pushSubscriptions PushSubscription[]
+
+  @@index([reminderEnabled])
+}
+
+// ── Web Push ─────────────────────────────────────────────────────────────────
+
+/// One browser on one device that has granted notification permission. A
+/// learner can hold several; a `404`/`410` from the push service means this one
+/// is dead and the row is deleted rather than retried.
+model PushSubscription {
+  id String @id @default(cuid())
+
+  userId String
+  /// The push service URL. Globally unique — it is the subscription's identity,
+  /// and re-subscribing the same browser must update the row, not add a second.
+  endpoint   String  @unique
+  /// Client public key and auth secret from `PushSubscription.toJSON().keys`.
+  p256dh     String
+  auth       String
+  /// Best-effort device label so two rows are tellable apart. Never trusted.
+  userAgent  String?
+  createdAt  DateTime  @default(now())
+  /// Last time a push to this endpoint was accepted by the push service.
+  lastUsedAt DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 // ── Lexicon layer (complete Wiktextract ingest) ────────────────────────────

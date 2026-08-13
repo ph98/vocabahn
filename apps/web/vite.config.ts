@@ -43,6 +43,17 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         navigateFallbackDenylist: [/^\/api/],
+        // Web Push needs `push` / `notificationclick` listeners, and there is
+        // nowhere to put them in a worker Workbox writes end to end. Importing
+        // them keeps everything above generated — the precache, the navigation
+        // fallback denylist, and the runtime caching rules an offline review
+        // session depends on — instead of hand-rolling all of it under
+        // `injectManifest` for the sake of one listener. See
+        // `public/push-sw.js` for the trade-off in full.
+        importScripts: ['/push-sw.js'],
+        // The worker imports that file directly, so precaching it would only
+        // store a second copy of something never fetched through the cache.
+        globIgnores: ['**/node_modules/**/*', 'push-sw.js'],
         // Due cards and dictionary entries are the data a review session
         // needs offline; cache them with a network-first strategy so a
         // stale-but-usable response is available when offline.

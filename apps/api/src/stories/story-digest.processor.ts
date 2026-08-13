@@ -80,12 +80,15 @@ export class StoryDigestProcessor extends WorkerHost implements OnModuleInit {
         created += 1;
 
         // TODO(notifications): the whole point of writing this at 07:00 local is
-        // that the learner is told it exists. Until push notifications land,
-        // they only find it by opening the app, where GET /stories/latest
-        // surfaces it. When notifications ship, send here — after the row is
-        // created, and carrying the story id so the notification deep-links to
-        // it. Note the story is still PENDING at this point; either wait for
-        // READY or word the notification so it survives a story that fails.
+        // that the learner is told it exists, and they still are not — they only
+        // find it by opening the app, where GET /stories/latest surfaces it.
+        // The machinery now exists (`notifications.md`): inject
+        // NotificationsService and call pushToUser here, after the row is
+        // created, carrying the story id so the notification deep-links to it.
+        // Two things to settle first: the story is still PENDING at this point,
+        // so either wait for READY or word it to survive a story that fails;
+        // and a learner who opted into the study reminder has not thereby opted
+        // into a second daily push.
       } catch (err) {
         // One learner's failure — no words, a provider outage — must not stop
         // the sweep for everyone whose morning it also is.

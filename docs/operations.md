@@ -117,6 +117,9 @@ The following environment variables are configured in the `.env` file at the rep
 | `UNSPLASH_ACCESS_KEY` | Unsplash developer access token | Unsplash Developers Portal |
 | `GCP_PROJECT` | Google Cloud project ID | For Cloud TTS generation |
 | `ENRICHMENT_DAILY_CAP` | Per-user enrichment limit | Recommended default: `50` |
+| `VAPID_PUBLIC_KEY` | Web Push server key | `npx web-push generate-vapid-keys`; unset disables reminders |
+| `VAPID_PRIVATE_KEY` | Web Push server secret | From the same command; keep it secret |
+| `VAPID_SUBJECT` | Contact address for push services | `mailto:support@yourdomain.com` |
 
 ---
 

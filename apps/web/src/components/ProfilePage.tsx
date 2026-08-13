@@ -14,6 +14,7 @@ import { prefersReducedMotion } from '../lib/motion';
 import { ShieldCheck, Mail, Download } from 'lucide-react';
 import { CEFRCalibrationCard } from './CEFRCalibrationCard';
 import { CEFRBadge } from './CEFRBadge';
+import { DailyReminderSection } from './DailyReminderSection';
 import gsap from 'gsap';
 
 export function SignInOptions() {
@@ -350,6 +351,10 @@ export function ProfilePage() {
             </label>
           </div>
         )}
+
+        {/* Server-backed, unlike the localStorage preference above: the server
+            is what sends the reminder, so switching it off has to reach it. */}
+        {user && <DailyReminderSection />}
       </div>
 
       {user && (showCalibration || !user.cefrLevel) && (

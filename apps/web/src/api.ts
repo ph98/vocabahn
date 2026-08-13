@@ -17,6 +17,7 @@ import {
   importWordsResponseSchema,
   knownWordsResponseSchema,
   latestStoryResponseSchema,
+  notificationSettingsSchema,
   quizAttemptResultSchema,
   quizReportSchema,
   storyQuotaSchema,
@@ -28,12 +29,15 @@ import {
   type AutoGraduation,
   type CreateDeckBody,
   type ImportWordsResponse,
+  type NotificationSettings,
+  type PushSubscriptionBody,
   type ReviewRating,
   type SubmitFeedbackBody,
   type SubmitQuizAttemptBody,
   type SubmitQuizReportBody,
   type SyncReviewItem,
   type UpdateDeckBody,
+  type UpdateNotificationSettingsBody,
   type User,
 } from '@vocabahn/shared';
 import axios, { isAxiosError } from 'axios';
@@ -388,4 +392,42 @@ export async function fetchStoryQuota() {
     params: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
   });
   return storyQuotaSchema.parse(data);
+}
+
+// ── Notifications ───────────────────────────────────────────────────────────
+// The daily study reminder is the one setting that has to live on the server:
+// the server is what sends it, so a localStorage flag could not switch it off.
+
+export async function fetchNotificationSettings(): Promise<NotificationSettings> {
+  const { data } = await api.get('/notifications/settings');
+  return notificationSettingsSchema.parse(data);
+}
+
+/**
+ * Every write carries the browser's timezone, so a learner who moves gets their
+ * reminder at the new local time without having to think about it.
+ */
+export async function updateNotificationSettings(
+  body: UpdateNotificationSettingsBody,
+): Promise<NotificationSettings> {
+  const { data } = await api.put('/notifications/settings', {
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    ...body,
+  });
+  return notificationSettingsSchema.parse(data);
+}
+
+export async function registerPushSubscription(
+  body: PushSubscriptionBody,
+): Promise<NotificationSettings> {
+  const { data } = await api.post('/notifications/subscribe', body);
+  return notificationSettingsSchema.parse(data);
+}
+
+/** Omitting the endpoint removes every device — what turning the toggle off does. */
+export async function removePushSubscription(endpoint?: string): Promise<NotificationSettings> {
+  const { data } = await api.delete('/notifications/subscribe', {
+    data: endpoint ? { endpoint } : {},
+  });
+  return notificationSettingsSchema.parse(data);
 }
