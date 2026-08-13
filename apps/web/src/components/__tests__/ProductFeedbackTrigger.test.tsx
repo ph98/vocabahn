@@ -141,7 +141,11 @@ describe('ProductFeedbackTrigger — when it may exist at all', () => {
     setStoredConsent('granted');
 
     expect(await screen.findByRole('button', { name: 'Feedback' })).toBeInTheDocument();
-    expect(injectedScript()).not.toBeNull();
+    // The button is committed by React; the script is injected by the effect
+    // that runs after it. `findByRole` can resolve on the commit, before the
+    // passive effect has flushed — fast locally, a coin flip on a loaded CI
+    // runner. Wait for the script rather than assuming the same tick.
+    await vi.waitFor(() => expect(injectedScript()).not.toBeNull());
   });
 
   it('tears the widget down when consent is withdrawn', async () => {
