@@ -67,6 +67,49 @@ Gestures: swipe-to-rate on the review card; `PullToRefresh` on the dashboard; an
 right-swipe starting within 24 px of the left edge — disabled on `/review` so it
 cannot fight the card's own drag.
 
+## Toasts
+
+`components/Toast.tsx` is the app-wide confirmation primitive: a `ToastProvider`
+mounted at the top of `App.tsx`, and a `useToast()` hook returning a stable
+`{ show, success, error, info, dismiss }` object safe to put in effect
+dependencies.
+
+A toast carries a message, an optional description, and **one** optional action
+button (`{ label, onClick }`) — the action dismisses the toast before it runs.
+Deliberately not a notification framework.
+
+- `options.id` is a dedupe key: firing again with the same id replaces the live
+  toast in place and restarts its timer instead of stacking a copy. Settings use
+  `setting:<key>`, so hammering one toggle produces one toast.
+- Default auto-dismiss is 3 s; `duration: 0` keeps a toast until dismissed. At
+  most three are on screen, oldest dropped.
+- The region is always mounted — a live region has to exist before content is
+  inserted into it — as `role="region"` / `aria-label="Notifications"` wrapping
+  `role="status"` / `aria-live="polite"` / `aria-atomic="false"`. Every toast has
+  an icon-only Dismiss button at 44 px.
+- Entry animation is CSS (`.vb-toast`, `@keyframes vb-toast-in`) and is switched
+  off under `prefers-reduced-motion`, matching `lib/motion.ts`'s contract. There
+  is no exit animation.
+- A nested `ToastProvider` defers to its ancestor rather than mounting a second
+  region, so test helpers can wrap without knowing what is already in the tree.
+
+Geometry lives in CSS custom properties on `:root` in `index.css`, re-exported
+as `TOAST_REGION` from `Toast.tsx` so other floating UI can sit clear of it:
+
+| Property | Meaning |
+| :--- | :--- |
+| `--vb-mobile-nav-height` | Space the fixed bottom nav occupies; `0px` from `md` up. Drives `.pb-mobile-nav`. |
+| `--vb-toast-inset-bottom` | Bottom edge of the toast region — the nav height plus 0.75 rem, or 1.5 rem on desktop. |
+| `--vb-toast-max-width` | 26 rem; the region is centred in the viewport. |
+| `--vb-toast-z` | 60 — above the nav and its popover, both at `z-50`. |
+
+The only producer today is `hooks/useSettings.ts`: `updateSettings()` compares
+old and new values and emits one success toast per key that actually changed,
+naming the new state (*"Autoplay audio on"*). Copy comes from an optional label
+map with a humanised-key fallback, so a new `UserSettings` field is confirmed
+without being registered. A `localStorage` write that throws produces an error
+toast and leaves the setting unapplied.
+
 ## Accessibility
 
 Implemented deliberately, not incidentally:
@@ -79,6 +122,8 @@ Implemented deliberately, not incidentally:
 - Entry tabs use proper `role="tab"` / `aria-controls` wiring (`Tabs.tsx`).
 - Review announces card position, reveal, and rating; offline and
   auto-graduation notices are `role="status"`.
+- Settings changes are confirmed through the toast region's polite live region
+  (see **Toasts**), not by moving focus.
 - Interactive targets are ≥ 44 px (`min-h-11` / `min-h-12` throughout), with
   `focus-visible` outlines rather than suppressed focus rings.
 - German content is marked `lang="de"`.
@@ -130,10 +175,13 @@ icons, and the link carries a visible text label rather than relying on
 - The `offline-pack` endpoint has **no client consumer** (#23). There is no download
   control anywhere in the UI, so the top-1000 pack is unreachable
   (`dictionary.controller.ts`).
-- Test coverage is thin (#28): 10 Vitest cases across 5 component files (with
-  `jest-axe` wired up in `src/test/`), and 13 Playwright specs across
-  `landing`, `dictionary`, `review`. Most routes and every error path are
+- Test coverage is thin (#28): 88 Vitest cases across 16 files (with `jest-axe`
+  wired up in `src/test/`), and 18 Playwright specs across `landing`,
+  `dictionary`, `review`, `story`. Most routes and every error path are
   untested.
+- The toast region's clearance of the mobile nav rests on the CSS custom
+  properties above, not on a rendered check — jsdom has no layout, and no
+  Playwright spec covers a 375 px viewport.
 - (#28) The PWA manifest hardcodes `theme_color: '#0a0a0a'` (dark) while `theme.ts`
   updates the meta tag dynamically, so an installed app's chrome does not follow
   the light theme.

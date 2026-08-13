@@ -12,6 +12,7 @@ import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard
 import { ProfilePage } from './components/ProfilePage';
 import { LandingPage } from './components/LandingPage';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
+import { ToastProvider } from './components/Toast';
 import { type Theme, useTheme, resolveTheme } from './lib/theme';
 import { trackPageView, trackEvent } from './lib/telemetry';
 
@@ -566,7 +567,7 @@ export default function App() {
   }, [theme, setTheme]);
 
   return (
-    <>
+    <ToastProvider>
       {!isPending && !user && <GoogleOneTapPrompt />}
       <CookieConsentBanner />
       <a
@@ -685,6 +686,6 @@ export default function App() {
       </footer>
 
       </main>
-    </>
+    </ToastProvider>
   );
 }

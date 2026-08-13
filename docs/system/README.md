@@ -148,6 +148,6 @@ ledger designed from a single producer would be designed wrong.
 
 - Written from static reading of the code plus screenshots of a running
   instance. No load testing, no runtime verification of error paths.
-- Test coverage is thin enough that it corroborates nothing: 13 Playwright
-  specs across 3 files, 10 Vitest cases across 5 files. Absence of a bug here
+- Test coverage is thin enough that it corroborates nothing: 18 Playwright
+  specs across 4 files, 88 Vitest cases across 16 files. Absence of a bug here
   does not mean the tests would catch it.
