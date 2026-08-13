@@ -113,6 +113,15 @@ edits hot-reload.
 footer, and linked to the changelog on GitHub. A polled health dot
 (5 s interval) sits beside it.
 
+The footer wraps at narrow widths and carries, in order: Help & User Guide, the
+version/changelog link, Terms, Privacy Policy, a **"Source on GitHub"** link to
+the repository root, and the health dot. The repository wording is deliberate —
+the project is licensed PolyForm Noncommercial 1.0.0, which forbids commercial
+use and is not OSI-approved, so the footer says "source", never "open source".
+The GitHub mark is inlined as an SVG because `lucide-react` v1 dropped its brand
+icons, and the link carries a visible text label rather than relying on
+`aria-label`.
+
 ## Limitations
 
 - **No 404 route** (#28). An unmatched path under a signed-in user renders the shell

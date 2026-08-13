@@ -32,6 +32,30 @@ describe('App', () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
+  it('links the repository from the footer, distinct from the version/changelog link', async () => {
+    vi.mocked(fetchMe).mockResolvedValue(null);
+    renderWithProviders(<App />);
+
+    await waitFor(() => expect(screen.getByText('Sign in with Google')).toBeInTheDocument());
+
+    // Accessible name comes from the visible label, so the inlined mark stays aria-hidden.
+    const repoLink = screen.getByRole('link', { name: 'Source on GitHub' });
+    expect(repoLink).toHaveAttribute('href', 'https://github.com/ph98/vocabahn');
+    expect(repoLink).toHaveAttribute('target', '_blank');
+    expect(repoLink).toHaveAttribute('rel', 'noopener noreferrer');
+
+    // The version link still points at the changelog, i.e. this is a second link.
+    const versionLink = screen.getByRole('link', { name: /^v\d/ });
+    expect(versionLink).toHaveAttribute(
+      'href',
+      'https://github.com/ph98/vocabahn/blob/main/docs/changelog.md',
+    );
+    expect(versionLink).not.toBe(repoLink);
+
+    // The licence is PolyForm Noncommercial, so no "open source" claim may appear.
+    expect(screen.queryByText(/open source/i)).not.toBeInTheDocument();
+  });
+
   it('renders the main nav and dictionary search when signed in, with no accessibility violations', async () => {
     vi.mocked(fetchMe).mockResolvedValue({
       id: 'user-1',
