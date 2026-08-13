@@ -17,8 +17,16 @@ import { defineConfig, devices } from '@playwright/test';
  */
 const MONITOR_TAG = /@monitor/;
 
-/** Set when the suite targets a deployed environment rather than a local dev server. */
-const remoteTarget = process.env.E2E_BASE_URL;
+/**
+ * Set when the suite targets a deployed environment rather than a local dev
+ * server.
+ *
+ * `|| undefined`, not `??`: the workflow passes `E2E_BASE_URL: ${{ inputs.base-url }}`,
+ * which is the **empty string** for the mocked jobs that have no remote target.
+ * An empty string is not nullish, so `??` let it through as the `baseURL` and
+ * every mocked spec failed with "Cannot navigate to invalid URL".
+ */
+const remoteTarget = process.env.E2E_BASE_URL || undefined;
 
 export default defineConfig({
   testDir: './e2e',
