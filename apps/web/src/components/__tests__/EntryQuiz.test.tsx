@@ -13,6 +13,20 @@ const { fetchEntryQuiz, submitQuizAttempt, reportQuizQuestion } = vi.hoisted(() 
 
 vi.mock('../../api', () => ({ fetchEntryQuiz, submitQuizAttempt, reportQuizQuestion }));
 
+/**
+ * Asserts `text` is announced politely. The app shell mounts a `ToastProvider`
+ * whose (usually empty) region is also `role="status"`, so a bare
+ * `getByRole('status')` is ambiguous — match on the one carrying the message.
+ */
+async function expectPoliteStatus(text: string) {
+  await waitFor(() => {
+    const announced = screen
+      .getAllByRole('status')
+      .some((el) => el.textContent?.includes(text));
+    expect(announced).toBe(true);
+  });
+}
+
 const QUESTIONS = [
   {
     id: 'q1',
@@ -109,11 +123,7 @@ describe('EntryQuizSection', () => {
       <EntryQuizSection word="Hund" enrichmentStatus="ENRICHING" onOpenOverview={() => {}} />,
     );
 
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent(
-        'Writing quiz questions in the background…',
-      ),
-    );
+    await expectPoliteStatus('Writing quiz questions in the background…');
   });
 
   it('explains an enriched entry that simply has no questions', async () => {
@@ -123,9 +133,7 @@ describe('EntryQuizSection', () => {
       <EntryQuizSection word="Hund" enrichmentStatus="ENRICHED" onOpenOverview={() => {}} />,
     );
 
-    await waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('No quiz questions for this word yet.'),
-    );
+    await expectPoliteStatus('No quiz questions for this word yet.');
   });
 
   it('lets a learner flag a bad question', async () => {
