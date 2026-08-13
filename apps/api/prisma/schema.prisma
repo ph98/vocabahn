@@ -427,6 +427,18 @@ model Story {
   // Narration of `text`, cached as a static .mp3 keyed `story-<id>`; null when
   // synthesis is unconfigured or failed — audio never blocks a story shipping
   audioUrl        String?
+  // A scene-setting Unsplash photo, fetched during generation from an English
+  // query the model returns alongside the text. Null is normal: stories written
+  // before this existed, and any story whose fetch failed or found nothing.
+  // Attribution is inline rather than through ImageCredit, which is hard-bound
+  // to DictionaryEntry by a unique required relation. Unsplash's terms require
+  // the photographer to be credited, so the name and links are stored, not just
+  // the image URL.
+  imageUrl        String?
+  imageAuthorName String?
+  imageAuthorUrl  String?
+  // The photo's own Unsplash page, linked from the "on Unsplash" credit
+  imageSourceUrl  String?
   error           String?
   // Set when the learner finishes reading; untapped targets become positive then
   completedAt     DateTime?

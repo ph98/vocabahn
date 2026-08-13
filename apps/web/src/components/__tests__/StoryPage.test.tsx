@@ -39,6 +39,12 @@ const READY: Story = {
   text: 'Das Haus ist grün. Anna geht zum Haus.',
   translation: 'The house is green. Anna walks to the house.',
   audioUrl: '/api/static/audio/story-story-1.mp3',
+  image: {
+    url: 'https://images.unsplash.com/photo-green-house',
+    authorName: 'Ada Fotograf',
+    authorUrl: 'https://unsplash.com/@ada',
+    sourceUrl: 'https://unsplash.com/photos/abc123',
+  },
   error: null,
   completedAt: null,
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -373,6 +379,77 @@ describe('StoryPage', () => {
 
       expect(await screen.findByText('Recording the narration…')).toBeInTheDocument();
       expect(screen.getByText('Almost there — the text is written.')).toBeInTheDocument();
+    });
+  });
+
+  describe('illustration', () => {
+    it('shows a labelled image above the text and credits the photographer', async () => {
+      localStorage.setItem('vocabahn-story-id', 'story-1');
+      vi.mocked(fetchStory).mockResolvedValue(READY);
+
+      const { container } = renderWithProviders(<StoryPage />);
+
+      // The alt names the story rather than restating it — decoding the German
+      // is the exercise, not something to hand over in the alt text.
+      const img = await screen.findByRole('img', {
+        name: 'Illustration for the story: Ein grüner Tag',
+      });
+      expect(img).toHaveAttribute('src', 'https://images.unsplash.com/photo-green-house');
+      expect(img).toHaveAttribute('loading', 'lazy');
+
+      expect(screen.getByRole('link', { name: 'Ada Fotograf' })).toHaveAttribute(
+        'href',
+        'https://unsplash.com/@ada?utm_source=vocabahn&utm_medium=referral',
+      );
+      expect(screen.getByRole('link', { name: 'Unsplash' })).toHaveAttribute(
+        'href',
+        'https://unsplash.com/photos/abc123?utm_source=vocabahn&utm_medium=referral',
+      );
+
+      expect(await a11y(container)).toHaveNoViolations();
+    });
+
+    it('renders cleanly with no image at all', async () => {
+      // Stories written before the feature existed, an unset UNSPLASH_ACCESS_KEY
+      // and a failed lookup all arrive here as image: null.
+      localStorage.setItem('vocabahn-story-id', 'story-1');
+      vi.mocked(fetchStory).mockResolvedValue({ ...READY, image: null });
+
+      const { container } = renderWithProviders(<StoryPage />);
+
+      await waitFor(() => expect(screen.getByText('Ein grüner Tag')).toBeInTheDocument());
+      expect(container.querySelector('img')).toBeNull();
+      expect(screen.queryByText(/Photo by/)).not.toBeInTheDocument();
+      // The story itself is untouched by the missing image.
+      expect(screen.getAllByRole('button', { name: 'Haus' })).toHaveLength(2);
+
+      expect(await a11y(container)).toHaveNoViolations();
+    });
+
+    it('drops the figure entirely when the photo will not load', async () => {
+      localStorage.setItem('vocabahn-story-id', 'story-1');
+      vi.mocked(fetchStory).mockResolvedValue(READY);
+
+      const { container } = renderWithProviders(<StoryPage />);
+      const img = await screen.findByRole('img', { name: /Illustration for the story/ });
+
+      fireEvent.error(img);
+
+      // No broken-image icon, and no credit line left hanging over nothing.
+      await waitFor(() => expect(container.querySelector('img')).toBeNull());
+      expect(screen.queryByText(/Photo by/)).not.toBeInTheDocument();
+      expect(screen.getByText('Ein grüner Tag')).toBeInTheDocument();
+    });
+
+    it('labels the image generically when the story has no title', async () => {
+      localStorage.setItem('vocabahn-story-id', 'story-1');
+      vi.mocked(fetchStory).mockResolvedValue({ ...READY, title: null });
+
+      renderWithProviders(<StoryPage />);
+
+      expect(
+        await screen.findByRole('img', { name: 'Illustration for this story' }),
+      ).toBeInTheDocument();
     });
   });
 

@@ -21,6 +21,9 @@ const READY_STORY = {
   text: 'Das Haus ist grün. Anna geht zum Haus.',
   translation: 'The house is green. Anna walks to the house.',
   audioUrl: '/api/static/audio/story-story-1.mp3',
+  // A remote Unsplash URL would be a real network fetch from the browser under
+  // test; the no-image path is the one worth exercising end to end anyway.
+  image: null,
   error: null,
   completedAt: null,
   createdAt: '2026-01-01T00:00:00.000Z',

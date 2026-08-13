@@ -21,6 +21,7 @@ import { addWordToDeck, fetchDecks, fetchDictionaryEntry, fetchFeedback, markWor
 import { prefersReducedMotion } from '../lib/motion';
 import { trackEvent } from '../lib/telemetry';
 import { Tab, TabList, TabPanel } from './Tabs';
+import { UnsplashCredit } from './UnsplashCredit';
 
 const FEEDBACK_ISSUES = Object.keys(FEEDBACK_ISSUE_LABELS) as FeedbackIssue[];
 
@@ -971,22 +972,10 @@ export function EntryBody({
             className="aspect-square max-w-xs sm:max-w-sm w-full mx-auto rounded-xl object-cover"
           />
           {entry.imageCredit && (
-            <figcaption className="mt-1 text-xs text-surface-500">
-              Photo by{' '}
-              {entry.imageCredit.authorUrl ? (
-                <a
-                  href={entry.imageCredit.authorUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-                >
-                  {entry.imageCredit.authorName}
-                </a>
-              ) : (
-                entry.imageCredit.authorName
-              )}{' '}
-              on Unsplash
-            </figcaption>
+            <UnsplashCredit
+              authorName={entry.imageCredit.authorName}
+              authorUrl={entry.imageCredit.authorUrl}
+            />
           )}
         </figure>
       )}

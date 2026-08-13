@@ -1,5 +1,6 @@
 import { BullModule } from '@nestjs/bullmq';
 import { Module } from '@nestjs/common';
+import { ImagesModule } from '../images/images.module';
 import { KnowledgeModule } from '../knowledge/knowledge.module';
 import { SourcesModule } from '../sources/sources.module';
 import { TtsModule } from '../tts/tts.module';
@@ -13,6 +14,7 @@ import { StoryProcessor } from './story.processor';
 @Module({
   imports: [
     BullModule.registerQueue({ name: STORY_QUEUE }, { name: STORY_DIGEST_QUEUE }),
+    ImagesModule,
     KnowledgeModule,
     SourcesModule,
     TtsModule,

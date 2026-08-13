@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ENRICHMENT_QUEUE, type EnrichmentJobData } from './enrichment.constants';
 import { GeminiProvider } from './providers/gemini.provider';
 import { TtsProvider } from '../tts/tts.provider';
-import { UnsplashProvider } from './providers/unsplash.provider';
+import { UnsplashProvider } from '../images/unsplash.provider';
 
 // Global rate limit protects the free-tier external APIs.
 @Processor(ENRICHMENT_QUEUE, {

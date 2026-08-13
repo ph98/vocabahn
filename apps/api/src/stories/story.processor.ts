@@ -2,6 +2,7 @@ import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { topicLabel } from '@vocabahn/shared';
+import { UnsplashProvider } from '../images/unsplash.provider';
 import { PrismaService } from '../prisma/prisma.service';
 import { TtsProvider } from '../tts/tts.provider';
 import { StoryProvider } from './providers/story.provider';
@@ -20,6 +21,7 @@ export class StoryProcessor extends WorkerHost {
     private readonly prisma: PrismaService,
     private readonly storyProvider: StoryProvider,
     private readonly tts: TtsProvider,
+    private readonly unsplash: UnsplashProvider,
   ) {
     super();
   }
@@ -87,6 +89,18 @@ export class StoryProcessor extends WorkerHost {
       );
     }
 
+    // The illustration is polish on the same terms as the narration below: it
+    // gives the reader a scene to anchor on before decoding the German, and a
+    // failed lookup costs them that and nothing else. Searched on the model's
+    // English scene description — Unsplash is keyword-driven and the German
+    // title would return junk — falling back to the English translation.
+    // Landscape, because this renders as a banner above the text, not the
+    // dictionary's square thumbnail.
+    const imageQuery = generated.imageQuery ?? generated.translation;
+    const image = imageQuery
+      ? await this.safe(() => this.unsplash.search(imageQuery, 'landscape'))
+      : null;
+
     // Narration is polish, not the product — a TTS outage must not cost the
     // learner the story (or their quota), so failure just means no audio.
     await this.prisma.story.update({ where: { id: storyId }, data: { stage: 'NARRATING' } });
@@ -104,6 +118,13 @@ export class StoryProcessor extends WorkerHost {
           text: generated.text,
           translation: generated.translation,
           audioUrl,
+          // All four move together: a null imageUrl is the normal no-image
+          // state, and a credit without a photo would render as an orphan
+          // caption.
+          imageUrl: image?.imageUrl ?? null,
+          imageAuthorName: image?.authorName ?? null,
+          imageAuthorUrl: image?.authorUrl ?? null,
+          imageSourceUrl: image?.sourceUrl ?? null,
           status: 'READY',
           stage: null,
           error: null,

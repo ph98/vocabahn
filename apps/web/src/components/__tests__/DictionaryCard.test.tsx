@@ -107,3 +107,48 @@ describe('AudioButton', () => {
   });
 });
 
+
+// Unsplash's API guidelines require the photographer to be credited with links
+// back to their profile and to Unsplash, each carrying UTM parameters naming
+// the application. The story banner renders through the same component.
+describe('Unsplash attribution', () => {
+  const WITH_IMAGE: DictionaryEntryDetail = {
+    ...ENTRY,
+    imageUrl: 'https://images.unsplash.com/photo-1',
+    imageCredit: { authorName: 'Ada Fotograf', authorUrl: 'https://unsplash.com/@ada' },
+  };
+
+  it('credits the photographer with referral parameters on both links', async () => {
+    const { container } = renderWithProviders(
+      <EntryBody entry={WITH_IMAGE} onSelectWord={() => {}} />,
+    );
+
+    const author = await screen.findByRole('link', { name: 'Ada Fotograf' });
+    expect(author).toHaveAttribute(
+      'href',
+      'https://unsplash.com/@ada?utm_source=vocabahn&utm_medium=referral',
+    );
+    expect(screen.getByRole('link', { name: 'Unsplash' })).toHaveAttribute(
+      'href',
+      'https://unsplash.com?utm_source=vocabahn&utm_medium=referral',
+    );
+    expect(author).toHaveAttribute('rel', 'noopener noreferrer');
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('still names the photographer when their profile link is missing', async () => {
+    renderWithProviders(
+      <EntryBody
+        entry={{ ...WITH_IMAGE, imageCredit: { authorName: 'Ada Fotograf', authorUrl: null } }}
+        onSelectWord={() => {}}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText(/Ada Fotograf/)).toBeInTheDocument());
+    expect(screen.queryByRole('link', { name: 'Ada Fotograf' })).not.toBeInTheDocument();
+    // The link back to Unsplash itself is required whether or not the profile
+    // link is known.
+    expect(screen.getByRole('link', { name: 'Unsplash' })).toBeInTheDocument();
+  });
+});

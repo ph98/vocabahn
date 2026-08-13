@@ -424,6 +424,36 @@ describe('StoriesService', () => {
 
       expect(story.targets.map((t) => t.entryId)).toEqual(['e1']);
     });
+
+    it('surfaces the illustration with the attribution Unsplash requires', async () => {
+      prisma.story.findUnique.mockResolvedValue(
+        readyStory({
+          imageUrl: 'https://images.unsplash.com/photo-1',
+          imageAuthorName: 'Ada Fotograf',
+          imageAuthorUrl: 'https://unsplash.com/@ada',
+          imageSourceUrl: 'https://unsplash.com/photos/abc',
+        }),
+      );
+
+      const story = await service.get('user-1', 'story-1');
+
+      expect(story.image).toEqual({
+        url: 'https://images.unsplash.com/photo-1',
+        authorName: 'Ada Fotograf',
+        authorUrl: 'https://unsplash.com/@ada',
+        sourceUrl: 'https://unsplash.com/photos/abc',
+      });
+    });
+
+    it('reports no image for a story that never got one', async () => {
+      // Every story written before the feature existed, plus any whose lookup
+      // failed. A caption with no photo above it is worse than no caption.
+      prisma.story.findUnique.mockResolvedValue(readyStory({ imageUrl: null }));
+
+      const story = await service.get('user-1', 'story-1');
+
+      expect(story.image).toBeNull();
+    });
   });
 
   describe('complete', () => {

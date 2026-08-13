@@ -7,6 +7,13 @@ export interface GeneratedStory {
   title: string | null;
   text: string;
   translation: string | null;
+  /**
+   * English scene description for the illustration search. Unsplash is
+   * English-keyword-driven, so the German title or body would return junk; the
+   * model already has the whole story in context and is the cheapest place to
+   * get a usable query. Null when the model omitted it.
+   */
+  imageQuery: string | null;
   /** Claimed only — the caller must verify each surfaceForm occurs in `text`. */
   targets: { word: string; surfaceForm: string }[];
 }
@@ -55,6 +62,7 @@ export class StoryProvider {
             title: { type: Type.STRING },
             text: { type: Type.STRING },
             translation: { type: Type.STRING },
+            imageQuery: { type: Type.STRING },
             targets: {
               type: Type.ARRAY,
               items: {
@@ -67,7 +75,7 @@ export class StoryProvider {
               },
             },
           },
-          required: ['title', 'text', 'translation', 'targets'],
+          required: ['title', 'text', 'translation', 'imageQuery', 'targets'],
         },
       },
     });
@@ -81,6 +89,7 @@ export class StoryProvider {
       title?: string;
       text?: string;
       translation?: string;
+      imageQuery?: string;
       targets?: { word?: string; surfaceForm?: string }[];
     };
 
@@ -93,6 +102,7 @@ export class StoryProvider {
       title: parsed.title?.trim() || null,
       text,
       translation: parsed.translation?.trim() || null,
+      imageQuery: parsed.imageQuery?.trim() || null,
       targets: (parsed.targets ?? [])
         .filter((t): t is { word: string; surfaceForm: string } =>
           Boolean(t?.word && t?.surfaceForm),

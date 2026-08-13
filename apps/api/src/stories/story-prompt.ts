@@ -76,6 +76,12 @@ export function buildStoryPrompt(input: StoryPromptInput): string {
       : '  Use EVERY word above at least once, inflected naturally — do not force a\n  word into an unnatural sentence.',
     '- translation: a natural English translation of the whole text. Translate',
     '  for meaning, not word by word.',
+    // Searched against a stock-photo library, which is English-keyword-driven
+    // and matches concrete objects far better than abstractions.
+    '- imageQuery: 2 to 4 concrete English nouns naming what a photograph of this',
+    '  scene would show, e.g. "train station platform morning" or "football',
+    '  stadium crowd". Nouns only, no verbs, no adjectives of mood, no German, no',
+    '  proper names, and nothing about language learning.',
     '- targets: one entry per studied word you actually used. `word` is the',
     '  headword exactly as given above. `surfaceForm` is the inflected form as it',
     '  literally appears in your text — copy it character for character,',
