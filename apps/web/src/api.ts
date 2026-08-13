@@ -10,12 +10,15 @@ import {
   dictionarySearchResponseSchema,
   dueCardsResponseSchema,
   entryFeedbackSchema,
+  entryQuizResponseSchema,
   enrollResponseSchema,
   unenrollResponseSchema,
   healthResponseSchema,
   importWordsResponseSchema,
   knownWordsResponseSchema,
   latestStoryResponseSchema,
+  quizAttemptResultSchema,
+  quizReportSchema,
   storyQuotaSchema,
   storyResponseSchema,
   submitReviewResponseSchema,
@@ -27,6 +30,8 @@ import {
   type ImportWordsResponse,
   type ReviewRating,
   type SubmitFeedbackBody,
+  type SubmitQuizAttemptBody,
+  type SubmitQuizReportBody,
   type SyncReviewItem,
   type UpdateDeckBody,
   type User,
@@ -186,6 +191,31 @@ export async function fetchFeedback(word: string) {
 export async function submitFeedback(word: string, body: SubmitFeedbackBody) {
   const { data } = await api.post(`/dictionary/${encodeURIComponent(word)}/feedback`, body);
   return entryFeedbackSchema.parse(data);
+}
+
+// ── Per-word quiz ───────────────────────────────────────────────────────────
+
+/** Questions plus the entry's enrichment status, so the tab can show a pending state. */
+export async function fetchEntryQuiz(word: string) {
+  const { data } = await api.get(`/dictionary/${encodeURIComponent(word)}/quiz`);
+  return entryQuizResponseSchema.parse(data);
+}
+
+/** The server grades the answer; the correct index is only revealed in the response. */
+export async function submitQuizAttempt(questionId: string, body: SubmitQuizAttemptBody) {
+  const { data } = await api.post(
+    `/dictionary/quiz/${encodeURIComponent(questionId)}/attempt`,
+    body,
+  );
+  return quizAttemptResultSchema.parse(data);
+}
+
+export async function reportQuizQuestion(questionId: string, body: SubmitQuizReportBody) {
+  const { data } = await api.post(
+    `/dictionary/quiz/${encodeURIComponent(questionId)}/report`,
+    body,
+  );
+  return quizReportSchema.parse(data);
 }
 
 export async function requestEmailSignIn(email: string): Promise<void> {

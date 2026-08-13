@@ -58,7 +58,7 @@ additionally builds and runs `api` and `web`.
                     ┌───────────────▼──────────────────────────┐
                     │ apps/api  (prefix /api, URI version v1)  │
                     │                                          │
-   PostgreSQL ◀─────┤ Prisma  ·  21 models                     │
+   PostgreSQL ◀─────┤ Prisma  ·  24 models                     │
                     │                                          │
        Redis  ◀─────┤ BullMQ queue + quota counters            │
                     │        │                                 │

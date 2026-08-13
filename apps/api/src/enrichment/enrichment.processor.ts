@@ -2,11 +2,24 @@ import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Inject, Logger, forwardRef } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { DictionaryService } from '../dictionary/dictionary.service';
+import { CEFR_LEVELS, cefrIndex } from '../knowledge/constants';
 import { PrismaService } from '../prisma/prisma.service';
 import { ENRICHMENT_QUEUE, type EnrichmentJobData } from './enrichment.constants';
 import { GeminiProvider } from './providers/gemini.provider';
+import { buildMeaningQuestions, type NeighbourGloss } from './quiz-questions';
 import { TtsProvider } from '../tts/tts.provider';
 import { UnsplashProvider } from '../images/unsplash.provider';
+
+// Enough real translations to fill three distractors even after most are
+// rejected for being alternative meanings of the headword.
+const NEIGHBOUR_POOL_TARGET = 24;
+const NEIGHBOUR_POOL_TAKE = 60;
+// How far a distractor's source word may sit from the headword's CEFR
+// sub-level, in half-levels (A1.1 … C2.2).
+const NEIGHBOUR_LEVEL_SPREAD = 1;
+// Distractors come from the same rough frequency band: a third to triple the
+// headword's rank, so a B1 word is never contrasted with an obscure one.
+const NEIGHBOUR_RANK_FACTOR = 3;
 
 // Global rate limit protects the free-tier external APIs.
 @Processor(ENRICHMENT_QUEUE, {
@@ -33,7 +46,9 @@ export class EnrichmentProcessor extends WorkerHost {
       where: { id: dictionaryEntryId },
       include: {
         lexiconEntry: {
-          include: { senses: { orderBy: { order: 'asc' }, take: 5 } },
+          // The prompt only uses the first six glosses, but quiz validation
+          // needs every sense: a distractor matching sense 8 is still wrong.
+          include: { senses: { orderBy: { order: 'asc' }, take: 12 } },
         },
       },
     });
@@ -82,6 +97,19 @@ export class EnrichmentProcessor extends WorkerHost {
       mnemonic = ai.mnemonic ?? mnemonic;
     }
 
+    // 2b. Quiz questions, from that same response — no second AI call. Every
+    // option is validated against this entry's own meanings, and rejected
+    // distractors are replaced with real translations from comparable entries.
+    const quizQuestions = buildMeaningQuestions({
+      entryId: entry.id,
+      word: entry.word,
+      translation,
+      senses: lex.senses.map((s) => ({ glosses: s.glosses })),
+      raw: ai?.quiz ?? [],
+      neighbours: await this.sampleNeighbourGlosses(entry.id, cefrLevel, lex.pos, lex.frequencyRank),
+    });
+    const quizGenerator = ai?.model ?? 'grounded';
+
     // 3 & 4. Image and audio are optional polish — never block ENRICHED on them.
     const image = await this.safe(() =>
       this.unsplash.search(translation ?? entry.word),
@@ -103,6 +131,9 @@ export class EnrichmentProcessor extends WorkerHost {
 
     await this.prisma.$transaction(async (tx) => {
       await tx.dictionaryExample.deleteMany({ where: { entryId: entry.id } });
+      // Questions are replaced wholesale; QuizAttempt.questionId is SET NULL on
+      // delete, so a learner's answer history survives a re-enrichment.
+      await tx.entryQuizQuestion.deleteMany({ where: { entryId: entry.id } });
       await tx.dictionaryEntry.update({
         where: { id: entry.id },
         data: {
@@ -129,6 +160,20 @@ export class EnrichmentProcessor extends WorkerHost {
                 })),
               }
             : undefined,
+          quizQuestions: quizQuestions.length
+            ? {
+                create: quizQuestions.map((q) => ({
+                  type: 'MEANING' as const,
+                  order: q.order,
+                  prompt: q.prompt,
+                  options: q.options,
+                  correctIndex: q.correctIndex,
+                  explanation: q.explanation,
+                  optionOrigins: q.optionOrigins,
+                  generator: quizGenerator,
+                })),
+              }
+            : undefined,
           imageCredit: image
             ? {
                 upsert: {
@@ -150,7 +195,70 @@ export class EnrichmentProcessor extends WorkerHost {
     });
 
     await this.dictionaryService.updateSearchIndex(entry.id);
-    this.logger.log(`enriched "${entry.word}" (${entry.id})`);
+    this.logger.log(
+      `enriched "${entry.word}" (${entry.id}) — ${quizQuestions.length} quiz question(s)`,
+    );
+  }
+
+  /**
+   * Real translations from other entries, used as distractors that cannot be
+   * hallucinated. Tightest filter first — same part of speech, a neighbouring
+   * CEFR sub-level, a comparable frequency rank — then progressively looser,
+   * because a rare word has few peers and an empty pool means no quiz at all.
+   */
+  private async sampleNeighbourGlosses(
+    entryId: string,
+    cefrLevel: string | null,
+    pos: string,
+    frequencyRank: number | null,
+  ): Promise<NeighbourGloss[]> {
+    const levelIndex = cefrIndex(cefrLevel);
+    const nearbyLevels =
+      levelIndex === null
+        ? null
+        : CEFR_LEVELS.slice(
+            Math.max(0, levelIndex - NEIGHBOUR_LEVEL_SPREAD),
+            levelIndex + NEIGHBOUR_LEVEL_SPREAD + 1,
+          );
+    const rankBand =
+      frequencyRank === null
+        ? null
+        : {
+            gte: Math.floor(frequencyRank / NEIGHBOUR_RANK_FACTOR),
+            lte: frequencyRank * NEIGHBOUR_RANK_FACTOR,
+          };
+
+    const filters = [
+      { levels: nearbyLevels, rank: rankBand, samePos: true },
+      { levels: nearbyLevels, rank: null, samePos: true },
+      { levels: nearbyLevels, rank: null, samePos: false },
+      { levels: null, rank: null, samePos: false },
+    ];
+
+    for (const filter of filters) {
+      const lexiconWhere = {
+        ...(filter.samePos ? { pos } : {}),
+        ...(filter.rank ? { frequencyRank: filter.rank } : {}),
+      };
+      const rows = await this.prisma.dictionaryEntry.findMany({
+        where: {
+          id: { not: entryId },
+          translation: { not: null },
+          enrichmentStatus: 'ENRICHED',
+          ...(filter.levels ? { cefrLevel: { in: [...filter.levels] } } : {}),
+          ...(Object.keys(lexiconWhere).length > 0 ? { lexiconEntry: lexiconWhere } : {}),
+        },
+        select: { word: true, translation: true },
+        take: NEIGHBOUR_POOL_TAKE,
+      });
+      const pool = rows.flatMap((r) =>
+        r.translation ? [{ word: r.word, translation: r.translation }] : [],
+      );
+      if (pool.length >= NEIGHBOUR_POOL_TARGET || filter === filters[filters.length - 1]) {
+        return pool;
+      }
+    }
+    return [];
   }
 
   /** Run an optional step; log and swallow its error so it can't fail the job. */

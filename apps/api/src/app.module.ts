@@ -14,6 +14,7 @@ import { FeedbackModule } from './feedback/feedback.module';
 import { HealthModule } from './health/health.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { QuizModule } from './quiz/quiz.module';
 import { RedisModule } from './redis/redis.module';
 import { SourcesModule } from './sources/sources.module';
 import { StoriesModule } from './stories/stories.module';
@@ -47,6 +48,7 @@ import { StoriesModule } from './stories/stories.module';
     FeedbackModule,
     HealthModule,
     KnowledgeModule,
+    QuizModule,
     SourcesModule,
     StoriesModule,
   ],

@@ -131,6 +131,37 @@ by 0.7 per step, with `AGAIN` 0, `HARD` 0.4, `GOOD` 0.8, `EASY` 1.
 **Blend** — `repWeight = clamp01(reps / 3)`, so the prior dominates early and
 performance takes over by the third repetition.
 
+## Quiz attempts are not reviews
+
+The word page has a Quiz tab (`enrichment.md`). Answering a question writes a
+`QuizAttempt` row — question, entry, user, selected index, server-computed
+`correct`, latency — and **nothing else**. No `ReviewLog` row, no `Card` update,
+no `KnowledgeScore` write. `apps/api/src/quiz/quiz.service.spec.ts` asserts this
+directly, and asserts in the schema that `QuizAttempt` has no relation to either
+model.
+
+The reason is `replayCard`. A card's FSRS state is reconstructed from an empty
+scheduler by walking its `ReviewLog` in `reviewedAt` order, so anything written
+there *is* scheduling. A quiz answer written as a fake review would move the
+card's due date, and would then be replayed as a real review on the next offline
+sync — permanently, since the log is the source of truth.
+
+**Whether attempts should feed `KnowledgeService.performanceScore` was decided
+explicitly: not yet.** Three reasons:
+
+1. A 4-option question is 25% guessable, so an attempt is much weaker evidence
+   than a self-rating and would need its own weight, decay and confidence
+   handling — a second evidence model, not a tweak to the first.
+2. `recomputeAfterReview` runs only on review. Feeding quiz attempts means a new
+   trigger path that can auto-graduate a word, and auto-graduation already has
+   no strong-evidence requirement (see Limitations). Three lucky taps must not
+   retire a word.
+3. It matches how `StoryTarget.understood` was handled: record the signal, leave
+   it inert, and design the consumer once more than one producer exists.
+
+`QuizAttempt.questionId` is nullable with `onDelete: SetNull`, so re-enrichment
+replacing a question keeps the answer history that a future consumer would need.
+
 ## Auto-graduation
 
 Four ways a word becomes known, all funnelled through `recomputeAfterReview`
@@ -172,7 +203,8 @@ Note what the labels mean: **"Known" on the dashboard counts cards in `AUTO_KNOW
   from `emptyFsrsCard()` and discards the fabricated numbers.
 
 - Auto-graduation has no strong-evidence requirement: three self-graded `EASY`
-  taps satisfy it. Self-report is the only evidence kind that exists.
+  taps satisfy it. Self-report is still the only evidence kind the knowledge
+  model reads — `QuizAttempt` rows accumulate but nothing consumes them.
 - Swipe covers only **Again** and **Good**. `RATING_OFFSET` defines vertical
   directions and the buttons show ↑/↓ hints, but the drag is `axis: 'x'`, so
   Easy and Hard are keyboard/button only.

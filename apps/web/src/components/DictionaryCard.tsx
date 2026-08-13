@@ -21,6 +21,7 @@ import { addWordToDeck, fetchDecks, fetchDictionaryEntry, fetchFeedback, markWor
 import { prefersReducedMotion } from '../lib/motion';
 import { trackEvent } from '../lib/telemetry';
 import { ErrorStateForError } from './errors';
+import { EntryQuizSection } from './EntryQuiz';
 import { Tab, TabList, TabPanel } from './Tabs';
 import { UnsplashCredit } from './UnsplashCredit';
 
@@ -118,7 +119,9 @@ function EntryDetail({
           inline
         />
       )}
-      {entry && <EntryBody key={entry.word} entry={entry} onSelectWord={onSelectWord} />}
+      {entry && (
+        <EntryBody key={entry.word} entry={entry} onSelectWord={onSelectWord} showQuiz />
+      )}
     </div>
   );
 }
@@ -814,9 +817,16 @@ function FeedbackWidget({ word }: { word: string }) {
 export function EntryBody({
   entry,
   onSelectWord,
+  showQuiz = false,
 }: {
   entry: DictionaryEntryDetail;
   onSelectWord: (word: string) => void;
+  /**
+   * Off by default: the review session embeds this same body behind "Show
+   * answer", and quizzing a word inside a card the learner is already grading
+   * would double-test it. The word page opts in.
+   */
+  showQuiz?: boolean;
 }) {
   const queryClient = useQueryClient();
   const markKnownMutation = useMutation({
@@ -857,6 +867,9 @@ export function EntryBody({
 
   const tabs = [
     { id: 'overview' as const, label: 'Overview' },
+    // Always present when enabled: an unenriched entry has no questions yet,
+    // and the tab is where its pending state is shown.
+    ...(showQuiz ? [{ id: 'quiz' as const, label: 'Quiz' }] : []),
     ...(hasMorphology ? [{ id: 'morphology' as const, label: 'Morphology' }] : []),
     ...(hasFamily ? [{ id: 'family' as const, label: 'Family' }] : []),
     ...(hasAids ? [{ id: 'aids' as const, label: 'Tips' }] : []),
@@ -1045,6 +1058,13 @@ export function EntryBody({
           </>
         )}
 
+        {activeTab === 'quiz' && (
+          <EntryQuizSection
+            word={entry.word}
+            enrichmentStatus={entry.enrichmentStatus}
+            onOpenOverview={() => setActive('overview')}
+          />
+        )}
         {activeTab === 'morphology' && <MorphologySection entry={entry} />}
         {activeTab === 'family' && <FamilySection entry={entry} onSelectWord={onSelectWord} />}
         {activeTab === 'aids' && <LearnerAidsSection entry={entry} />}

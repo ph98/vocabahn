@@ -31,6 +31,8 @@ model User {
   feedback        EntryFeedback[]
   decks           UserDeck[]
   stories         Story[]
+  quizAttempts    QuizAttempt[]
+  quizReports     QuizQuestionReport[]
 }
 
 // ── Lexicon layer (complete Wiktextract ingest) ────────────────────────────
@@ -126,17 +128,21 @@ model DictionaryEntry {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  lexiconEntry LexiconEntry        @relation(fields: [lexiconEntryId], references: [id])
-  examples     DictionaryExample[]
-  imageCredit  ImageCredit?
-  cards        Card[]
-  courseWords  CourseWord[]
-  deckWords    UserDeckWord[]
-  feedback     EntryFeedback[]
-  storyTargets StoryTarget[]
+  lexiconEntry  LexiconEntry        @relation(fields: [lexiconEntryId], references: [id])
+  examples      DictionaryExample[]
+  imageCredit   ImageCredit?
+  cards         Card[]
+  courseWords   CourseWord[]
+  deckWords     UserDeckWord[]
+  feedback      EntryFeedback[]
+  storyTargets  StoryTarget[]
+  quizQuestions EntryQuizQuestion[]
+  quizAttempts  QuizAttempt[]
 
   @@index([word])
   @@index([enrichmentStatus])
+  // Distractor sampling looks for entries at a neighbouring CEFR sub-level.
+  @@index([cefrLevel])
 }
 
 model DictionaryExample {
@@ -207,6 +213,109 @@ model EntryFeedback {
   @@unique([entryId, userId])
   @@index([entryId])
   @@index([vote])
+}
+
+// ── Per-word multiple-choice quiz ───────────────────────────────────────────
+
+enum QuizQuestionType {
+  MEANING
+}
+
+// Where an option came from, recorded parallel to `options` so a bad
+// distractor can be traced back to the generator that produced it.
+enum QuizOptionOrigin {
+  ANSWER
+  AI
+  NEIGHBOUR
+}
+
+enum QuizReportReason {
+  WRONG_ANSWER
+  AMBIGUOUS
+  TOO_EASY
+  BAD_GERMAN
+  OTHER
+}
+
+/// One 4-option question about a dictionary entry. Written by the enrichment
+/// job from the same Gemini response that fills the entry itself — never by a
+/// second AI call. Replaced wholesale on re-enrichment, which is why it is its
+/// own table rather than a Json column: a single bad question is replaceable.
+model EntryQuizQuestion {
+  id            String             @id @default(cuid())
+  entryId       String
+  type          QuizQuestionType   @default(MEANING)
+  order         Int                @default(0)
+  prompt        String
+  options       String[]
+  correctIndex  Int
+  // One short sentence shown after answering.
+  explanation   String?
+  // Generation metadata: the model that produced the question, and where each
+  // option came from (index-aligned with `options`).
+  generator     String?
+  optionOrigins QuizOptionOrigin[] @default([])
+  // Bumped by QuizQuestionReport; questions past REPORT_SUPPRESS_THRESHOLD stop
+  // being served without anyone having to intervene.
+  reportCount   Int                @default(0)
+  createdAt     DateTime           @default(now())
+
+  entry    DictionaryEntry      @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  attempts QuizAttempt[]
+  reports  QuizQuestionReport[]
+
+  @@index([entryId, order])
+}
+
+/// A learner's answer to one quiz question. Deliberately NOT a ReviewLog row:
+/// ReviewLog is the FSRS source of truth and is replayed from empty state, so a
+/// quiz result written there would corrupt scheduling. Nothing reads this table
+/// yet — see docs/system/learning.md.
+model QuizAttempt {
+  id            String   @id @default(cuid())
+  // Null once the question was replaced by a re-enrichment: the attempt
+  // survives its question, so quiz history is not silently deleted.
+  questionId    String?
+  entryId       String
+  userId        String
+  selectedIndex Int
+  correct       Boolean
+  latencyMs     Int?
+  createdAt     DateTime @default(now())
+
+  question EntryQuizQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  entry    DictionaryEntry    @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, entryId])
+  @@index([questionId])
+}
+
+/// "This question is wrong" — the EntryFeedback pattern, scoped to one question
+/// so the offending question can be identified rather than the whole entry.
+model QuizQuestionReport {
+  id         String @id @default(cuid())
+  questionId String
+  userId     String
+  // Denormalized headword, for quick filtering/browsing in AdminJS
+  word       String
+
+  reason  QuizReportReason
+  comment String?
+
+  // Context captured at submission time, to help triage quality reports
+  userAgent String?
+  locale    String?
+  path      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  question EntryQuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, userId])
+  @@index([questionId])
 }
 
 // ── Study loop: FSRS cards + review log ─────────────────────────────────────
