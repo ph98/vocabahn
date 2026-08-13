@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import type { CourseDetail, CourseProgress, CourseSummary, FsrsState, UnenrollResponse } from '@vocabahn/shared';
+import type { CourseDetail, CourseProgress, CourseSummary, UnenrollResponse } from '@vocabahn/shared';
+import { distinctEntryIds, summarizeProgress, type ProgressCardState } from '../common/progress';
 import { cefrIndex } from '../knowledge/constants';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -22,28 +23,28 @@ export class CoursesService {
       },
     });
 
-    return Promise.all(
-      courses.map(async (course) => {
-        const enrolled = course.enrollments.length > 0;
-        return {
-          id: course.id,
-          slug: course.slug,
-          title: course.title,
-          description: course.description,
-          cefrLevel: course.cefrLevel,
-          order: course.order,
-          isComplete: course.isComplete,
-          wordCount: course._count.words,
-          enrolled,
-          progress: enrolled
-            ? await this.computeProgress(
-                userId,
-                course.words.map((w) => w.dictionaryEntryId),
-              )
-            : null,
-        };
-      }),
+    // One card query for every enrolled course together, not one per course.
+    const enrolledEntryIds = distinctEntryIds(
+      courses.filter((c) => c.enrollments.length > 0).flatMap((c) => c.words.map((w) => w.dictionaryEntryId)),
     );
+    const cardsByEntry = await this.cardStatesByEntry(userId, enrolledEntryIds);
+
+    return courses.map((course) => {
+      const enrolled = course.enrollments.length > 0;
+      const entryIds = enrolled ? distinctEntryIds(course.words.map((w) => w.dictionaryEntryId)) : [];
+      return {
+        id: course.id,
+        slug: course.slug,
+        title: course.title,
+        description: course.description,
+        cefrLevel: course.cefrLevel,
+        order: course.order,
+        isComplete: course.isComplete,
+        wordCount: course._count.words,
+        enrolled,
+        progress: enrolled ? this.summarizeEntries(entryIds, cardsByEntry) : null,
+      };
+    });
   }
 
   async getCourse(userId: string, slug: string): Promise<CourseDetail> {
@@ -63,9 +64,11 @@ export class CoursesService {
     }
 
     const enrolled = course.enrollments.length > 0;
-    const dictionaryEntryIds = course.words.map((w) => w.dictionaryEntryId);
+    const dictionaryEntryIds = distinctEntryIds(course.words.map((w) => w.dictionaryEntryId));
 
-    const cardsByEntry = enrolled ? await this.cardStatesByEntry(userId, dictionaryEntryIds) : new Map<string, FsrsState>();
+    const cardsByEntry = enrolled
+      ? await this.cardStatesByEntry(userId, dictionaryEntryIds)
+      : new Map<string, ProgressCardState>();
 
     return {
       id: course.id,
@@ -77,7 +80,7 @@ export class CoursesService {
       isComplete: course.isComplete,
       wordCount: course._count.words,
       enrolled,
-      progress: enrolled ? this.summarizeStates([...cardsByEntry.values()], course._count.words) : null,
+      progress: enrolled ? this.summarizeEntries(dictionaryEntryIds, cardsByEntry) : null,
       words: course.words.map((w) => ({
         order: w.order,
         dictionaryEntryId: w.dictionaryEntryId,
@@ -85,7 +88,7 @@ export class CoursesService {
         translation: w.dictionaryEntry.translation,
         emoji: w.dictionaryEntry.emoji,
         cefrLevel: w.dictionaryEntry.cefrLevel,
-        cardState: cardsByEntry.get(w.dictionaryEntryId) ?? null,
+        cardState: cardsByEntry.get(w.dictionaryEntryId)?.state ?? null,
       })),
     };
   }
@@ -203,23 +206,18 @@ export class CoursesService {
     return { enrolled: false, cardsSuspended };
   }
 
-  private async cardStatesByEntry(userId: string, dictionaryEntryIds: string[]): Promise<Map<string, FsrsState>> {
+  private async cardStatesByEntry(userId: string, dictionaryEntryIds: string[]): Promise<Map<string, ProgressCardState>> {
+    if (dictionaryEntryIds.length === 0) return new Map();
     const cards = await this.prisma.card.findMany({
       where: { userId, dictionaryEntryId: { in: dictionaryEntryIds } },
-      select: { dictionaryEntryId: true, state: true },
+      select: { dictionaryEntryId: true, state: true, knownState: true },
     });
-    return new Map(cards.map((c) => [c.dictionaryEntryId, c.state]));
+    return new Map(cards.map((c) => [c.dictionaryEntryId, { state: c.state, knownState: c.knownState }]));
   }
 
-  private async computeProgress(userId: string, dictionaryEntryIds: string[]): Promise<CourseProgress> {
-    const states = [...(await this.cardStatesByEntry(userId, dictionaryEntryIds)).values()];
-    return this.summarizeStates(states, dictionaryEntryIds.length);
-  }
-
-  private summarizeStates(states: FsrsState[], totalWords: number): CourseProgress {
-    const learned = states.filter((s) => s === 'REVIEW').length;
-    const inProgress = states.length - learned;
-    const notStarted = totalWords - states.length;
-    return { learned, inProgress, notStarted };
+  /** `entryIds` must already be distinct — an entry listed twice must not count twice. */
+  private summarizeEntries(entryIds: string[], cardsByEntry: Map<string, ProgressCardState>): CourseProgress {
+    const cards = entryIds.map((id) => cardsByEntry.get(id)).filter((c): c is ProgressCardState => c !== undefined);
+    return summarizeProgress(cards, entryIds.length);
   }
 }

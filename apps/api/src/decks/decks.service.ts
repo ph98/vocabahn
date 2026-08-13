@@ -1,7 +1,10 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import type { CreateDeckBody, DeckDetail, DeckListResponse, DeckSummary, ImportWordsResponse, UpdateDeckBody } from '@vocabahn/shared';
+import type { CreateDeckBody, DeckDetail, DeckListResponse, DeckSummary, ImportWordsResponse, Progress, UpdateDeckBody } from '@vocabahn/shared';
+import { distinctEntryIds, summarizeProgress, type ProgressCardState } from '../common/progress';
 import { DictionaryService } from '../dictionary/dictionary.service';
 import { PrismaService } from '../prisma/prisma.service';
+
+const EMPTY_PROGRESS: Progress = { learned: 0, inProgress: 0, notStarted: 0 };
 
 @Injectable()
 export class DecksService {
@@ -13,18 +16,26 @@ export class DecksService {
   ) {}
 
   async listDecks(userId: string): Promise<DeckListResponse> {
+    const include = {
+      _count: { select: { words: true } },
+      user: { select: { name: true } },
+      words: { select: { dictionaryEntryId: true } },
+    } as const;
+
     const [myDecks, publicDecks] = await Promise.all([
-      this.prisma.userDeck.findMany({
-        where: { userId },
-        orderBy: { createdAt: 'desc' },
-        include: { _count: { select: { words: true } }, user: { select: { name: true } } },
-      }),
+      this.prisma.userDeck.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, include }),
       this.prisma.userDeck.findMany({
         where: { isPublic: true, userId: { not: userId } },
         orderBy: { createdAt: 'desc' },
-        include: { _count: { select: { words: true } }, user: { select: { name: true } } },
+        include,
       }),
     ]);
+
+    // One card query for every deck on the page — not one per deck.
+    const cardsByEntry = await this.cardStatesByEntry(
+      userId,
+      distinctEntryIds([...myDecks, ...publicDecks].flatMap((d) => d.words.map((w) => w.dictionaryEntryId))),
+    );
 
     const toSummary = (d: (typeof myDecks)[number], isOwner: boolean): DeckSummary => ({
       id: d.id,
@@ -32,6 +43,7 @@ export class DecksService {
       description: d.description ?? null,
       isPublic: d.isPublic,
       wordCount: d._count.words,
+      progress: this.summarizeEntries(distinctEntryIds(d.words.map((w) => w.dictionaryEntryId)), cardsByEntry),
       ownerName: d.user.name ?? null,
       isOwner,
       createdAt: d.createdAt.toISOString(),
@@ -58,12 +70,15 @@ export class DecksService {
     if (!deck) throw new NotFoundException('Deck not found');
     if (!deck.isPublic && deck.userId !== userId) throw new ForbiddenException();
 
+    const entryIds = distinctEntryIds(deck.words.map((w) => w.dictionaryEntryId));
+
     return {
       id: deck.id,
       title: deck.title,
       description: deck.description ?? null,
       isPublic: deck.isPublic,
       wordCount: deck._count.words,
+      progress: this.summarizeEntries(entryIds, await this.cardStatesByEntry(userId, entryIds)),
       ownerName: deck.user.name ?? null,
       isOwner: deck.userId === userId,
       createdAt: deck.createdAt.toISOString(),
@@ -88,6 +103,7 @@ export class DecksService {
       description: deck.description ?? null,
       isPublic: deck.isPublic,
       wordCount: 0,
+      progress: EMPTY_PROGRESS,
       ownerName: deck.user.name ?? null,
       isOwner: true,
       createdAt: deck.createdAt.toISOString(),
@@ -103,14 +119,20 @@ export class DecksService {
         ...(body.description !== undefined && { description: body.description }),
         ...(body.isPublic !== undefined && { isPublic: body.isPublic }),
       },
-      include: { _count: { select: { words: true } }, user: { select: { name: true } } },
+      include: {
+        _count: { select: { words: true } },
+        user: { select: { name: true } },
+        words: { select: { dictionaryEntryId: true } },
+      },
     });
+    const entryIds = distinctEntryIds(deck.words.map((w) => w.dictionaryEntryId));
     return {
       id: deck.id,
       title: deck.title,
       description: deck.description ?? null,
       isPublic: deck.isPublic,
       wordCount: deck._count.words,
+      progress: this.summarizeEntries(entryIds, await this.cardStatesByEntry(userId, entryIds)),
       ownerName: deck.user.name ?? null,
       isOwner: true,
       createdAt: deck.createdAt.toISOString(),
@@ -203,6 +225,21 @@ export class DecksService {
     }
 
     return { imported: uniqueEntryIds.length, failed };
+  }
+
+  private async cardStatesByEntry(userId: string, dictionaryEntryIds: string[]): Promise<Map<string, ProgressCardState>> {
+    if (dictionaryEntryIds.length === 0) return new Map();
+    const cards = await this.prisma.card.findMany({
+      where: { userId, dictionaryEntryId: { in: dictionaryEntryIds } },
+      select: { dictionaryEntryId: true, state: true, knownState: true },
+    });
+    return new Map(cards.map((c) => [c.dictionaryEntryId, { state: c.state, knownState: c.knownState }]));
+  }
+
+  /** `entryIds` must already be distinct. Same bucket definition as courses (`common/progress.ts`). */
+  private summarizeEntries(entryIds: string[], cardsByEntry: Map<string, ProgressCardState>): Progress {
+    const cards = entryIds.map((id) => cardsByEntry.get(id)).filter((c): c is ProgressCardState => c !== undefined);
+    return summarizeProgress(cards, entryIds.length);
   }
 
   private async assertOwner(userId: string, deckId: string): Promise<void> {

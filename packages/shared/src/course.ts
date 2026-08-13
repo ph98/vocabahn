@@ -1,12 +1,10 @@
 import { z } from 'zod';
+import { progressSchema, type Progress } from './progress.js';
 import { fsrsStateSchema } from './review.js';
 
-export const courseProgressSchema = z.object({
-  learned: z.number(),
-  inProgress: z.number(),
-  notStarted: z.number(),
-});
-export type CourseProgress = z.infer<typeof courseProgressSchema>;
+/** Courses and decks share one progress shape — see `progress.ts` for the buckets. */
+export const courseProgressSchema = progressSchema;
+export type CourseProgress = Progress;
 
 export const courseSummarySchema = z.object({
   id: z.string(),

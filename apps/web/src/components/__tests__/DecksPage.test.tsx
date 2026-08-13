@@ -21,6 +21,7 @@ const DECKS: DeckListResponse = {
       description: 'Useful words for trip',
       isPublic: false,
       wordCount: 15,
+      progress: { learned: 6, inProgress: 3, notStarted: 6 },
       ownerName: 'Test User',
       isOwner: true,
       createdAt: new Date().toISOString(),
@@ -33,6 +34,7 @@ const DECKS: DeckListResponse = {
       description: 'Public community deck',
       isPublic: true,
       wordCount: 30,
+      progress: { learned: 0, inProgress: 0, notStarted: 30 },
       ownerName: 'Other User',
       isOwner: false,
       createdAt: new Date().toISOString(),
@@ -51,6 +53,10 @@ describe('DecksPage', () => {
     const reviewLinks = screen.getAllByRole('link', { name: 'Review' });
     expect(reviewLinks).toHaveLength(2);
     expect(reviewLinks[0]).toHaveAttribute('href', '/review?deckId=deck-1');
+
+    // Progress comes straight from the server payload, not from anything computed here.
+    expect(screen.getByRole('img', { name: '6 learned, 3 in progress, 6 not started' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '0 learned, 0 in progress, 30 not started' })).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();
   });

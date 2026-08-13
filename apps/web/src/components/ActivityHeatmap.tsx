@@ -1,7 +1,8 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { prefersReducedMotion } from '../lib/motion';
+import { FollowTooltip, useFollowTooltip } from './FollowTooltip';
 
 interface HeatmapData {
   date: string;
@@ -14,8 +15,7 @@ interface ActivityHeatmapProps {
 
 export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const [hoveredCell, setHoveredCell] = useState<HeatmapData | null>(null);
+  const tooltip = useFollowTooltip<HeatmapData>();
 
   useGSAP(() => {
     if (prefersReducedMotion()) return;
@@ -36,28 +36,6 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       }
     );
   }, { scope: containerRef });
-
-  const handleMouseMove = (e: React.MouseEvent, cell: HeatmapData) => {
-    setHoveredCell(cell);
-    if (tooltipRef.current) {
-      if (prefersReducedMotion()) {
-        tooltipRef.current.style.left = `${e.clientX}px`;
-        tooltipRef.current.style.top = `${e.clientY - 45}px`;
-        return;
-      }
-      // Use GSAP quickTo for a buttery smooth tooltip following effect
-      gsap.to(tooltipRef.current, {
-        x: e.clientX,
-        y: e.clientY - 45, // offset above cursor
-        duration: 0.2,
-        ease: 'power3.out',
-      });
-    }
-  };
-
-  const handleMouseLeave = () => {
-    setHoveredCell(null);
-  };
 
   return (
     <div className="relative w-full" ref={containerRef}>
@@ -87,29 +65,23 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
               <div
                 key={cell.date}
                 className={`heatmap-cell h-3.5 w-3.5 rounded-sm transition-all duration-300 hover:scale-[1.3] motion-reduce:hover:scale-100 hover:z-10 hover:border-white/50 cursor-crosshair ${intensityClasses[intensity]}`}
-                onMouseMove={(e) => handleMouseMove(e, cell)}
-                onMouseLeave={handleMouseLeave}
+                onMouseMove={(e) => tooltip.showAtPointer(e, cell.date, cell)}
+                onMouseLeave={tooltip.hide}
               />
             );
           })}
         </div>
       </div>
 
-      {/* Floating Tooltip */}
-      <div
-        ref={tooltipRef}
-        className={`fixed top-0 left-0 z-50 pointer-events-none px-3 py-2 rounded-xl bg-surface-950/95 backdrop-blur-md border border-surface-800 shadow-2xl transition-opacity duration-200 text-xs text-center ${
-          hoveredCell ? 'opacity-100' : 'opacity-0'
-        }`}
-        style={{ transform: 'translate(-50%, -100%)', willChange: 'transform' }}
-      >
-        {hoveredCell && (
+      {/* Same shared hover tooltip the progress bars use. */}
+      <FollowTooltip controller={tooltip}>
+        {tooltip.value && (
           <>
-            <div className="font-bold text-surface-100">{hoveredCell.count} review{hoveredCell.count !== 1 && 's'}</div>
-            <div className="text-surface-400 mt-0.5">{new Date(hoveredCell.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
+            <div className="font-bold text-surface-100">{tooltip.value.count} review{tooltip.value.count !== 1 && 's'}</div>
+            <div className="text-surface-400 mt-0.5">{new Date(tooltip.value.date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</div>
           </>
         )}
-      </div>
+      </FollowTooltip>
     </div>
   );
 }

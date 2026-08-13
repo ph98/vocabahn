@@ -265,7 +265,7 @@ export function DashboardPage() {
                       )}
                     </div>
                     <div className="mt-3">
-                      <ProgressBar progress={course.progress} wordCount={course.wordCount} />
+                      <ProgressBar progress={course.progress} />
                     </div>
                   </li>
                 ))}

@@ -62,6 +62,13 @@ Two libraries, split by job:
 `prefersReducedMotion()` guard. Every GSAP call site checks it, and both
 `MotionConfig` usages set `reducedMotion="user"`.
 
+`FollowTooltip.tsx` is the one hover/focus tooltip in the app — a GSAP-eased
+overlay that follows the pointer, or anchors above the trigger when opened by
+keyboard focus, and closes on Escape. It is deliberately **non-interactive**:
+read-only text, `pointer-events: none`, no focus trap. The activity heatmap and
+the progress bars both use it. Anything needing focusable controls inside the
+overlay wants a popover, not this.
+
 Gestures: swipe-to-rate on the review card; `PullToRefresh` on the dashboard; and
 `EdgeSwipeBack`, a window-level touch handler that runs `navigate(-1)` on a
 right-swipe starting within 24 px of the left edge — disabled on `/review` so it
@@ -127,7 +134,10 @@ Implemented deliberately, not incidentally:
 - Interactive targets are ≥ 44 px (`min-h-11` / `min-h-12` throughout), with
   `focus-visible` outlines rather than suppressed focus rings.
 - German content is marked `lang="de"`.
-- Quota and progress bars carry `role="progressbar"` with `aria-valuenow`/`max`.
+- Course and deck progress bars are `role="img"` with an `aria-label` naming all
+  three bucket counts; the same counts are also visible text in the legend
+  beside the bar, whose entries are the keyboard-reachable tooltip triggers.
+  Nothing in the app uses `role="progressbar"`.
 
 ## PWA
 

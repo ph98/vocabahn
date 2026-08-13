@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { progressSchema } from './progress.js';
 
 export const deckWordSchema = z.object({
   dictionaryEntryId: z.string(),
@@ -15,6 +16,8 @@ export const deckSummarySchema = z.object({
   description: z.string().nullable(),
   isPublic: z.boolean(),
   wordCount: z.number(),
+  /** The *requesting user's* progress over this deck's words, even on someone else's public deck. */
+  progress: progressSchema,
   ownerName: z.string().nullable(),
   isOwner: z.boolean(),
   createdAt: z.string(),

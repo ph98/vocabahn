@@ -112,6 +112,12 @@ Manual marking (`markKnown`, `bulkMarkKnown`) writes `USER_KNOWN` with due one
 year out. Undo returns the card to `ACTIVE`, due now, and **pulls the score down
 to 0.75** (threshold − 0.1) so the next review cannot instantly re-graduate it.
 
+**None of these routes touch the FSRS columns.** A word can be `AUTO_KNOWN`
+while `state` still reads `LEARNING`. Anything counting known words must read
+`knownState` first and fall back to `state` — see the progress buckets in
+`content.md`, which is where reading `state` alone used to leave graduated words
+counted as "in progress" forever.
+
 ## Dashboard
 
 `DashboardService` — 365-day heatmap of review counts, streak walked backwards
