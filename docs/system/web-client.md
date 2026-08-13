@@ -246,6 +246,17 @@ shape and answers with `NewVersionAvailableState`, whose single action asks the
 service worker for the new revision and then reloads (`lib/app-update.ts`) —
 `skipWaiting` and `clientsClaim` are on, so it takes over immediately.
 
+## Analytics
+
+`lib/telemetry.ts` is the only path to GA4 and Sentry. `trackEvent` is generic
+over the event map in `lib/analytics-events.ts`, so an unknown event name or a
+wrong parameter shape fails typecheck; nothing is sent unless the environment
+allows analytics *and* the visitor granted consent. `trackPageView` redacts
+`/word/:word` and `/decks/:id` and drops the query string before reporting, in
+`page_location` as well as `page_path` — otherwise gtag reads
+`window.location` itself and attaches the headword, and the dictionary `?q=`
+term, to every hit. Full taxonomy in `analytics.md`.
+
 ## Limitations
 
 - **A signed-out visitor never sees the 404 page.** The signed-out route table
@@ -260,7 +271,7 @@ service worker for the new revision and then reloads (`lib/app-update.ts`) —
 - The `offline-pack` endpoint has **no client consumer** (#23). There is no download
   control anywhere in the UI, so the top-1000 pack is unreachable
   (`dictionary.controller.ts`).
-- Test coverage is thin (#28): 162 Vitest cases across 21 files (with `jest-axe`
+- Test coverage is thin (#28): 176 Vitest cases across 21 files (with `jest-axe`
   wired up in `src/test/`), and 19 Playwright specs across `landing`,
   `dictionary`, `review`, `story`. Most routes are untested; of the error paths,
   only the boundary and the error states themselves are covered.

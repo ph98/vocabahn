@@ -327,7 +327,13 @@ export function StoryPage() {
       queryClient.setQueryData(['story', created.id], created);
       void queryClient.invalidateQueries({ queryKey: ['story-quota'] });
       void queryClient.invalidateQueries({ queryKey: ['story-latest'] });
-      trackEvent('story_create', { topic: created.topic ?? 'none', sourced: !!created.source });
+      trackEvent('story_generate', { topic: created.topic ?? 'none', sourced: !!created.source });
+    },
+    onError: (error) => {
+      const status = isAxiosError(error) ? error.response?.status : undefined;
+      trackEvent('story_generate_failed', {
+        reason: status === 400 ? 'no_words' : status === 403 ? 'quota_exhausted' : 'error',
+      });
     },
   });
 
@@ -338,8 +344,8 @@ export function StoryPage() {
       // A completed story is no longer "waiting", so the cached answer is stale.
       void queryClient.invalidateQueries({ queryKey: ['story-latest'] });
       trackEvent('story_complete', {
-        targets: completed.targets.length,
-        not_understood: notUnderstood.size,
+        target_count: completed.targets.length,
+        not_understood_count: notUnderstood.size,
         topic: completed.topic ?? 'none',
       });
     },

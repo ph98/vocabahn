@@ -15,7 +15,7 @@ import { CookieConsentBanner } from './components/CookieConsentBanner';
 import { ToastProvider } from './components/Toast';
 import { RouteBoundary } from './components/errors';
 import { type Theme, useTheme, resolveTheme } from './lib/theme';
-import { trackPageView, trackEvent } from './lib/telemetry';
+import { trackPageView, trackEvent, markPendingLogin, flushPendingLogin } from './lib/telemetry';
 
 const CourseDetailPage = lazy(() =>
   import('./components/CourseDetailPage').then((m) => ({ default: m.CourseDetailPage })),
@@ -53,15 +53,15 @@ function GoogleOneTapPrompt() {
     mutationFn: googleOneTapLogin,
     onSuccess: (user) => {
       queryClient.setQueryData(['me'], user);
+      // One Tap is the only sign-in the SPA can watch succeed without a page
+      // load, so it reports `login` directly instead of via the marker below.
+      trackEvent('login', { method: 'google_one_tap' });
     },
   });
 
   useGoogleOneTap({
     clientId: authConfig?.googleClientId,
-    onSuccess: (credential) => {
-      trackEvent('login', { method: 'google_one_tap' });
-      mutation.mutate(credential);
-    },
+    onSuccess: (credential) => mutation.mutate(credential),
   });
 
   return null;
@@ -73,6 +73,10 @@ function AuthVerifyPage() {
 
   useEffect(() => {
     if (token) {
+      // The API verifies, sets cookies and redirects back here; leaving a
+      // marker is the only way the returning load can know a sign-in just
+      // happened rather than a cookie simply still being valid.
+      markPendingLogin('email_link');
       window.location.replace(`/api/v1/auth/email/verify?token=${encodeURIComponent(token)}`);
     } else {
       window.location.replace('/?auth_error=invalid_link');
@@ -546,6 +550,12 @@ export default function App() {
   const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe, retry: false });
   const mainRef = useRef<HTMLElement>(null);
   const [theme, setTheme] = useTheme();
+
+  // A redirect sign-in (Google OAuth, magic link) completes with a full page
+  // load, so `login` is reported here, once a session actually exists.
+  useEffect(() => {
+    if (user) flushPendingLogin();
+  }, [user]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;

@@ -41,6 +41,7 @@ function CreateDeckModal({ onClose }: { onClose: () => void }) {
   const mutation = useMutation({
     mutationFn: () => createDeck({ title: title.trim(), description: description.trim() || undefined, isPublic }),
     onSuccess: () => {
+      trackEvent('deck_create', { is_public: isPublic });
       void queryClient.invalidateQueries({ queryKey: ['decks'] });
       onClose();
     },
@@ -288,7 +289,7 @@ function ImportModal({ deckId, onClose }: { deckId: string; onClose: () => void 
       return importWordsToDeck(deckId, words);
     },
     onSuccess: (data) => {
-      trackEvent('custom_word_added', { deck_id: deckId, count: data.imported });
+      trackEvent('custom_word_added', { source: 'deck_import', word_count: data.imported });
       void queryClient.invalidateQueries({ queryKey: ['deck', deckId] });
       const failedMsg = data.failed.length > 0 ? `\nFailed to find ${data.failed.length} words: ${data.failed.join(', ')}` : '';
       alert(`Successfully imported ${data.imported} words.${failedMsg}`);

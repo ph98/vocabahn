@@ -24,6 +24,7 @@ is known and unplanned.
 | `sources.md` | German publisher feeds, topic taxonomy, parsing, retention |
 | `content.md` | CEFR courses, user decks, source datasets, seed scripts |
 | `web-client.md` | Routes, navigation, theming, motion, gestures, a11y, PWA |
+| `analytics.md` | GA4 event taxonomy, consent gating, what is deliberately not sent |
 
 ## Topology
 
@@ -150,6 +151,7 @@ ledger designed from a single producer would be designed wrong.
 
 - Written from static reading of the code plus screenshots of a running
   instance. No load testing, no runtime verification of error paths.
-- Test coverage is thin enough that it corroborates nothing: 18 Playwright
-  specs across 4 files, 88 Vitest cases across 16 files. Absence of a bug here
-  does not mean the tests would catch it.
+- Test coverage has grown but is still partial: 19 Playwright specs across 4
+  files, 176 Vitest cases across 21 files in `apps/web`, and 168 across 17 files
+  in `apps/api`. Playwright is not run by CI. Absence of a bug here does not
+  mean the tests would catch it.

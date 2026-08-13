@@ -30,7 +30,7 @@ export function CEFRCalibrationCard({ user, onDismiss, compact = false }: CEFRCa
 
   const mutation = useMutation({
     mutationFn: (level: string) => {
-      trackEvent('cefr_level_calibrate', { level });
+      trackEvent('cefr_level_calibrate', { cefr_level: level });
       return updateCefrLevel(level);
     },
     onSuccess: (data) => {
