@@ -1,5 +1,5 @@
 diff --git a/dist/commonjs/index.js b/dist/commonjs/index.js
-index be9df86be09c7655787a65c55ae6da01858894c3..eedb5e08d60dbd82c51cbc6ff6230304c11ec173 100644
+index 869a6be..64b966f 100644
 --- a/dist/commonjs/index.js
 +++ b/dist/commonjs/index.js
 @@ -1,7 +1,9 @@
