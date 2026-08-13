@@ -9,6 +9,19 @@ vi.mock('../../api', () => ({
   fetchFeedback: vi.fn().mockResolvedValue({ vote: null, issues: [], comment: null }),
   submitFeedback: vi.fn(),
   fetchDecks: vi.fn().mockResolvedValue({ myDecks: [] }),
+  fetchEntryQuiz: vi.fn().mockResolvedValue({
+    status: 'ENRICHED',
+    questions: [
+      {
+        id: 'q1',
+        type: 'MEANING',
+        prompt: 'What does “laufen” mean?',
+        options: ['to run', 'to sleep', 'to buy', 'to sing'],
+      },
+    ],
+  }),
+  submitQuizAttempt: vi.fn(),
+  reportQuizQuestion: vi.fn(),
 }));
 
 const ENTRY: DictionaryEntryDetail = {
@@ -73,6 +86,38 @@ describe('EntryBody', () => {
     expect(tabs[1]).toHaveFocus();
     expect(tabs[1]).toHaveAttribute('aria-selected', 'true');
     expect(tabs[0]).toHaveAttribute('aria-selected', 'false');
+  });
+
+  it('adds a keyboard-reachable Quiz tab when the word page opts in', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const { container } = renderWithProviders(
+      <EntryBody entry={ENTRY} onSelectWord={() => {}} showQuiz />,
+    );
+    await waitFor(() => expect(screen.getAllByRole('tab')[0]).toBeInTheDocument());
+
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs.map((t) => t.textContent)).toEqual([
+      'Overview',
+      'Quiz',
+      'Family',
+      'Tips',
+      'Details',
+    ]);
+
+    const user = userEvent.setup();
+    tabs[0]!.focus();
+    await user.keyboard('{ArrowRight}');
+
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByText('What does “laufen” mean?')).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('leaves the review session embed without a quiz tab', async () => {
+    renderWithProviders(<EntryBody entry={ENTRY} onSelectWord={() => {}} />);
+    await waitFor(() => expect(screen.getAllByRole('tab')[0]).toBeInTheDocument());
+
+    expect(screen.queryByRole('tab', { name: 'Quiz' })).not.toBeInTheDocument();
   });
 });
 

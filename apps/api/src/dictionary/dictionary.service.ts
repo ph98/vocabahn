@@ -175,6 +175,9 @@ export class DictionaryService implements OnModuleInit {
     const include = {
       examples: { orderBy: { order: 'asc' as const } },
       imageCredit: true,
+      // Entries enriched before the quiz existed have none; the count drives
+      // the same view-triggered backfill as the learner-aid fields did.
+      _count: { select: { quizQuestions: true } },
       lexiconEntry: {
         include: {
           senses: { orderBy: { order: 'asc' as const } },
@@ -305,11 +308,13 @@ export class DictionaryService implements OnModuleInit {
 
     // On-demand enrichment: fire only when the word is actually viewed
     // and still needs work. Also re-enrich entries that predate the AI learner
-    // aids (collocations/false friends/register/mnemonic) so they backfill on view.
+    // aids (collocations/false friends/register/mnemonic) or the per-word quiz,
+    // so both backfill on view rather than in a bulk sweep.
     if (
       entry.enrichmentStatus === 'PENDING' ||
       entry.enrichmentStatus === 'FAILED' ||
-      (entry.enrichmentStatus === 'ENRICHED' && entry.register === null)
+      (entry.enrichmentStatus === 'ENRICHED' &&
+        (entry.register === null || entry._count.quizQuestions === 0))
     ) {
       await this.enrichment.requestEnrichment(entry.id, userId, timeZone);
     }

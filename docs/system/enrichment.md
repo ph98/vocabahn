@@ -21,9 +21,11 @@ and is deliberate.
 - `FAILED` (a retry), or
 - `ENRICHED` **but** `register === null` — a backfill trigger for entries that
   predate the learner-aid fields (collocations, false friends, register,
-  mnemonic).
+  mnemonic), or
+- `ENRICHED` **but** with zero `EntryQuizQuestion` rows — the same backfill
+  trigger for entries that predate the per-word quiz.
 
-That third condition means opening old entries silently spends quota.
+Those last two conditions mean opening old entries silently spends quota.
 
 ## Enqueue
 
@@ -52,9 +54,12 @@ break the dictionary page.
    `betterModel`), temperature 0.4, `responseMimeType: application/json` with a
    strict `responseSchema`: translation, emoji, `cefrLevel` enumerated over the
    12 half sub-levels, one-sentence `usageNote`, 2–4 examples, 0–4 collocations,
-   0–2 false friends, `register` from a 9-value enum, mnemonic. Returns `null`
-   only when `GEMINI_API_KEY` is unset; a real API error **throws** so the job
-   retries.
+   0–2 false friends, `register` from a 9-value enum, mnemonic, and exactly 3
+   quiz questions. Returns `null` only when `GEMINI_API_KEY` is unset; a real
+   API error **throws** so the job retries.
+3b. **Quiz questions** are assembled from that same response — there is no
+   second AI call, so a new word costs exactly one Gemini request as before.
+   See "Quiz questions" below.
 4. **Unsplash** image, searched by translation (falling back to the headword),
    `orientation=squarish` for the entry's square thumbnail. `UnsplashProvider`
    lives in `apps/api/src/images/` and is shared with micro-stories
@@ -67,8 +72,9 @@ break the dictionary page.
    `TtsProvider` lives in `apps/api/src/tts/` and is shared with micro-stories
    (`stories.md`) via `TtsModule`; its ElevenLabs request timeout scales with
    text length, so a headword and a whole story both get a workable budget.
-6. One transaction: delete old examples, write everything, insert new examples,
-   upsert the image credit, status → `ENRICHED`.
+6. One transaction: delete old examples and old quiz questions, write
+   everything, insert new examples and new quiz questions, upsert the image
+   credit, status → `ENRICHED`.
 
 Steps 4 and 5 run through a `safe()` wrapper that logs and swallows — image and
 audio are polish and must never block `ENRICHED`. Only Gemini can fail a job.
@@ -91,6 +97,57 @@ shared code, so the dictionary and story paths cannot drift apart:
 `@OnWorkerEvent('failed')` writes status `FAILED` and a truncated
 `enrichmentError` **only after all retries are exhausted**, so transient
 failures never surface as `FAILED`.
+
+## Quiz questions
+
+Each enriched entry carries up to four 4-option `EntryQuizQuestion` rows of
+type `MEANING`, shown in the Quiz tab of the word page. They come out of the
+enrichment response above; nothing else generates them.
+
+The model's proposals are treated as untrusted. `quiz-questions.ts` is pure
+(no Prisma, no clock) and decides what survives:
+
+- `meaningKeys` collects every English meaning the entry already claims — its
+  `translation` plus every gloss on every one of the first 12 `WordSense` rows,
+  each also split on `;`, `,`, `/` and " or ". A distractor matching any of them
+  would be a valid alternative meaning of the headword, i.e. secretly correct.
+- `normalizeGloss` lowercases, drops parentheticals, a leading `to`/`a`/`an`/
+  `the`, and punctuation, so "To run (quickly)" and "run" compare equal.
+- `isAccidentallyCorrect` rejects a distractor whose content tokens are a subset
+  of a real meaning's, or vice versa — catching "run" against "to run fast" and
+  "a large dog" against "dog", while leaving "carpet" alone next to "car".
+  Duplicates and restatements of another distractor are rejected the same way.
+- `isGroundedAnswer` drops the whole question when the proposed correct answer
+  is not supported by the entry's own data (deliberately lenient: one shared
+  content token is enough, so a sense-specific answer still passes).
+- Rejected distractors are refilled from `sampleNeighbourGlosses` — real
+  `translation` values from *other* enriched entries with the same part of
+  speech, a CEFR sub-level within one half-level, and a frequency rank between a
+  third and triple the headword's. The filter loosens in steps when a rare word
+  has too few peers. This pool cannot hallucinate, which is why it is the
+  backstop rather than the model.
+- A question that still cannot reach three distinct distractors is dropped
+  rather than padded. If nothing survives, one question is synthesised from the
+  stored `translation` plus neighbour glosses, so an enriched entry with a
+  translation is never quiz-less.
+- Options are shuffled with a PRNG seeded on `entryId`, so the answer position
+  is stable across re-reads without being predictable across words.
+
+`EntryQuizQuestion.optionOrigins` records `ANSWER` / `AI` / `NEIGHBOUR` per
+option, index-aligned with `options`, so a bad option is traceable to its source.
+
+Serving and grading live in `apps/api/src/quiz/`:
+
+- `GET /dictionary/:word/quiz` returns the entry's `enrichmentStatus` plus the
+  questions **without** `correctIndex`; the client polls it every 4 s while the
+  status is `PENDING`/`ENRICHING`, exactly like the entry itself.
+- `POST /dictionary/quiz/:questionId/attempt` grades server-side and writes a
+  `QuizAttempt`. Never a `ReviewLog` row — see `learning.md`.
+- `POST /dictionary/quiz/:questionId/report` is the `EntryFeedback` pattern
+  scoped to one question: one row per (question, user), denormalized headword
+  for AdminJS, a reason enum and an optional comment. A reported question
+  disappears for that user immediately, and for everyone once three distinct
+  users have reported it (`REPORT_SUPPRESS_THRESHOLD`).
 
 ## How the client learns it finished
 
@@ -117,7 +174,14 @@ A `DOWN` vote **plus** at least one of `TRANSLATION`, `EXAMPLE`, `IMAGE`, or
 - Quota is consumed on **enqueue**, before any external call. A job that fails
   all three attempts still cost the user one of their 50.
 - Viewing pre-learner-aid entries burns quota invisibly (the `register === null`
-  backfill).
+  backfill), and so does viewing an entry enriched before the quiz existed (the
+  zero-questions backfill). Each entry pays this once.
+- Distractor plausibility is only enforced for the neighbour pool, where CEFR
+  level and frequency band are SQL filters. A distractor the model invented is
+  checked for accidental correctness but not for level: nothing looks up which
+  German word it is the meaning of.
+- A reported question is suppressed but not regenerated. Re-enrichment (a `DOWN`
+  vote on the entry with a content issue) is the only thing that replaces it.
 - (#28) `LEVEL`, `GRAMMAR`, `EMOJI`, `AUDIO`, and `MNEMONIC` feedback issues trigger no
   re-enrichment at all. Conversely `IMAGE` triggers a full Gemini re-run even
   though images come from Unsplash.

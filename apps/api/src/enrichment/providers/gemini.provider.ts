@@ -1,5 +1,10 @@
 import { GoogleGenAI, Type } from '@google/genai';
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  DISTRACTORS_PER_QUESTION,
+  QUIZ_QUESTIONS_REQUESTED,
+  type RawQuizQuestion,
+} from '../quiz-questions';
 
 /** Gap-fill content the local datasets can't provide. */
 export interface GeminiEnrichment {
@@ -12,6 +17,10 @@ export interface GeminiEnrichment {
   falseFriends: { word: string; explanation: string }[];
   register: string | null;
   mnemonic: string | null;
+  /** Unvalidated: every option is checked by `buildMeaningQuestions` first. */
+  quiz: RawQuizQuestion[];
+  /** Which model produced this payload, recorded as question provenance. */
+  model: string;
 }
 
 const MODEL = 'gemini-flash-lite-latest';
@@ -108,10 +117,31 @@ export class GeminiProvider {
       '  the word\'s sound or spelling to its meaning — e.g. via a cognate, a vivid',
       '  image, or wordplay. Use "" if you cannot think of a good one; a weak mnemonic',
       '  is worse than none.',
+      `- quiz: exactly ${QUIZ_QUESTIONS_REQUESTED} multiple-choice questions testing whether the learner`,
+      '  knows what this word MEANS. Each has a prompt, one correct English answer, and',
+      `  exactly ${DISTRACTORS_PER_QUESTION} wrong answers.`,
+      `  · The first question is the plain one: prompt exactly "What does “${input.word}” mean?".`,
+      '  · The remaining questions must place the word in a SHORT German context sentence',
+      '    and ask which English meaning fits THERE, so that exactly one option is right.',
+      '    Use a different sense or everyday use each time. Write the prompt in English',
+      '    but quote the German sentence inside it.',
+      '  · answer: the correct English meaning for that prompt, phrased like a learner',
+      '    dictionary gloss (2–6 words). No parentheses, no alternatives separated by',
+      '    slashes or commas.',
+      '  · distractors: English meanings that are DEFINITELY WRONG for this word. Each',
+      '    must be the real meaning of a DIFFERENT German word at a similar CEFR level',
+      '    and similar everyday frequency — ideally a word this learner is likely to',
+      '    confuse with it (a false friend, a near-homograph, a same-topic word).',
+      '    NEVER a second valid sense of this word. NEVER a synonym, paraphrase, or',
+      '    broader/narrower wording of the answer. NEVER nonsense a learner could rule',
+      '    out without knowing the word. Same length and style as the answer.',
+      '  · explanation: ONE short sentence (max ~20 words) saying why the answer is right,',
+      '    shown after the learner answers.',
     ].join('\n');
 
+    const model = input.betterModel ? 'gemini-2.5-flash' : MODEL;
     const res = await this.client.models.generateContent({
-      model: input.betterModel ? 'gemini-2.5-flash' : MODEL,
+      model,
       contents: prompt,
       config: {
         temperature: 0.4,
@@ -164,6 +194,26 @@ export class GeminiProvider {
             },
             register: { type: Type.STRING, enum: REGISTERS },
             mnemonic: { type: Type.STRING },
+            quiz: {
+              type: Type.ARRAY,
+              minItems: QUIZ_QUESTIONS_REQUESTED,
+              maxItems: QUIZ_QUESTIONS_REQUESTED,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  prompt: { type: Type.STRING },
+                  answer: { type: Type.STRING },
+                  distractors: {
+                    type: Type.ARRAY,
+                    minItems: DISTRACTORS_PER_QUESTION,
+                    maxItems: DISTRACTORS_PER_QUESTION,
+                    items: { type: Type.STRING },
+                  },
+                  explanation: { type: Type.STRING },
+                },
+                required: ['prompt', 'answer', 'distractors', 'explanation'],
+              },
+            },
           },
           required: [
             'translation',
@@ -174,6 +224,7 @@ export class GeminiProvider {
             'falseFriends',
             'register',
             'mnemonic',
+            'quiz',
           ],
         },
       },
@@ -194,6 +245,12 @@ export class GeminiProvider {
       falseFriends?: { word?: string; explanation?: string }[];
       register?: string;
       mnemonic?: string;
+      quiz?: {
+        prompt?: string;
+        answer?: string;
+        distractors?: string[];
+        explanation?: string;
+      }[];
     };
 
     return {
@@ -219,6 +276,17 @@ export class GeminiProvider {
         .slice(0, 2),
       register: parsed.register?.trim() || null,
       mnemonic: parsed.mnemonic?.trim() || null,
+      quiz: (parsed.quiz ?? [])
+        .filter((q): q is { prompt: string; answer: string; distractors?: string[]; explanation?: string } =>
+          Boolean(q?.prompt && q?.answer),
+        )
+        .map((q) => ({
+          prompt: q.prompt.trim(),
+          answer: q.answer.trim(),
+          distractors: (q.distractors ?? []).filter((d) => typeof d === 'string').map((d) => d.trim()),
+          explanation: q.explanation?.trim() || null,
+        })),
+      model,
     };
   }
 }

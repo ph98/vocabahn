@@ -6,6 +6,7 @@ export * from './feedback.js';
 export * from './health.js';
 export * from './knowledge.js';
 export * from './progress.js';
+export * from './quiz.js';
 export * from './review.js';
 export * from './story.js';
 export * from './topics.js';

@@ -75,10 +75,18 @@ appears only if it has content:
 | Tab | Shown when |
 | :--- | :--- |
 | Overview | always |
+| Quiz | the caller passes `showQuiz` — the word page does, the review card does not |
 | Morphology | a verb conjugation, noun declension, or adjective declension table could be built |
 | Family | word family entries exist, or more than one pronunciation |
 | Tips | collocations, false friends, a mnemonic, or a non-`neutral` register |
 | Details | etymology / hyphenation / raw sense data present |
+
+The Quiz tab is the one exception to "a tab appears only if it has content": it
+is where the not-yet-enriched state is shown, so it is present even when the
+entry has no questions. `ReviewSession` leaves `showQuiz` off, because quizzing
+a word inside the card the learner is about to grade would double-test it.
+`EntryQuizSection` (`EntryQuiz.tsx`) fetches and polls `/dictionary/:word/quiz`
+independently of the entry query (`enrichment.md`).
 
 Morphology tables are derived in `declension.ts` and `verb-conjugation.ts` from
 `WordForm` rows, keyed off `lexiconEntry.pos`. `lexicon-extras.ts` pulls word
