@@ -1,38 +1,56 @@
 /**
- * Landing / auth flow.
- * Tests the unauthenticated state: landing page content and sign-in button.
+ * Landing / auth entry points, signed out.
+ *
+ * Nothing here signs anyone in — the sign-in *button* is all this file can
+ * reach without a backend. Real sign-in is asserted in
+ * `e2e/monitor/session.spec.ts`, against a live deployment.
  */
 import { expect, test } from '@playwright/test';
+import { json, mockHealth } from './support/fixtures';
 
 test.describe('Landing page (signed out)', () => {
-  test('shows app name, tagline, and sign-in button', async ({ page }) => {
+  test.beforeEach(async ({ page }) => {
+    // Answer as a real API would for a visitor with no cookie, rather than
+    // leaving the calls to fail against a dev server with no backend behind it.
+    // "Signed out" and "the API is unreachable" are different states the app is
+    // entitled to render differently, and this spec is about the first one.
+    const unauthorized = (route: import('@playwright/test').Route) =>
+      route.fulfill({
+        status: 401,
+        contentType: 'application/json',
+        body: JSON.stringify({ statusCode: 401, message: 'Unauthorized' }),
+      });
+
+    await page.route('**/api/v1/auth/me', unauthorized);
+    await page.route('**/api/v1/auth/refresh', unauthorized);
+    await page.route('**/api/v1/auth/config', (route) => route.fulfill(json({ googleClientId: null })));
+    await page.route('**/api/v1/health', (route) => route.fulfill(json(mockHealth)));
+  });
+
+  test('shows app name, tagline, and sign-in options', async ({ page }) => {
     await page.goto('/');
 
     await expect(page.getByRole('heading', { name: /vocabahn/i })).toBeVisible();
     await expect(page.getByText(/german vocabulary/i)).toBeVisible();
-    await expect(page.getByRole('button', { name: /sign in with google/i })).toBeVisible();
+    // An anchor, not a button: it has to be a real navigation so the browser
+    // follows the API's OAuth redirect (see `SignInOptions`).
+    await expect(page.getByRole('link', { name: /sign in with google/i })).toBeVisible();
   });
 
-  test('sign-in button links to Google OAuth endpoint', async ({ page }) => {
+  test('sign-in link points at the Google OAuth endpoint', async ({ page }) => {
     await page.goto('/');
-    const signIn = page.getByRole('button', { name: /sign in with google/i });
-    // Clicking redirects to /api/v1/auth/google — we just verify the href on the
-    // underlying anchor (the link form of the button) rather than following the redirect.
-    const href = await signIn.evaluate((el) => {
-      const a = el.closest('a') ?? el.querySelector('a');
-      return a ? a.getAttribute('href') : null;
-    });
-    expect(href).toMatch(/\/api\/v1\/auth\/google/);
+
+    await expect(page.getByRole('link', { name: /sign in with google/i })).toHaveAttribute(
+      'href',
+      /\/api\/v1\/auth\/google/,
+    );
   });
 
-  test('theme toggle is visible and cycles theme', async ({ page }) => {
+  test('offers the email magic-link form as a second path', async ({ page }) => {
     await page.goto('/');
-    const toggle = page.getByRole('button', { name: /active\. switch to/i });
-    await expect(toggle).toBeVisible();
-    const labelBefore = await toggle.getAttribute('aria-label');
-    await toggle.click();
-    const labelAfter = await toggle.getAttribute('aria-label');
-    expect(labelAfter).not.toBe(labelBefore);
+
+    await expect(page.getByPlaceholder('name@example.com')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Send Magic Link' })).toBeVisible();
   });
 
   test('has no obvious accessibility violations on load', async ({ page }) => {

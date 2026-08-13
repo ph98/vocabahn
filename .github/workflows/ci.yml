@@ -11,6 +11,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  STAGING_URL: ${{ vars.STAGING_URL || 'https://staging.vocabahn.app' }}
+  PRODUCTION_URL: ${{ vars.PRODUCTION_URL || 'https://vocabahn.app' }}
+
 jobs:
   ci:
     name: CI Checks
@@ -29,9 +33,32 @@ jobs:
       - run: pnpm --filter @vocabahn/web test
       - run: pnpm audit --audit-level high
 
+  # The fast, hermetic variant: these specs stub the API, so they need no
+  # database, no account, and no deployment. They catch UI regressions before a
+  # merge. They cannot catch an outage — that is what the `monitor` project and
+  # the smoke jobs below are for.
+  e2e:
+    name: E2E (mocked, ${{ matrix.project }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: chromium
+            browsers: chromium
+          - project: mobile-safari
+            browsers: webkit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/playwright
+        with:
+          project: ${{ matrix.project }}
+          browsers: ${{ matrix.browsers }}
+          artifact-name: playwright-report-${{ matrix.project }}
+
   deploy-staging:
     name: Deploy to Staging (staging.vocabahn.app)
-    needs: ci
+    needs: [ci, e2e]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
@@ -48,9 +75,66 @@ jobs:
             git reset --hard origin/main
             ENV=staging bash scripts/deploy.sh
 
+  # Post-deploy smoke: the real thing, against what was just deployed. Signs in
+  # with a real magic link — nothing here is mocked.
+  smoke-staging:
+    name: Smoke test Staging
+    needs: deploy-staging
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for the new containers to come up
+        run: sleep 45
+      - uses: ./.github/actions/playwright
+        with:
+          project: monitor
+          base-url: ${{ env.STAGING_URL }}
+          artifact-name: smoke-staging-report
+          monitor-email: ${{ secrets.MONITOR_EMAIL_STAGING }}
+          monitor-imap-host: ${{ secrets.MONITOR_IMAP_HOST }}
+          monitor-imap-port: ${{ secrets.MONITOR_IMAP_PORT }}
+          monitor-imap-user: ${{ secrets.MONITOR_IMAP_USER }}
+          monitor-imap-password: ${{ secrets.MONITOR_IMAP_PASSWORD }}
+          monitor-imap-mailbox: ${{ secrets.MONITOR_IMAP_MAILBOX }}
+      - name: Alert on failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
+        with:
+          title: Post-deploy smoke test
+          environment: staging
+          target-url: ${{ env.STAGING_URL }}
+          webhook-url: ${{ secrets.MONITOR_ALERT_WEBHOOK_URL }}
+          github-token: ${{ github.token }}
+
+  # The promotion gate. A production tag deploys the commit staging is already
+  # running, so proving staging is healthy right now is what "do not promote a
+  # broken build" means in this single-branch, tag-driven pipeline.
+  verify-staging:
+    name: Verify Staging before promotion
+    needs: ci
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/playwright
+        with:
+          project: monitor
+          base-url: ${{ env.STAGING_URL }}
+          artifact-name: verify-staging-report
+          monitor-email: ${{ secrets.MONITOR_EMAIL_STAGING }}
+          monitor-imap-host: ${{ secrets.MONITOR_IMAP_HOST }}
+          monitor-imap-port: ${{ secrets.MONITOR_IMAP_PORT }}
+          monitor-imap-user: ${{ secrets.MONITOR_IMAP_USER }}
+          monitor-imap-password: ${{ secrets.MONITOR_IMAP_PASSWORD }}
+          monitor-imap-mailbox: ${{ secrets.MONITOR_IMAP_MAILBOX }}
+
   deploy-production:
     name: Deploy to Production (vocabahn.app)
-    needs: ci
+    needs: [ci, e2e, verify-staging]
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -67,4 +151,35 @@ jobs:
             git checkout ${{ github.ref_name }}
             ENV=production bash scripts/deploy.sh
 
-
+  smoke-production:
+    name: Smoke test Production
+    needs: deploy-production
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Wait for the new containers to come up
+        run: sleep 45
+      - uses: ./.github/actions/playwright
+        with:
+          project: monitor
+          base-url: ${{ env.PRODUCTION_URL }}
+          artifact-name: smoke-production-report
+          monitor-email: ${{ secrets.MONITOR_EMAIL_PRODUCTION }}
+          monitor-imap-host: ${{ secrets.MONITOR_IMAP_HOST }}
+          monitor-imap-port: ${{ secrets.MONITOR_IMAP_PORT }}
+          monitor-imap-user: ${{ secrets.MONITOR_IMAP_USER }}
+          monitor-imap-password: ${{ secrets.MONITOR_IMAP_PASSWORD }}
+          monitor-imap-mailbox: ${{ secrets.MONITOR_IMAP_MAILBOX }}
+      - name: Alert on failure
+        if: failure()
+        uses: ./.github/actions/notify-failure
+        with:
+          title: Post-deploy smoke test
+          environment: production
+          target-url: ${{ env.PRODUCTION_URL }}
+          webhook-url: ${{ secrets.MONITOR_ALERT_WEBHOOK_URL }}
+          github-token: ${{ github.token }}

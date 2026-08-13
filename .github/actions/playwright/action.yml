@@ -1,0 +1,124 @@
+name: Run Playwright
+description: >-
+  Installs the workspace and runs one Playwright project, either against a local
+  dev server (mocked PR check) or against a deployed environment (unmocked
+  monitoring). Uploads the HTML report and traces when anything fails.
+
+inputs:
+  project:
+    description: Playwright project name — `chromium`/`mobile-safari` are mocked, `monitor` is not.
+    required: true
+  base-url:
+    description: Deployed URL to test. Leave empty to boot a local Vite dev server instead.
+    required: false
+    default: ''
+  browsers:
+    description: Space-separated Playwright browsers to install.
+    required: false
+    default: chromium
+  artifact-name:
+    description: Name for the uploaded report artifact.
+    required: false
+    default: playwright-report
+  monitor-email:
+    description: Monitoring account address (monitor project only).
+    required: false
+    default: ''
+  monitor-imap-host:
+    required: false
+    default: ''
+  monitor-imap-port:
+    required: false
+    default: '993'
+  monitor-imap-user:
+    required: false
+    default: ''
+  monitor-imap-password:
+    required: false
+    default: ''
+  monitor-imap-mailbox:
+    required: false
+    default: INBOX
+  monitor-course-slug:
+    description: Course the monitoring account is enrolled in when it has no cards due.
+    required: false
+    default: cefr-a1
+
+runs:
+  using: composite
+  steps:
+    # A monitoring run with an unset secret would otherwise expand to an empty
+    # string and either test localhost or skip its assertions. Both look green.
+    - name: Check monitoring inputs are present
+      if: inputs.project == 'monitor'
+      shell: bash
+      # Read through env, never through ${{ }} interpolation: these values are
+      # secrets and would otherwise be pasted into the script body verbatim.
+      env:
+        BASE_URL: ${{ inputs.base-url }}
+        MONITOR_EMAIL: ${{ inputs.monitor-email }}
+        MONITOR_IMAP_HOST: ${{ inputs.monitor-imap-host }}
+        MONITOR_IMAP_PASSWORD: ${{ inputs.monitor-imap-password }}
+      run: |
+        missing=()
+        [[ -n "$BASE_URL" ]]              || missing+=("base-url — the environment's public URL")
+        [[ -n "$MONITOR_EMAIL" ]]         || missing+=("monitor-email — secrets.MONITOR_EMAIL_{STAGING,PRODUCTION}")
+        [[ -n "$MONITOR_IMAP_HOST" ]]     || missing+=("monitor-imap-host — secrets.MONITOR_IMAP_HOST")
+        [[ -n "$MONITOR_IMAP_PASSWORD" ]] || missing+=("monitor-imap-password — secrets.MONITOR_IMAP_PASSWORD")
+        if (( ${#missing[@]} > 0 )); then
+          {
+            echo "::error::Live monitoring is not configured — refusing to report a green run."
+            echo "Missing:"
+            printf '  - %s\n' "${missing[@]}"
+            echo "See docs/system/monitoring.md for what each secret is."
+          } >&2
+          exit 1
+        fi
+
+    - uses: pnpm/action-setup@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --frozen-lockfile
+
+    # The Vite dev server the mocked projects boot resolves @vocabahn/shared
+    # from its built output. Monitoring hits a deployed build and needs none.
+    - name: Build the shared contract package
+      if: inputs.base-url == ''
+      shell: bash
+      run: pnpm --filter @vocabahn/shared build
+
+    - name: Install Playwright browsers
+      shell: bash
+      env:
+        BROWSERS: ${{ inputs.browsers }}
+      run: pnpm exec playwright install --with-deps $BROWSERS
+
+    - name: Run Playwright (${{ inputs.project }})
+      shell: bash
+      env:
+        PROJECT: ${{ inputs.project }}
+        E2E_BASE_URL: ${{ inputs.base-url }}
+        MONITOR_EMAIL: ${{ inputs.monitor-email }}
+        MONITOR_IMAP_HOST: ${{ inputs.monitor-imap-host }}
+        MONITOR_IMAP_PORT: ${{ inputs.monitor-imap-port }}
+        MONITOR_IMAP_USER: ${{ inputs.monitor-imap-user }}
+        MONITOR_IMAP_PASSWORD: ${{ inputs.monitor-imap-password }}
+        MONITOR_IMAP_MAILBOX: ${{ inputs.monitor-imap-mailbox }}
+        MONITOR_COURSE_SLUG: ${{ inputs.monitor-course-slug }}
+      run: pnpm exec playwright test --project="$PROJECT"
+
+    - name: Upload Playwright report
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: |
+          playwright-report/
+          test-results/
+        retention-days: 14
+        if-no-files-found: ignore
