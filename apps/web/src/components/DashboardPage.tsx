@@ -46,8 +46,9 @@ function StatCard({
 
 /**
  * The way a learner finds out a story is waiting. The scheduler writes it
- * overnight in their timezone, and until push notifications exist nothing tells
- * them — so the dashboard, which is where they land, does.
+ * overnight in their timezone, and nothing pushes them about it — the daily
+ * study reminder is a separate notification and deliberately says nothing about
+ * stories — so the dashboard, which is where they land, does.
  *
  * Renders nothing when there is no unfinished story, so a learner who reads
  * every morning never sees a stale card.

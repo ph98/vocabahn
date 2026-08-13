@@ -151,7 +151,13 @@ as `TOAST_REGION` from `Toast.tsx` so other floating UI can sit clear of it:
 | `--vb-toast-max-width` | 26 rem; the region is centred in the viewport. |
 | `--vb-toast-z` | 60 — above the nav and its popover, both at `z-50`. |
 
-The only producer today is `hooks/useSettings.ts`: `updateSettings()` compares
+Two producers today. `hooks/useNotificationSettings.ts` confirms the daily
+reminder the same way, keyed `setting:reminderEnabled` / `setting:reminderTime`,
+and is honest about the failures the server owns — a dismissed permission prompt
+says the browser refused rather than claiming the setting saved
+(`notifications.md`).
+
+The other is `hooks/useSettings.ts`: `updateSettings()` compares
 old and new values and emits one success toast per key that actually changed,
 naming the new state (*"Autoplay audio on"*). Copy comes from an optional label
 map with a humanised-key fallback, so a new `UserSettings` field is confirmed
@@ -205,6 +211,13 @@ icons at 192/512, apple-touch-icon. Workbox runtime caching:
 
 Together with the IndexedDB review queue (`learning.md`), that is what makes a
 review session survive going offline.
+
+The generated worker also `importScripts('/push-sw.js')`, a hand-written vanilla
+file holding the `push` and `notificationclick` handlers — `generateSW` leaves
+nowhere else to put them, and switching to `injectManifest` would mean owning
+everything in the table above by hand. It is excluded from the precache and
+served `no-store` by all three nginx configs. See `notifications.md` for the
+trade-off in full.
 
 ## Data layer
 
@@ -319,7 +332,7 @@ term, to every hit. Full taxonomy in `analytics.md`.
 - The `offline-pack` endpoint has **no client consumer** (#23). There is no download
   control anywhere in the UI, so the top-1000 pack is unreachable
   (`dictionary.controller.ts`).
-- Test coverage is thin (#28): 203 Vitest cases across 22 files (with `jest-axe`
+- Test coverage is thin (#28): __WEB__ (with `jest-axe`
   wired up in `src/test/`), and 19 Playwright specs across `landing`,
   `dictionary`, `review`, `story`. Most routes are untested; of the error paths,
   only the boundary, the error states themselves, and the auth gate are covered.

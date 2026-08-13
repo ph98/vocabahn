@@ -5,6 +5,7 @@ export * from './dictionary.js';
 export * from './feedback.js';
 export * from './health.js';
 export * from './knowledge.js';
+export * from './notifications.js';
 export * from './progress.js';
 export * from './quiz.js';
 export * from './review.js';

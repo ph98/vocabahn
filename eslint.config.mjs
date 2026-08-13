@@ -28,6 +28,18 @@ export default tseslint.config(
     },
   },
   {
+    // Service-worker scope: hand-written vanilla JS pulled into the generated
+    // worker by importScripts, so it sees worker globals rather than window's.
+    files: ['apps/web/public/*-sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        clients: 'readonly',
+        URL: 'readonly',
+      },
+    },
+  },
+  {
     files: ['apps/web/**/*.{ts,tsx}'],
     plugins: { 'jsx-a11y': jsxA11y },
     rules: jsxA11y.flatConfigs.recommended.rules,

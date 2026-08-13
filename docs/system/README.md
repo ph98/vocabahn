@@ -1,6 +1,6 @@
 # Vocabahn — System Description
 
-What this codebase does, as of 2026-08-12. Present tense only: if something is
+What this codebase does, as of 2026-08-13. Present tense only: if something is
 described here, it exists in the code. Planned work lives in GitHub issues, not
 in this directory.
 
@@ -22,6 +22,7 @@ is known and unplanned.
 | `learning.md` | Cards, FSRS, review session, offline sync, knowledge scores, auto-graduation |
 | `stories.md` | Micro-stories retold from real articles, topics, daily scheduling, narration |
 | `sources.md` | German publisher feeds, topic taxonomy, parsing, retention |
+| `notifications.md` | Web Push, the daily study reminder, the first server-backed setting |
 | `content.md` | CEFR courses, user decks, source datasets, seed scripts |
 | `web-client.md` | Routes, navigation, theming, motion, gestures, a11y, PWA |
 | `analytics.md` | GA4 event taxonomy, consent gating, what is deliberately not sent |
@@ -59,7 +60,7 @@ additionally builds and runs `api` and `web`.
                     ┌───────────────▼──────────────────────────┐
                     │ apps/api  (prefix /api, URI version v1)  │
                     │                                          │
-   PostgreSQL ◀─────┤ Prisma  ·  24 models                     │
+   PostgreSQL ◀─────┤ Prisma  ·  26 models                     │
                     │                                          │
        Redis  ◀─────┤ BullMQ queue + quota counters            │
                     │        │                                 │
@@ -68,19 +69,21 @@ additionally builds and runs `api` and `web`.
                     │ StoryProcessor       (concurrency 2)     │
                     │ SourceProcessor      (every 2 h)         │
                     │ StoryDigestProcessor (hourly sweep)      │
+                    │ ReminderProcessor    (15-minute sweep)   │
                     └────────┬─────────────────────────────────┘
                              │
         Gemini ◀─────────────┼──────────▶ ElevenLabs → Google TTS fallback
-                             │
+                             │            Web Push services (FCM, Mozilla, …)
                           Unsplash        writes static/audio/*.mp3
                              ▼
       tagesschau · kicker · Sportschau · heise · wissenschaft.de · Spektrum
                      (RSS, read-only, title + summary only)
 ```
 
-Four queue consumers now run in the API process, not one. Two are repeatable
+Five queue consumers now run in the API process, not one. Three are repeatable
 schedulers registered at boot with fixed job ids, so N replicas still produce
-one poll and one sweep (`sources.md`, `stories.md`).
+one poll and one of each sweep (`sources.md`, `stories.md`,
+`notifications.md`).
 
 The learner-facing loop:
 
@@ -102,6 +105,9 @@ The learner-facing loop:
 7. Independently of any request, an hourly sweep writes each active learner one
    story timed to 07:00 in their own timezone, so it is waiting when they open
    the app (`stories.md`).
+8. A second sweep, every 15 minutes, pushes a study reminder to each learner who
+   opted in, at the local time they chose, unless they have already reviewed
+   that day (`notifications.md`).
 
 ## Invariants that hold across subsystems
 
@@ -126,11 +132,15 @@ The learner-facing loop:
 - **CEFR is 12 half sub-levels**, `A1.1` … `C2.2` (Goethe / Profile Deutsch),
   defined once in `apps/api/src/knowledge/constants.ts` and mirrored in the
   Gemini response schema. Anything treating CEFR as six flat levels is wrong.
-- **All day boundaries are UTC**, everywhere — except the daily story sweep,
-  which is deliberately per-learner local (`User.timezone`), because "a story
-  waiting when you wake up" has no meaning in UTC. Its Redis claim key is keyed
-  on the learner's local date for the same reason. See the limitation in
-  `learning.md`.
+- **All day boundaries are UTC**, everywhere — except the two scheduled sweeps,
+  which are deliberately per-learner local (`User.timezone`): "a story waiting
+  when you wake up" and "remind me at 19:00" have no meaning in UTC. Both keep
+  their Redis claim keys on the learner's local date for the same reason. See
+  the limitation in `learning.md`.
+- **Settings are `localStorage`, with one exception.** The daily study reminder
+  lives on the `User` row, because the server is what sends it and a browser
+  flag cannot switch that off (`notifications.md`). Everything else is
+  `useSettings` (`web-client.md`).
 
 ## Relationship to the ADRs
 
@@ -152,6 +162,6 @@ ledger designed from a single producer would be designed wrong.
 - Written from static reading of the code plus screenshots of a running
   instance. No load testing, no runtime verification of error paths.
 - Test coverage has grown but is still partial: 19 Playwright specs across 4
-  files, 203 Vitest cases across 22 files in `apps/web`, and 168 across 17 files
+  files, __WEB__ in `apps/web`, and __API__
   in `apps/api`. Playwright is not run by CI. Absence of a bug here does not
   mean the tests would catch it.

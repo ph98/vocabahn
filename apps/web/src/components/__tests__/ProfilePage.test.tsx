@@ -14,6 +14,16 @@ vi.mock('../../api', async (importOriginal) => {
     logout: vi.fn(),
     requestEmailSignIn: vi.fn(),
     updateInterests: vi.fn(),
+    // The reminder section is server-backed; without this it would leave a
+    // rejected query in every test on this page.
+    fetchNotificationSettings: vi.fn().mockResolvedValue({
+      reminderEnabled: false,
+      reminderTime: '19:00',
+      timezone: 'Europe/Berlin',
+      pushConfigured: false,
+      vapidPublicKey: null,
+      deviceCount: 0,
+    }),
   };
 });
 

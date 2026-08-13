@@ -130,10 +130,10 @@ A daily story carries `origin: DAILY` and **does not spend the manual quota** �
 it is a gift, not a withdrawal, so a learner who used all ten yesterday still
 wakes up to one.
 
-Nothing yet tells the learner it exists. Push notifications are the intended
-mechanism and are marked `TODO(notifications)` in `story-digest.processor.ts`;
-until then the dashboard's "Today's read" card and `GET /stories/latest` are how
-it is found.
+Nothing yet tells the learner it exists. Web Push now exists in the codebase
+(`notifications.md`) but nothing in this sweep calls it — the
+`TODO(notifications)` in `story-digest.processor.ts` still stands. The
+dashboard's "Today's read" card and `GET /stories/latest` are how it is found.
 
 ## Finding the story again
 
@@ -333,7 +333,9 @@ would read as a bug.
   targets than invented ones, and can still pad slightly to fit a word in.
 - The daily story is written but not announced: `TODO(notifications)` in
   `story-digest.processor.ts`. A learner who does not open the app never learns
-  it exists, and it is superseded the next morning.
+  it exists, and it is superseded the next morning. The push machinery it would
+  use is now built (`notifications.md`) and deliberately not wired here — the
+  daily reminder was shipped alone rather than as a campaign engine.
 - The digest sweep reads every candidate learner each hour and filters in
   application code. Fine at current scale, linear in active learners.
 - A daily story is generated whether or not the learner will read it, so a

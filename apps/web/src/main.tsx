@@ -6,10 +6,19 @@ import App from './App';
 import { AppErrorBoundary } from './components/errors';
 import { installSessionQueryDefaults } from './hooks/useSession';
 import './index.css';
-import { initTelemetry } from './lib/telemetry';
+import { consumeNotificationSource } from './lib/push';
+import { initTelemetry, trackEvent } from './lib/telemetry';
 
 // Initialize GA4, Sentry, Web Vitals, and Consent Mode v2
 initTelemetry();
+
+// A session that began at a tapped notification carries a marker the service
+// worker put in the URL. Read it before the router does, so the address bar is
+// already clean by the time anything renders.
+const notificationSource = consumeNotificationSource();
+if (notificationSource) {
+  trackEvent('notification_click', { notification_type: notificationSource });
+}
 
 // Focus-driven refetches are disabled app-wide: the Google One Tap / FedCM
 // prompt loop churns window focus on the landing page, and each churn would
