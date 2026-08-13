@@ -2,6 +2,7 @@ import { useQuery, type QueryClient } from '@tanstack/react-query';
 import type { User } from '@vocabahn/shared';
 import { useCallback, useEffect, useState } from 'react';
 import { ApiUnavailableError, fetchMe } from '../api';
+import { hasKnownSession, rememberSession } from '../lib/session-hint';
 import { useOnlineStatus } from '../offline/useOnlineStatus';
 
 /** The one key the whole app reads the session from. */
@@ -79,6 +80,17 @@ export interface Session {
   isChecking: boolean;
   /** Check again now. The manual half of the recovery path. */
   recheck: () => void;
+  /**
+   * Whether a session has ever been confirmed on this device
+   * (`lib/session-hint.ts`).
+   *
+   * Only meaningful while `status` is `loading`, and only as a rendering hint:
+   * it lets the shell put the landing page on screen straight away for a
+   * visitor who has plainly never signed in, instead of holding first paint for
+   * a round trip. It authorises nothing — the routes still wait for
+   * `authenticated`.
+   */
+  hasKnownSession: boolean;
 }
 
 /**
@@ -114,12 +126,32 @@ export function useSession(): Session {
     else if (isSuccess) setFailure(null);
   }, [isError, isSuccess, error]);
 
+  // Read once, at mount: the marker is only consulted while the first check is
+  // in flight, and re-reading it mid-flight would let the answer change under a
+  // render that has already committed to a branch.
+  const [knownSession] = useState(hasKnownSession);
+
+  // Only a *confirmed* answer updates the marker. A failure says nothing about
+  // the session — clearing it on a 502 would hand the next load a landing-page
+  // flash for a user whose cookie is perfectly valid, which is the same bug
+  // #76 fixed one layer up.
+  const confirmedUser = isSuccess ? query.data ?? null : undefined;
+  useEffect(() => {
+    if (confirmedUser !== undefined) rememberSession(confirmedUser !== null);
+  }, [confirmedUser]);
+
   // `undefined` means we have never had an answer; `null` is an answer, and it
   // is retained across a later failure, which is what lets a signed-out visitor
   // keep the landing page through an outage.
   const user = query.data ?? null;
   const signedOut = query.data === null;
-  const base = { user, error: failure, isChecking: query.isFetching, recheck };
+  const base = {
+    user,
+    error: failure,
+    isChecking: query.isFetching,
+    recheck,
+    hasKnownSession: knownSession,
+  };
 
   // No connection: react-query pauses instead of failing, so there is no outage
   // to report. Keep anyone we already know signed in — the review queue and the

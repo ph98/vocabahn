@@ -1,8 +1,15 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { axe } from 'jest-axe';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../../App';
 import { renderWithProviders } from '../../test/test-utils';
+
+/** Key behind `lib/session-hint.ts`. Named here so a rename cannot pass silently. */
+const SESSION_HINT_KEY = 'vocabahn-session-hint';
+
+// The hint outlives a render, so a signed-in case would otherwise change what
+// the next test's loading state looks like.
+beforeEach(() => localStorage.removeItem(SESSION_HINT_KEY));
 
 vi.mock('../../api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api')>();
@@ -212,6 +219,64 @@ describe('App auth gate', () => {
     await waitFor(() => expect(vi.mocked(fetchMe).mock.calls.length).toBeGreaterThan(before));
   });
 
+  it('shows the landing page while the first check is still in flight, on a device that has never held a session', async () => {
+    // Never resolves: the assertion is about what is on screen *before* the API
+    // says anything, which is where the second of LCP used to go.
+    vi.mocked(fetchMe).mockReset();
+    vi.mocked(fetchMe).mockReturnValue(new Promise(() => {}));
+
+    renderWithProviders(<App />);
+
+    await waitFor(() => expect(screen.getByText('Sign in with Google')).toBeInTheDocument());
+    // Rendering it is not the same as believing the visitor is signed out: no
+    // route is mounted and the One Tap prompt has not been asked for.
+    expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument();
+  });
+
+  it('waits for the answer instead of flashing the landing page at a returning user', async () => {
+    localStorage.setItem(SESSION_HINT_KEY, '1');
+    vi.mocked(fetchMe).mockReset();
+    let resolveMe: (user: typeof SIGNED_IN_USER) => void = () => {};
+    vi.mocked(fetchMe).mockReturnValue(new Promise((resolve) => { resolveMe = resolve; }));
+
+    renderWithProviders(<App />);
+
+    // The marketing page must never appear over a session that may still be
+    // valid — the whole point of the anonymous/unreachable distinction.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(screen.queryByText('Sign in with Google')).not.toBeInTheDocument();
+
+    resolveMe(SIGNED_IN_USER);
+    await waitFor(() => expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument());
+  });
+
+  it('remembers a confirmed session and forgets a confirmed sign-out', async () => {
+    vi.mocked(fetchMe).mockReset();
+    vi.mocked(fetchMe).mockResolvedValue(SIGNED_IN_USER);
+    const signedIn = renderWithProviders(<App />);
+    await waitFor(() => expect(localStorage.getItem(SESSION_HINT_KEY)).toBe('1'));
+    signedIn.unmount();
+
+    vi.mocked(fetchMe).mockResolvedValue(null);
+    renderWithProviders(<App />);
+    await waitFor(() => expect(localStorage.getItem(SESSION_HINT_KEY)).toBeNull());
+  });
+
+  it('does not forget the session because the API had an outage', async () => {
+    localStorage.setItem(SESSION_HINT_KEY, '1');
+    vi.mocked(fetchMe).mockReset();
+    vi.mocked(fetchMe).mockRejectedValue(new ApiUnavailableError('The API did not answer the session request.'));
+
+    renderWithProviders(<App />);
+
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /reach Vocabahn right now/i })).toBeInTheDocument(),
+    );
+    // A failure is evidence about the API, not about the session. Clearing the
+    // marker here would greet the next load with the landing page.
+    expect(localStorage.getItem(SESSION_HINT_KEY)).toBe('1');
+  });
+
   it('comes back on the same route, without signing in again, once /health answers', async () => {
     vi.mocked(fetchMe)
       .mockRejectedValueOnce(new ApiUnavailableError('The API did not answer the session request.'))
@@ -224,6 +289,8 @@ describe('App auth gate', () => {
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'Terms of Service' })).toBeInTheDocument(),
     );
-    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
+    // `findBy`, not `getBy`: the nav is a lazy chunk of its own, so it arrives a
+    // tick after the route it sits above.
+    expect(await screen.findByRole('navigation', { name: 'Main' })).toBeInTheDocument();
   });
 });

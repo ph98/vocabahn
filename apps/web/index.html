@@ -34,10 +34,30 @@
     <meta name="twitter:description" content="German vocabulary app with FSRS spaced repetition and AI-enriched dictionary." />
     <meta name="twitter:image" content="/og-image.png" />
 
-    <!-- Typography -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet" />
+    <!-- Typography.
+         Plus Jakarta Sans is self-hosted (@font-face in index.css) and
+         preloaded: it is the body font, every page needs it, and it used to
+         arrive through a render-blocking third-party stylesheet that cost
+         793 ms before first paint. `crossorigin` is required even same-origin
+         — fonts are always fetched in CORS mode, and without it the browser
+         makes a second, uncredited request and the preload is wasted.
+
+         Merriweather is not preloaded and not render-blocking. It appears on
+         exactly two headings, both behind sign-in, so `unicode-range` matching
+         means the font file is never fetched on the landing page at all — only
+         this 1.5 kB stylesheet, and `media="print"` keeps even that out of the
+         critical path until it has loaded. Narrowed from 8 variants to the
+         roman axis: nothing in the app renders italic. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/plus-jakarta-sans-v12-latin.woff2" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400..700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400..700&display=swap" />
+    </noscript>
     <script>
       (function () {
         try {

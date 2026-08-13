@@ -12,7 +12,7 @@ import {
   fetchStory,
   fetchStoryQuota,
 } from '../api';
-import { useFadeIn } from '../lib/motion';
+import { useFadeIn } from '../lib/motion-gsap';
 import { segmentStory } from '../lib/story-text';
 import { trackEvent } from '../lib/telemetry';
 import { IllustrationEmptyQueue } from './Illustrations';

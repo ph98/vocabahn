@@ -17,7 +17,9 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
-    files: ['scripts/**/*.js'],
+    // Build and tooling scripts, at the repo root or inside a workspace. They
+    // run under Node, not in a browser or a worker.
+    files: ['scripts/**/*.{js,mjs}', '*/*/scripts/**/*.{js,mjs}'],
     languageOptions: {
       globals: {
         console: 'readonly',

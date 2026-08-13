@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useStaggerIn } from '../lib/motion';
+import { useStaggerIn } from '../lib/motion-gsap';
 import { bulkUndoKnownWords, fetchKnownWords, undoKnownWord } from '../api';
 import { IllustrationTrophy } from './Illustrations';
 import { PullToRefresh } from './PullToRefresh';

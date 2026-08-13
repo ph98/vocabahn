@@ -4,7 +4,7 @@ import type { CourseSummary } from '@vocabahn/shared';
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { enrollCourse, fetchCourses, unenrollCourse } from '../api';
-import { useStaggerIn } from '../lib/motion';
+import { useStaggerIn } from '../lib/motion-gsap';
 import { ProgressBar } from './ProgressBar';
 
 function CourseCard({ course }: { course: CourseSummary }) {
