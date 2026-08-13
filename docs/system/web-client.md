@@ -118,6 +118,18 @@ map with a humanised-key fallback, so a new `UserSettings` field is confirmed
 without being registered. A `localStorage` write that throws produces an error
 toast and leaves the setting unapplied.
 
+## Safe-area utilities
+
+The four safe-area helpers — `px-safe`, `pt-safe`, `pb-safe`, `pb-mobile-nav` —
+are declared with Tailwind's `@utility` at-rule, not as plain classes in
+`@layer utilities`. That distinction is load-bearing: Tailwind only generates
+variants for utilities it has been told about, so as hand-written rules they
+worked bare but produced *nothing* for `md:pb-safe` or `max-md:pb-mobile-nav`.
+The app shell uses exactly those two, so every signed-in user silently lost
+their bottom padding until #87. Each utility nests its own `640px` step, so a
+variant carries the step with it, and `src/test/safe-area-utilities.test.ts`
+compiles `index.css` and asserts the variants are emitted.
+
 ## Accessibility
 
 Implemented deliberately, not incidentally:
@@ -239,7 +251,7 @@ service worker for the new revision and then reloads (`lib/app-update.ts`) —
 - The `offline-pack` endpoint has **no client consumer** (#23). There is no download
   control anywhere in the UI, so the top-1000 pack is unreachable
   (`dictionary.controller.ts`).
-- Test coverage is thin (#28): 137 Vitest cases across 19 files (with `jest-axe`
+- Test coverage is thin (#28): 145 Vitest cases across 20 files (with `jest-axe`
   wired up in `src/test/`), and 18 Playwright specs across `landing`,
   `dictionary`, `review`, `story`. Most routes are untested; of the error paths,
   only the boundary and the error states themselves are covered.

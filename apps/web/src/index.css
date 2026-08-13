@@ -88,23 +88,41 @@ body {
   background-attachment: fixed;
 }
 
-@layer utilities {
-  .px-safe {
-    padding-left: max(1rem, env(safe-area-inset-left));
-    padding-right: max(1rem, env(safe-area-inset-right));
-  }
+/* Safe-area utilities.
+   These are `@utility`, not plain rules in `@layer utilities`, because Tailwind
+   only generates variants for utilities it knows about. As hand-written classes
+   they worked bare but produced nothing for `md:pb-safe` or
+   `max-md:pb-mobile-nav`, which is how the app shell lost its bottom padding
+   for every signed-in user (#87). The `sm` step is nested rather than living in
+   a separate media block, so a variant carries it too. */
+@utility px-safe {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
 
-  .pt-safe {
-    padding-top: max(2rem, env(safe-area-inset-top));
+  @media (min-width: 640px) {
+    padding-left: max(1.5rem, env(safe-area-inset-left));
+    padding-right: max(1.5rem, env(safe-area-inset-right));
   }
+}
 
-  .pb-safe {
-    padding-bottom: max(2rem, env(safe-area-inset-bottom));
+@utility pt-safe {
+  padding-top: max(2rem, env(safe-area-inset-top));
+
+  @media (min-width: 640px) {
+    padding-top: max(2.5rem, env(safe-area-inset-top));
+  }
+}
+
+@utility pb-safe {
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
+
+  @media (min-width: 640px) {
+    padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
   }
 }
 
 /* Extra bottom padding when the mobile bottom nav is visible */
-.pb-mobile-nav {
+@utility pb-mobile-nav {
   padding-bottom: var(--vb-mobile-nav-height);
 }
 
@@ -153,21 +171,6 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .vb-toast {
     animation: none;
-  }
-}
-
-@media (min-width: 640px) {
-  .px-safe {
-    padding-left: max(1.5rem, env(safe-area-inset-left));
-    padding-right: max(1.5rem, env(safe-area-inset-right));
-  }
-
-  .pt-safe {
-    padding-top: max(2.5rem, env(safe-area-inset-top));
-  }
-
-  .pb-safe {
-    padding-bottom: max(2.5rem, env(safe-area-inset-bottom));
   }
 }
 
