@@ -92,7 +92,7 @@ describe('DailyReminderSection', () => {
 
     await waitFor(() => expect(registerPushSubscription).toHaveBeenCalledWith(SUBSCRIPTION));
     expect(updateNotificationSettings).toHaveBeenCalledWith({ reminderEnabled: true });
-    expect(trackEvent).toHaveBeenCalledWith('notification_opt_in', { reminder_time: '19:00' });
+    expect(trackEvent).toHaveBeenCalledWith('notification_opt_in', { permission: 'granted' });
     expect(await screen.findByText(/Daily reminder on/)).toBeInTheDocument();
   });
 
@@ -175,7 +175,10 @@ describe('DailyReminderSection', () => {
 
     expect(await screen.findByText(/didn't allow notifications/)).toBeInTheDocument();
     expect(updateNotificationSettings).not.toHaveBeenCalled();
-    expect(trackEvent).not.toHaveBeenCalledWith('notification_opt_in', expect.anything());
+    // The taxonomy (#75) models this as one event carrying the prompt's
+    // outcome, so a refusal is reported as `denied` rather than not reported —
+    // otherwise the granted rate has no denominator.
+    expect(trackEvent).toHaveBeenCalledWith('notification_opt_in', { permission: 'denied' });
   });
 
   it('has no accessibility violations', async () => {

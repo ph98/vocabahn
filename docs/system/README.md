@@ -162,6 +162,6 @@ ledger designed from a single producer would be designed wrong.
 - Written from static reading of the code plus screenshots of a running
   instance. No load testing, no runtime verification of error paths.
 - Test coverage has grown but is still partial: 19 Playwright specs across 4
-  files, __WEB__ in `apps/web`, and __API__
+  files, 225 Vitest cases across 24 files in `apps/web`, and 223 across 22 files
   in `apps/api`. Playwright is not run by CI. Absence of a bug here does not
   mean the tests would catch it.

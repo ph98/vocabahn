@@ -86,7 +86,10 @@ export function useNotificationSettings(enabled = true): ReminderControls {
     onSuccess: (settings) => {
       setPermission(currentPermission());
       applySettings(settings);
-      trackEvent('notification_opt_in', { reminder_time: settings.reminderTime });
+      // The taxonomy (#75) records the permission outcome, not the chosen time:
+      // reaching here means the prompt resolved as granted, since the
+      // subscription had to succeed before the preference was written.
+      trackEvent('notification_opt_in', { permission: 'granted' });
       toast.success('Daily reminder on', {
         id: 'setting:reminderEnabled',
         description: `We'll nudge you at ${settings.reminderTime} your time.`,
@@ -95,6 +98,9 @@ export function useNotificationSettings(enabled = true): ReminderControls {
     onError: (error) => {
       setPermission(currentPermission());
       if (error instanceof PushPermissionDeniedError) {
+        // Same event, other outcome — a prompt that was refused is the half of
+        // the opt-in funnel worth knowing about.
+        trackEvent('notification_opt_in', { permission: 'denied' });
         toast.error("Your browser didn't allow notifications", {
           id: 'setting:reminderEnabled',
           description: 'You can re-enable them for this site in your browser settings.',

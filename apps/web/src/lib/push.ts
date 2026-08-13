@@ -167,10 +167,24 @@ function toSubscriptionBody(subscription: PushSubscription) {
 export const NOTIFICATION_SOURCE_PARAM = 'notif';
 
 /**
- * Returns the notification kind this page load came from, and removes the
- * marker from the URL. Null on an ordinary navigation.
+ * Notification kinds we will attribute a session to. Only one exists today.
+ *
+ * This is an allow-list rather than a type assertion because the value arrives
+ * in a URL anyone can construct, and it is forwarded straight to GA4 — an
+ * unchecked read would let `?notif=<anything>` write arbitrary text into an
+ * event parameter.
  */
-export function consumeNotificationSource(): string | null {
+const NOTIFICATION_SOURCES = ['daily_reminder'] as const;
+
+export type NotificationSource = (typeof NOTIFICATION_SOURCES)[number];
+
+/**
+ * Returns the notification kind this page load came from, and removes the
+ * marker from the URL. Null on an ordinary navigation, and null for a value we
+ * do not recognise — the marker is still stripped either way, so a junk one
+ * does not linger in the address bar.
+ */
+export function consumeNotificationSource(): NotificationSource | null {
   if (typeof window === 'undefined') return null;
   const url = new URL(window.location.href);
   const source = url.searchParams.get(NOTIFICATION_SOURCE_PARAM);
@@ -178,5 +192,8 @@ export function consumeNotificationSource(): string | null {
 
   url.searchParams.delete(NOTIFICATION_SOURCE_PARAM);
   window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
-  return source;
+
+  return (NOTIFICATION_SOURCES as readonly string[]).includes(source)
+    ? (source as NotificationSource)
+    : null;
 }
