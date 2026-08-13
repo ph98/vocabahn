@@ -151,6 +151,9 @@ as `TOAST_REGION` from `Toast.tsx` so other floating UI can sit clear of it:
 | `--vb-toast-max-width` | 26 rem; the region is centred in the viewport. |
 | `--vb-toast-z` | 60 — above the nav and its popover, both at `z-50`. |
 
+`ProductFeedbackTrigger` is the first consumer of that contract (see **Product
+feedback trigger** below), and adds a matching `--vb-feedback-*` group.
+
 Two producers today. `hooks/useNotificationSettings.ts` confirms the daily
 reminder the same way, keyed `setting:reminderEnabled` / `setting:reminderTime`,
 and is honest about the failures the server owns — a dismissed permission prompt
@@ -163,6 +166,45 @@ naming the new state (*"Autoplay audio on"*). Copy comes from an optional label
 map with a humanised-key fallback, so a new `UserSettings` field is confirmed
 without being registered. A `localStorage` write that throws produces an error
 toast and leaves the setting unapplied.
+
+## Product feedback trigger
+
+`components/ProductFeedbackTrigger.tsx` — a fixed bottom-right **Feedback**
+button, mounted once at the end of `App.tsx` so it is last in tab order rather
+than sitting between the skip link and the page. It renders `null` unless a
+provider key is configured, analytics consent is granted, someone is signed in,
+and the route is not `/review`. What it opens, and why Usersnap, is
+`analytics.md`.
+
+Its geometry extends the toast contract rather than restating it:
+
+| Property | Meaning |
+| :--- | :--- |
+| `--vb-feedback-inset-bottom` | `var(--vb-toast-inset-bottom)` — so nav clearance is inherited, not re-derived. |
+| `--vb-feedback-inset-right` | 1 rem, 1.5 rem from `md`. |
+| `--vb-feedback-toast-clearance` | 5.5 rem — clears the taller toast (one with a description is 80 px). `0rem` from `md`. |
+| `--vb-feedback-z` | 55 — above the nav (50), below the toast region (60). |
+
+The interesting case is 375 px, where the toast list is full-width and would sit
+directly under the trigger. `body:has(.vb-toast) .vb-feedback-trigger` lifts the
+trigger by the clearance while a toast exists, transitioned in 180 ms and
+switched off under `prefers-reduced-motion`. The lift is transient, so the
+clearance can be generous without the trigger floating high at rest. From `md`
+up the clearance is zero: the toast list is centred at 26 rem, so
+`viewport − 72px ≥ (viewport + 416px)/2` holds for anything at or above 560 px
+and a right-edge trigger cannot reach it.
+
+Measured in Chromium against the compiled stylesheet (**observed**): at
+375 × 812 the trigger is 46 × 44 px, resting 100 px from the bottom — 12 px
+clear of the 88 px nav — and lifting to 188 px while a two-line toast is up,
+leaving 8 px between them. At 768 px and 1280 px it stays at 24 px and never
+moves; the toast's right edge is 25 px short of it at the narrower of the two.
+`src/test/feedback-trigger-geometry.test.ts` compiles `index.css` and asserts
+the rules that produce those numbers, because jsdom has no layout to measure.
+
+The accessible name is the word "Feedback", visible from `sm` up and `sr-only`
+below it — so it is the same name at every width, and the mobile button is never
+an icon without one.
 
 ## Safe-area utilities
 
@@ -332,7 +374,7 @@ term, to every hit. Full taxonomy in `analytics.md`.
 - The `offline-pack` endpoint has **no client consumer** (#23). There is no download
   control anywhere in the UI, so the top-1000 pack is unreachable
   (`dictionary.controller.ts`).
-- Test coverage is thin (#28): 225 Vitest cases across 24 files (with `jest-axe`
+- Test coverage is thin (#28): 244 Vitest cases across 26 files (with `jest-axe`
   wired up in `src/test/`), and 19 Playwright specs across `landing`,
   `dictionary`, `review`, `story`. Most routes are untested; of the error paths,
   only the boundary, the error states themselves, and the auth gate are covered.

@@ -14,6 +14,7 @@ import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard
 import { ProfilePage } from './components/ProfilePage';
 import { LandingPage } from './components/LandingPage';
 import { CookieConsentBanner } from './components/CookieConsentBanner';
+import { ProductFeedbackTrigger } from './components/ProductFeedbackTrigger';
 import { ToastProvider } from './components/Toast';
 import {
   ErrorStateForError,
@@ -776,6 +777,12 @@ export default function App() {
       </footer>
 
       </main>
+
+      {/* Last in the DOM, so a floating utility button is last in tab order
+          rather than sitting between the skip link and the page. It renders
+          nothing at all unless consent is granted and a provider key is
+          configured — see ProductFeedbackTrigger. */}
+      <ProductFeedbackTrigger signedIn={signedIn} />
     </ToastProvider>
   );
 }

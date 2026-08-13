@@ -1,12 +1,15 @@
 # Analytics
 
 What the web client sends to Google Analytics 4, when, and with which
-parameters. Present tense: every event in the table below has a call site in
-`apps/web/src`. Names declared in code but not yet sent are listed separately,
-under **Reserved names**, and are not part of the table.
+parameters — and, at the end, the one other third party that runs in the
+browser: the product feedback widget. Present tense: every event in the table
+below has a call site in `apps/web/src`. Names declared in code but not yet sent
+are listed separately, under **Reserved names**, and are not part of the table.
 
 Code: `apps/web/src/lib/analytics-events.ts` (the taxonomy),
 `apps/web/src/lib/telemetry.ts` (consent, transport, redaction),
+`apps/web/src/lib/feedback-widget.ts` (the Usersnap adapter),
+`apps/web/src/components/ProductFeedbackTrigger.tsx`,
 `apps/web/src/components/CookieConsentBanner.tsx`,
 `apps/web/src/components/PrivacyPage.tsx`.
 
@@ -151,6 +154,13 @@ would have made it a per-card event by accident.
 | `pwa_install` | The browser fires `appinstalled`. | — |
 | `web_vitals` | Each of LCP, INP, CLS, FCP, TTFB reports. CLS is scaled ×1000 to stay an integer. | `metric_name` · `metric_value` · `metric_rating` |
 
+### Product feedback
+
+| Event | Fires when | Parameters |
+| :--- | :--- | :--- |
+| `product_feedback_open` | The Usersnap dialog actually opened — from the widget's own `open` event, not from the click, so a widget that failed to load is not counted. | — |
+| `product_feedback_submit` | A report was submitted. | — |
+
 `page_view` is also sent manually on every SPA route change (GA4's automatic
 one is switched off with `send_page_view: false`), carrying the redacted
 `page_path`, `page_location` and `page_title`.
@@ -166,8 +176,6 @@ call site**, and must not be added to the tables above until they do.
 | `notification_opt_in` | #74 | `permission`: `granted` \| `denied` \| `default` |
 | `notification_opt_out` | #74 | — |
 | `notification_click` | #74 | `notification_type`: `daily_reminder` |
-| `product_feedback_open` | #80 | — |
-| `product_feedback_submit` | #80 | — |
 
 `notification_click` is declared as a client event on purpose: a service worker
 has no `window.gtag`, so the `notificationclick` handler has to open the app
@@ -211,6 +219,87 @@ No **user-scoped** dimension is registered, and none should be: a user-scoped
 dimension is a property of the person, which is exactly the category this
 taxonomy keeps out of GA4.
 
+## Product feedback widget
+
+A floating **Feedback** button, bottom-right, opening
+[Usersnap](https://usersnap.com)'s screenshot-annotated feedback dialog. It is
+the only way a learner can say *"this flow confused me"* — `EntryFeedback` on a
+dictionary card only covers *"this entry is wrong"*.
+
+`lib/feedback-widget.ts` is the whole of the vendor surface: it owns the script
+tag, the `window` callback and the vendor API shape, and exposes four functions
+(`isFeedbackWidgetConfigured`, `loadFeedbackWidget`, `openFeedbackWidget`,
+`unloadFeedbackWidget`). `components/ProductFeedbackTrigger.tsx` is its only
+caller, and the only place the load conditions live.
+
+### When it loads
+
+Four conditions, all required, checked before any network request:
+
+| Condition | Why |
+| :--- | :--- |
+| `VITE_USERSNAP_API_KEY` is set | Unset is a normal state: no trigger, no script, no error, no console output. Development and any deployment without a key behave identically to before. |
+| `isAnalyticsEnabled()` **and** consent is `granted` | The same gate GA4 goes through. Withdrawing consent calls `unloadFeedbackWidget`, which runs the vendor's `destroy()` and removes the script — hiding the button would not be withdrawal. |
+| Someone is signed in | The goal is feedback from users. It also keeps the landing page free of a third-party connection, which is what #71 is cutting. |
+| The route is not `/review` | A floating button mid-session is a distraction. `/review` already suppresses the edge-swipe gesture for the same reason. |
+
+The script is fetched inside `requestIdleCallback` (1.2 s `setTimeout`
+fallback), so it never competes with the first render. A click that lands
+before it arrives is remembered and honoured once it does, rather than dropped.
+The trigger opens the dialog through a Usersnap **API event**
+(`vocabahn_product_feedback`); the vendor's own button is switched off in the
+project's audience settings, which is what makes the trigger's placement,
+keyboard path and accessible name the app's to control.
+
+### What a report carries
+
+Set on the widget's `open` event rather than at `init`, so the route is the one
+being complained about and not the one the page was loaded on:
+
+| Field | Value |
+| :--- | :--- |
+| `route` | `redactPagePath(pathname)` — `/word/Haus` is reported as `/word/:word`, exactly as for GA4. |
+| `app_version` | `__APP_VERSION__`, the string the footer links to the changelog with. |
+| `viewport` | `"375x812"` — tells a narrow-layout bug from a wide one. |
+| `signed_in` | Always `true` today, since the trigger does not mount otherwise. |
+
+No account id, no email, no `user` block. `collectGeoLocation: 'none'` is passed
+at init, so Usersnap does not geolocate the reporter's IP.
+
+Usersnap's own script does record the page address and takes the screenshot the
+person is shown before sending, and on `/word/:word` both of those contain the
+headword. That is not a leak of the kind `redactPagePath` exists to prevent: it
+happens only on a deliberate submit, only after consent, and the reporter sees
+the screenshot before it is sent. `PrivacyPage.tsx` §4 says so in as many words.
+
+### Why Usersnap
+
+Weighed against the alternatives in #80:
+
+- **Not Hotjar.** Hotjar's value is session recording and heatmaps, and that is
+  also its cost. Recording captures the sign-in email field and every free-text
+  input, needing masking configured per field and defended forever; under GDPR
+  it is a materially different category from page analytics, so it would not
+  have been honest to ride it in on this app's single binary consent bucket. It
+  is also the heaviest script of the candidates, against an app actively cutting
+  bundle weight.
+- **Not Canny or Featurebase.** Feature-request boards and voting are a
+  different job from *"this is broken"*, which is the gap being filled.
+- **Not self-hosted.** The tempting one: `EntryFeedback` plus Directus is the
+  same shape, and it avoids the consent and weight questions entirely. It was
+  rejected on what the report is *worth*, not on what it costs to build. A
+  free-text box yields "the review page is broken"; the screenshot, the
+  annotation on it, and the automatic browser/console context are what make a
+  report actionable without a round of follow-up questions — and reimplementing
+  DOM capture and annotation is a project, not an endpoint. The endpoint remains
+  the fallback if the widget is ever removed.
+
+**Because there is no session recording, §2 of #80 — input masking — does not
+apply.** Nothing is captured in the background at all: the sign-in email field
+and every free-text input are only ever seen by Usersnap if the person
+deliberately opens the dialog while they are on screen, and then only in a
+screenshot they are shown before sending.
+
 ## Limitations
 
 - **The custom dimensions above are not registered** (#75). Registering them
@@ -252,3 +341,19 @@ taxonomy keeps out of GA4.
 - The counts on `review_session_complete` are those at the moment the summary
   was first reached. An undo taken *from* the summary corrects the UI but does
   not amend the event already sent.
+- **The feedback widget has never been loaded.** `VITE_USERSNAP_API_KEY` is
+  unset everywhere, so no Usersnap account, project, or API-event trigger
+  exists yet (#80). Everything above the network boundary is covered by tests
+  in `components/__tests__/ProductFeedbackTrigger.test.tsx`; the vendor half —
+  that `logEvent('vocabahn_product_feedback')` opens the dialog, that the
+  default button is really suppressed, that `setValue('custom', …)` shows up on
+  the report — is read from Usersnap's API reference and has not been observed.
+- **Consent changes are watched in this tab only.** `subscribeConsent` notifies
+  in-process listeners, so the trigger appears the instant the banner is
+  accepted; a second tab picks the change up on its next load.
+- **A stack of two or more toasts can reach the feedback trigger at 375 px.**
+  While a toast is on screen the trigger steps up by
+  `--vb-feedback-toast-clearance`, which is sized for the taller of the two
+  toast shapes (5.5 rem against an 80 px two-line toast); the toast region
+  allows three at once. Two simultaneous toasts is not a state the app produces
+  today — the only producer, `useSettings`, dedupes by key.

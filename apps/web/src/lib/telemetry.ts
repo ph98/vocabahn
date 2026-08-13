@@ -120,6 +120,29 @@ export function initGA4() {
   });
 }
 
+type ConsentListener = (consent: ConsentState) => void;
+
+const consentListeners = new Set<ConsentListener>();
+
+/**
+ * Watch consent changes made in this tab, and return an unsubscribe.
+ *
+ * `getStoredConsent` is a `localStorage` read, so nothing re-renders when the
+ * banner is accepted — which is fine for GA4 (a module-level flag) but not for
+ * anything that has to *appear* the moment consent arrives. The product
+ * feedback trigger is the first such consumer: without this it would show up
+ * only after a reload.
+ *
+ * Same-tab only. A `storage` event would cover other tabs, but consent there is
+ * read on their next load anyway.
+ */
+export function subscribeConsent(listener: ConsentListener): () => void {
+  consentListeners.add(listener);
+  return () => {
+    consentListeners.delete(listener);
+  };
+}
+
 /** Set and persist consent state; update Google Consent Mode v2. */
 export function setStoredConsent(consent: 'granted' | 'denied') {
   if (typeof localStorage !== 'undefined') {
@@ -138,6 +161,8 @@ export function setStoredConsent(consent: 'granted' | 'denied') {
   if (consent === 'granted') {
     initGA4();
   }
+
+  for (const listener of consentListeners) listener(consent);
 }
 
 /** Initialize telemetry systems (GA4 Consent Mode, Sentry, Web Vitals). */

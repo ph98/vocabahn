@@ -164,7 +164,7 @@ ledger designed from a single producer would be designed wrong.
   instance. No load testing, no runtime verification of error paths.
 - Test coverage has grown but is still partial: 25 mocked Playwright specs
   across 5 files (run twice, chromium and mobile-safari), 8 unmocked
-  live-monitoring specs across 2 files, 225 Vitest cases across 24 files in
+  live-monitoring specs across 2 files, 244 Vitest cases across 26 files in
   `apps/web`, and 223 across 22 files in `apps/api`. Absence of a bug here does
   not mean the tests would catch it — the mocked Playwright specs in particular
   stub the API away entirely (`monitoring.md`).
