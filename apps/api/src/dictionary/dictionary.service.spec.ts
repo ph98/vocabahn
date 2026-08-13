@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DictionaryService } from './dictionary.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { EnrichmentService } from '../enrichment/enrichment.service';

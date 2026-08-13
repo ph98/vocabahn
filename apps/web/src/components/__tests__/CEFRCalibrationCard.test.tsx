@@ -16,6 +16,7 @@ const MOCK_USER: User = {
   name: 'Test Learner',
   avatarUrl: null,
   cefrLevel: null,
+  interests: [],
 };
 
 describe('CEFRCalibrationCard', () => {

@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { PullToRefresh } from './PullToRefresh';
 import { Link } from 'react-router-dom';
-import { fetchDashboard, fetchMe } from '../api';
+import { fetchDashboard, fetchLatestStory, fetchMe } from '../api';
+import { topicLabel } from '@vocabahn/shared';
 import { ProgressBar } from './ProgressBar';
 import { ActivityHeatmap } from './ActivityHeatmap';
 import { CountUp } from './CountUp';
@@ -43,6 +44,54 @@ function StatCard({
   );
 }
 
+/**
+ * The way a learner finds out a story is waiting. The scheduler writes it
+ * overnight in their timezone, and until push notifications exist nothing tells
+ * them — so the dashboard, which is where they land, does.
+ *
+ * Renders nothing when there is no unfinished story, so a learner who reads
+ * every morning never sees a stale card.
+ */
+function TodaysReadCard() {
+  const { data: story } = useQuery({
+    queryKey: ['story-latest'],
+    queryFn: fetchLatestStory,
+  });
+
+  if (!story) return null;
+
+  const waiting = story.status === 'PENDING' || story.status === 'GENERATING';
+  if (story.status === 'FAILED') return null;
+
+  return (
+    <Link
+      to="/story"
+      className="dashboard-card flex items-center justify-between gap-4 rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-surface-900/80 to-surface-950/80 p-5 shadow-lg backdrop-blur-md transition-colors hover:border-indigo-400/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+    >
+      <div className="min-w-0 space-y-1">
+        <p className="text-xs font-bold uppercase tracking-wide text-indigo-300">
+          {story.origin === 'DAILY' ? "Today's read" : 'Continue reading'}
+        </p>
+        {waiting ? (
+          <p className="text-sm text-surface-300">Still being written…</p>
+        ) : (
+          <>
+            <p lang="de" className="truncate text-sm font-medium text-surface-100">
+              {story.title ?? 'Your story is ready'}
+            </p>
+            <p className="truncate text-xs text-surface-400">
+              {[topicLabel(story.topic), story.source && `via ${story.source.name}`]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+          </>
+        )}
+      </div>
+      <ChevronRight className="size-5 shrink-0 text-indigo-300" aria-hidden="true" />
+    </Link>
+  );
+}
+
 export function DashboardPage() {
   const { data: user } = useQuery({ queryKey: ['me'], queryFn: fetchMe });
   const { data, isPending, isError, refetch } = useQuery({ queryKey: ['dashboard'], queryFn: fetchDashboard });
@@ -78,6 +127,8 @@ export function DashboardPage() {
       {user && !user.cefrLevel && (
         <CEFRCalibrationCard user={user} compact />
       )}
+
+      <TodaysReadCard />
 
       {data && (
         <div className="flex flex-col gap-5">

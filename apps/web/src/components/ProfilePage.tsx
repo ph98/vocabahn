@@ -1,6 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
-import { fetchEnrichmentQuota, fetchMe, logout, requestEmailSignIn } from '../api';
+import {
+  fetchEnrichmentQuota,
+  fetchMe,
+  logout,
+  requestEmailSignIn,
+  updateInterests,
+} from '../api';
+import { STORY_TOPICS } from '@vocabahn/shared';
 import { useSettings } from '../hooks/useSettings';
 import { trackEvent } from '../lib/telemetry';
 import { prefersReducedMotion } from '../lib/motion';
@@ -36,6 +43,10 @@ export function SignInOptions() {
     <div ref={containerRef} className="space-y-4 pt-2">
       <a
         href="/api/v1/auth/google"
+        rel="external"
+        onClick={() => {
+          window.location.href = '/api/v1/auth/google';
+        }}
         className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-medium text-surface-900 transition-all hover:bg-surface-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.98]"
       >
         <svg className="size-4" viewBox="0 0 24 24">
@@ -99,6 +110,79 @@ export function SignInOptions() {
             {emailMutation.isPending ? 'Sending...' : 'Send Magic Link'}
           </button>
         </form>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Which subjects the learner's stories are drawn from when they don't pick one
+ * per story — and what the scheduled morning story uses, where there is nobody
+ * to ask. Saves on toggle rather than behind a button: one topic is one click,
+ * and a Save the learner forgets silently loses the setting.
+ */
+function InterestsSection({ interests }: { interests: string[] }) {
+  const queryClient = useQueryClient();
+  const [selected, setSelected] = useState<string[]>(interests);
+
+  const save = useMutation({
+    mutationFn: updateInterests,
+    onSuccess: (user) => {
+      queryClient.setQueryData(['me'], user);
+      setSelected(user.interests);
+    },
+    // The server is the authority; on failure fall back to what it last told us
+    // rather than leaving a chip lit for a preference that was never stored.
+    onError: () => setSelected(interests),
+  });
+
+  const toggle = (slug: string) => {
+    const next = selected.includes(slug)
+      ? selected.filter((s) => s !== slug)
+      : [...selected, slug];
+    setSelected(next);
+    save.mutate(next);
+  };
+
+  return (
+    <div className="mt-4 border-t border-surface-800 pt-4">
+      <p className="text-xs font-medium uppercase tracking-wide text-surface-500">
+        Reading Interests
+      </p>
+      <p className="mt-0.5 text-xs text-surface-400">
+        {selected.length === 0
+          ? 'Pick subjects and your daily story is drawn from real German coverage of them.'
+          : `Your daily story is drawn from ${selected.length} ${selected.length === 1 ? 'subject' : 'subjects'}.`}
+      </p>
+
+      <fieldset disabled={save.isPending} className="mt-3">
+        <legend className="sr-only">Reading interests</legend>
+        <div className="flex flex-wrap gap-2">
+          {STORY_TOPICS.map((topic) => {
+            const active = selected.includes(topic.slug);
+            return (
+              <button
+                key={topic.slug}
+                type="button"
+                onClick={() => toggle(topic.slug)}
+                aria-pressed={active}
+                className={`min-h-9 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 ${
+                  active
+                    ? 'border-indigo-400 bg-indigo-500/15 text-indigo-200'
+                    : 'border-surface-700 text-surface-300 hover:border-surface-600 hover:bg-surface-800'
+                }`}
+              >
+                <span aria-hidden="true">{topic.emoji}</span> {topic.label}
+              </button>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      {save.isError && (
+        <p role="status" className="mt-2 text-xs text-accent-red">
+          Couldn't save your interests. Please try again.
+        </p>
       )}
     </div>
   );
@@ -217,6 +301,8 @@ export function ProfilePage() {
             )}
           </div>
         )}
+
+        {user && <InterestsSection interests={user.interests} />}
 
         {user && (
           <div className="mt-4 border-t border-surface-800 pt-4">

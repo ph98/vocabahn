@@ -1,10 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from './email.service';
+import { KnowledgeService } from '../knowledge/knowledge.service';
 import { OAUTH_STATE_COOKIE, setOauthStateCookie, clearOauthStateCookie } from './cookies';
 import type { Response } from 'express';
 
@@ -13,33 +15,33 @@ describe('AuthService & OAuth Cookies', () => {
 
   const mockPrisma = {
     user: {
-      findFirst: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      create: jest.fn(),
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
+      create: vi.fn(),
     },
     emailOtp: {
-      updateMany: jest.fn(),
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
+      updateMany: vi.fn(),
+      create: vi.fn(),
+      findUnique: vi.fn(),
+      update: vi.fn(),
     },
   };
 
   const mockJwtService = {
-    sign: jest.fn().mockReturnValue('mock_token'),
-    verifyAsync: jest.fn(),
+    sign: vi.fn().mockReturnValue('mock_token'),
+    verifyAsync: vi.fn(),
   };
 
   const mockConfigService = {
-    get: jest.fn((key: string) => {
+    get: vi.fn((key: string) => {
       if (key === 'GOOGLE_CLIENT_ID') return 'mock-client-id';
       if (key === 'GOOGLE_CLIENT_SECRET') return 'mock-client-secret';
       if (key === 'GOOGLE_CALLBACK_URL') return 'http://localhost:3000/api/auth/google/redirect';
       if (key === 'FRONTEND_URL') return 'http://localhost:5173';
       return null;
     }),
-    getOrThrow: jest.fn((key: string) => {
+    getOrThrow: vi.fn((key: string) => {
       if (key === 'GOOGLE_CLIENT_ID') return 'mock-client-id';
       if (key === 'GOOGLE_CLIENT_SECRET') return 'mock-client-secret';
       if (key === 'GOOGLE_CALLBACK_URL') return 'http://localhost:3000/api/auth/google/redirect';
@@ -48,11 +50,15 @@ describe('AuthService & OAuth Cookies', () => {
   };
 
   const mockEmailService = {
-    sendMagicLink: jest.fn(),
+    sendMagicLink: vi.fn(),
+  };
+
+  const mockKnowledgeService = {
+    batchGraduateFillers: vi.fn(),
   };
 
   beforeEach(async () => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -61,6 +67,7 @@ describe('AuthService & OAuth Cookies', () => {
         { provide: JwtService, useValue: mockJwtService },
         { provide: PrismaService, useValue: mockPrisma },
         { provide: EmailService, useValue: mockEmailService },
+        { provide: KnowledgeService, useValue: mockKnowledgeService },
       ],
     }).compile();
 
@@ -70,8 +77,8 @@ describe('AuthService & OAuth Cookies', () => {
   describe('setOauthStateCookie', () => {
     it('should set path to "/" so Google redirect callback receives state cookie', () => {
       const mockRes = {
-        cookie: jest.fn(),
-        clearCookie: jest.fn(),
+        cookie: vi.fn(),
+        clearCookie: vi.fn(),
       } as unknown as Response;
 
       setOauthStateCookie(mockRes, 'test-uuid-state');
@@ -85,8 +92,8 @@ describe('AuthService & OAuth Cookies', () => {
 
     it('should clear state cookie with path "/"', () => {
       const mockRes = {
-        cookie: jest.fn(),
-        clearCookie: jest.fn(),
+        cookie: vi.fn(),
+        clearCookie: vi.fn(),
       } as unknown as Response;
 
       clearOauthStateCookie(mockRes);
@@ -151,6 +158,9 @@ describe('AuthService & OAuth Cookies', () => {
         name: 'Test User',
         avatarUrl: null,
         cefrLevel: 'B1.1',
+        // A user row predating the column reads back as no stated preference,
+        // which the story picker treats as "any topic".
+        interests: [],
       });
       expect(result.accessToken).toBe('mock_token');
       expect(result.refreshToken).toBe('mock_token');

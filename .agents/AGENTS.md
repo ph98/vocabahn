@@ -8,11 +8,14 @@ Welcome to the Vocabahn repository. When working as an AI developer or assistant
   trust it over any other document, and correct it when you change behaviour.
 - **Legacy docs are not specifications**: `docs/legacy/prd.md` and
   `docs/legacy/backlog.md` were written ahead of the code and describe features
-  that do not exist (evidence ledger, production drills, micro-stories, planner,
-  listening mode, a separate `apps/worker`, MCP support). Never implement from
-  them. Planned work lives in GitHub issues.
+  that do not exist (evidence ledger, production drills, planner, listening
+  mode, a separate `apps/worker`, MCP support). Never implement from them.
+  Planned work lives in GitHub issues. Micro-stories now exist, but were built
+  from scratch — see `docs/system/stories.md`, not the PRD's version.
 - **ADRs are proposals**: `docs/adr/0001` and `0002` are `proposed`, not built.
-  Cards + FSRS are the architectural hub today.
+  Cards + FSRS are the architectural hub today. Micro-stories record a
+  comprehension signal (`StoryTarget.understood`) that nothing consumes — it is
+  deliberately inert, not the ADR's evidence ledger.
 - **Large Dataset Safety**: Never load or print the entirety of the 938 MB `kaikki.org-dictionary-German-words.jsonl` file directly. Read it streaming or parse short samples (e.g. `head -n 5`).
 - **Shared Package Contract**: Ensure any changes to API inputs or outputs are reflected in the Zod schemas located in `packages/shared/` before updating endpoints. The web client parses responses through these schemas, so a mismatch fails at the boundary.
 - **`ReviewLog` is the source of truth for scheduling**: a card's FSRS columns are

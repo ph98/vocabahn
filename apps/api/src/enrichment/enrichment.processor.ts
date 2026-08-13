@@ -5,7 +5,7 @@ import { DictionaryService } from '../dictionary/dictionary.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ENRICHMENT_QUEUE, type EnrichmentJobData } from './enrichment.constants';
 import { GeminiProvider } from './providers/gemini.provider';
-import { TtsProvider } from './providers/tts.provider';
+import { TtsProvider } from '../tts/tts.provider';
 import { UnsplashProvider } from './providers/unsplash.provider';
 
 // Global rate limit protects the free-tier external APIs.

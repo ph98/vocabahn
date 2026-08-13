@@ -1,11 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { BadgeCheck, CircleUserRound, HelpCircle, Monitor, Moon, Sun } from 'lucide-react';
+import { BadgeCheck, BookOpen, CircleUserRound, HelpCircle, Monitor, Moon, Sun } from 'lucide-react';
 import { MotionConfig, motion } from 'motion/react';
 import { lazy, Suspense, useEffect, useRef, useState, type ComponentType, type RefObject } from 'react';
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { fetchHealth, fetchMe, googleOneTapLogin } from './api';
+import { fetchAuthConfig, fetchHealth, fetchMe, googleOneTapLogin } from './api';
 import { useGoogleOneTap } from './hooks/useGoogleOneTap';
 import { prefersReducedMotion, springSnappy } from './lib/motion';
 import { DictionaryCard, DictionaryEntryPage } from './components/DictionaryCard';
@@ -29,6 +29,7 @@ const HelpPage = lazy(() => import('./components/HelpPage').then((m) => ({ defau
 const ReviewSession = lazy(() =>
   import('./components/ReviewSession').then((m) => ({ default: m.ReviewSession })),
 );
+const StoryPage = lazy(() => import('./components/StoryPage').then((m) => ({ default: m.StoryPage })));
 const StatusPage = lazy(() => import('./components/StatusPage').then((m) => ({ default: m.StatusPage })));
 const DeckDetailPage = lazy(() =>
   import('./components/DecksPage').then((m) => ({ default: m.DeckDetailPage })),
@@ -38,6 +39,31 @@ const PrivacyPage = lazy(() => import('./components/PrivacyPage').then((m) => ({
 const NotFoundPage = lazy(() =>
   import('./components/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
 );
+
+function GoogleOneTapPrompt() {
+  const queryClient = useQueryClient();
+  const { data: authConfig } = useQuery({
+    queryKey: ['authConfig'],
+    queryFn: fetchAuthConfig,
+    staleTime: Infinity,
+  });
+  const mutation = useMutation({
+    mutationFn: googleOneTapLogin,
+    onSuccess: (user) => {
+      queryClient.setQueryData(['me'], user);
+    },
+  });
+
+  useGoogleOneTap({
+    clientId: authConfig?.googleClientId,
+    onSuccess: (credential) => {
+      trackEvent('login', { method: 'google_one_tap' });
+      mutation.mutate(credential);
+    },
+  });
+
+  return null;
+}
 
 /** Suspense fallback for lazy-loaded routes; announced to screen readers. */
 function RouteLoading() {
@@ -132,8 +158,9 @@ const ICON_REVIEW = 'M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z
 const ICON_DASHBOARD = 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z';
 const ICON_MORE = 'M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z';
 
-const MORE_PATHS = ['/known-words', '/help', '/profile'] as const;
+const MORE_PATHS = ['/story', '/known-words', '/help', '/profile'] as const;
 const MORE_ITEMS = [
+  { to: '/story',       label: 'Story',         icon: BookOpen },
   { to: '/known-words', label: 'Known words', icon: BadgeCheck },
   { to: '/help',        label: 'Help & Guide', icon: HelpCircle },
   { to: '/profile',     label: 'Profile',      icon: CircleUserRound },
@@ -381,6 +408,7 @@ function pageNameForPath(pathname: string): string {
   if (pathname.startsWith('/courses')) return 'Courses';
   if (pathname.startsWith('/decks')) return 'Decks';
   if (pathname.startsWith('/review')) return 'Review';
+  if (pathname.startsWith('/story')) return 'Story';
   if (pathname.startsWith('/known-words')) return 'Known words';
   if (pathname.startsWith('/profile')) return 'Profile';
   if (pathname.startsWith('/privacy')) return 'Privacy Policy';
@@ -501,26 +529,6 @@ function EdgeSwipeBack() {
   );
 }
 
-
-function GoogleOneTapPrompt() {
-  const queryClient = useQueryClient();
-  const mutation = useMutation({
-    mutationFn: googleOneTapLogin,
-    onSuccess: (user) => {
-      queryClient.setQueryData(['me'], user);
-    },
-  });
-
-  useGoogleOneTap({
-    onSuccess: (credential) => {
-      trackEvent('login', { method: 'google_one_tap' });
-      mutation.mutate(credential);
-    },
-  });
-
-  return null;
-}
-
 export default function App() {
   const { data: user, isPending } = useQuery({ queryKey: ['me'], queryFn: fetchMe, retry: false });
   const mainRef = useRef<HTMLElement>(null);
@@ -602,6 +610,7 @@ export default function App() {
                 <Route path="/courses" element={<Navigate to="/library" replace />} />
                 <Route path="/courses/:slug" element={<CourseDetailPage />} />
                 <Route path="/review" element={<ReviewSession />} />
+                <Route path="/story" element={<StoryPage />} />
                 <Route path="/known-words" element={<KnownWordsPage />} />
                 <Route path="/decks" element={<Navigate to="/library" replace />} />
                 <Route path="/decks/:id" element={<DeckDetailPage />} />

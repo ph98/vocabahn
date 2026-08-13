@@ -2,11 +2,12 @@ import { randomBytes } from 'node:crypto';
 import {
   BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import type { User } from '@vocabahn/shared';
+import { STORY_TOPIC_SLUGS, type User } from '@vocabahn/shared';
 import { OAuth2Client } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
@@ -23,6 +24,7 @@ export interface JwtPayload {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly google: OAuth2Client;
   private readonly clientId: string;
 
@@ -33,12 +35,19 @@ export class AuthService {
     private readonly email: EmailService,
     private readonly knowledge: KnowledgeService,
   ) {
-    this.clientId = this.config.getOrThrow<string>('GOOGLE_CLIENT_ID');
-    this.google = new OAuth2Client(
-      this.clientId,
-      this.config.getOrThrow<string>('GOOGLE_CLIENT_SECRET'),
-      this.config.getOrThrow<string>('GOOGLE_CALLBACK_URL'),
-    );
+    this.clientId =
+      this.config.get<string>('GOOGLE_CLIENT_ID') ??
+      this.config.get<string>('VITE_GOOGLE_CLIENT_ID') ??
+      '';
+    const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET') ?? '';
+    const callbackUrl =
+      this.config.get<string>('GOOGLE_CALLBACK_URL') ??
+      'http://localhost:3000/api/auth/google/redirect';
+    this.google = new OAuth2Client(this.clientId, clientSecret, callbackUrl);
+  }
+
+  getGoogleClientId(): string | null {
+    return this.clientId || null;
   }
 
   buildAuthUrl(state: string): string {
@@ -59,11 +68,19 @@ export class AuthService {
 
   /** Mobile-ready flow: verify a Google ID token directly. */
   async signInWithIdToken(idToken: string): Promise<User> {
+    const clientIds = [
+      this.config.get<string>('GOOGLE_CLIENT_ID'),
+      this.config.get<string>('VITE_GOOGLE_CLIENT_ID'),
+      this.clientId,
+    ].filter((id): id is string => Boolean(id && id.trim() !== ''));
+
     const ticket = await this.google
-      .verifyIdToken({ idToken, audience: this.clientId })
-      .catch(() => {
+      .verifyIdToken({ idToken, audience: clientIds.length > 0 ? Array.from(new Set(clientIds)) : this.clientId })
+      .catch((err) => {
+        this.logger.error('Google ID token verification failed', err);
         throw new UnauthorizedException('Invalid Google ID token');
       });
+
     const payload = ticket.getPayload();
     if (!payload?.sub || !payload.email || payload.email_verified !== true) {
       throw new UnauthorizedException('Google account has no verified email');
@@ -200,8 +217,25 @@ export class AuthService {
     name: string | null;
     avatarUrl: string | null;
     cefrLevel: string | null;
+    interests?: string[];
   }): User {
     const { id, email, name, avatarUrl, cefrLevel } = user;
-    return { id, email, name, avatarUrl, cefrLevel };
+    return { id, email, name, avatarUrl, cefrLevel, interests: user.interests ?? [] };
+  }
+
+  /**
+   * Stores the topics a learner wants their stories to be about. Unknown slugs
+   * are dropped rather than rejected: the taxonomy can shrink between a client
+   * build and the server, and a stale chip should not fail the whole save.
+   */
+  async updateInterests(userId: string, interests: string[]): Promise<User> {
+    const known = [...new Set(interests)].filter((slug) =>
+      (STORY_TOPIC_SLUGS as string[]).includes(slug),
+    );
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { interests: known },
+    });
+    return this.toPublicUser(updated);
   }
 }

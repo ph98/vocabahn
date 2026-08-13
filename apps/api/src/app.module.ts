@@ -15,6 +15,8 @@ import { HealthModule } from './health/health.module';
 import { KnowledgeModule } from './knowledge/knowledge.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { SourcesModule } from './sources/sources.module';
+import { StoriesModule } from './stories/stories.module';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { RedisModule } from './redis/redis.module';
     FeedbackModule,
     HealthModule,
     KnowledgeModule,
+    SourcesModule,
+    StoriesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

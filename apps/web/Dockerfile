@@ -12,6 +12,8 @@ COPY packages/shared/package.json packages/shared/package.json
 RUN pnpm install --frozen-lockfile
 
 COPY . .
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 RUN pnpm --filter @vocabahn/shared build \
  && pnpm --filter @vocabahn/web build
 

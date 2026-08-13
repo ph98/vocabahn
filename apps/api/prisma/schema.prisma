@@ -18,9 +18,11 @@ model User {
   timezone  String?
   // Inferred CEFR level for the knowledge model; null until inferred
   cefrLevel String?
+  // Topic slugs from STORY_TOPICS the learner wants to read about. Empty means
+  // no preference stated, which the story picker reads as "any topic".
+  interests String[] @default([])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
 
   cards           Card[]
   reviewLogs      ReviewLog[]
@@ -28,12 +30,13 @@ model User {
   courses         UserCourse[]
   feedback        EntryFeedback[]
   decks           UserDeck[]
+  stories         Story[]
 }
 
 // ── Lexicon layer (complete Wiktextract ingest) ────────────────────────────
 
 model LexiconEntry {
-  id              String  @id @default(cuid())
+  id              String   @id @default(cuid())
   word            String
   pos             String
   // m / f / n, comma-joined when a word has several (e.g. "m,n")
@@ -130,6 +133,7 @@ model DictionaryEntry {
   courseWords  CourseWord[]
   deckWords    UserDeckWord[]
   feedback     EntryFeedback[]
+  storyTargets StoryTarget[]
 
   @@index([word])
   @@index([enrichmentStatus])
@@ -258,10 +262,10 @@ model Card {
 }
 
 model ReviewLog {
-  id     String       @id @default(cuid())
-  cardId String
-  userId String
-  rating ReviewRating
+  id        String       @id @default(cuid())
+  cardId    String
+  userId    String
+  rating    ReviewRating
   // Answer latency feeds the knowledge model's performance signal
   latencyMs Int?
 
@@ -372,15 +376,127 @@ model UserDeckWord {
   @@index([deckId, addedAt])
 }
 
+// ── Micro-stories ────────────────────────────────────────────────────────────
+
+enum StoryStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+}
+
+// Sub-steps of GENERATING, so the client can narrate the wait rather than spin.
+// Source selection is not among them: it happens synchronously when the row is
+// created, so the learner never waits on it.
+enum StoryStage {
+  WRITING
+  NARRATING
+}
+
+// Whether the learner asked for this story or the scheduler wrote it for them.
+enum StoryOrigin {
+  ON_DEMAND
+  DAILY
+}
+
+model Story {
+  id              String      @id @default(cuid())
+  userId          String
+  status          StoryStatus @default(PENDING)
+  stage           StoryStage?
+  origin          StoryOrigin @default(ON_DEMAND)
+  // Topic slug from STORY_TOPICS (packages/shared). Null for stories generated
+  // before topics existed, and for the "any topic" fallback when a learner has
+  // no interests and no feed item could be found.
+  topic           String?
+  // The real article this was retold from, when there was one. The relation is
+  // for analytics and per-user dedup; the three snapshot fields below are what
+  // the UI renders, so attribution survives SourceItem pruning.
+  sourceItemId    String?
+  sourceTitle     String?
+  sourceUrl       String?
+  sourceName      String?
+  sourcePublished DateTime?
+  // Target sub-level at generation time, e.g. "A2.1" — a snapshot, not a live join
+  cefrLevel       String?
+  title           String?
+  // German body. Every target's surfaceForm is verified to occur in this text.
+  text            String?
+  // Whole-story English translation, revealed on demand
+  translation     String?
+  // Narration of `text`, cached as a static .mp3 keyed `story-<id>`; null when
+  // synthesis is unconfigured or failed — audio never blocks a story shipping
+  audioUrl        String?
+  error           String?
+  // Set when the learner finishes reading; untapped targets become positive then
+  completedAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceItem SourceItem?   @relation(fields: [sourceItemId], references: [id], onDelete: SetNull)
+  targets    StoryTarget[]
+
+  @@index([userId, createdAt])
+  // Drives "has this learner already read this article?"
+  @@index([userId, sourceItemId])
+}
+
+// ── Source material ──────────────────────────────────────────────────────────
+
+// One article headline + summary pulled from a German publisher's RSS feed.
+// Only the feed's own title and description are stored — never the article body
+// — and a story retells it in the learner's own level rather than reproducing
+// it. `url` is the dedup key: re-polling a feed re-sees the same items.
+model SourceItem {
+  id          String   @id @default(cuid())
+  // Topic slug from STORY_TOPICS. One item belongs to exactly one topic, even
+  // when a publisher's feed could plausibly serve two.
+  topic       String
+  url         String   @unique
+  title       String
+  // The feed's <description>/<summary>, which is a 2–4 sentence German precis.
+  summary     String
+  // Publisher name for attribution, e.g. "tagesschau"
+  sourceName  String
+  publishedAt DateTime
+  fetchedAt   DateTime @default(now())
+
+  stories Story[]
+
+  // The picker wants the newest unread item for a topic.
+  @@index([topic, publishedAt])
+}
+
+// One row per (story, word). Doubles as the comprehension signal: `understood`
+// records whether the learner tapped the word as "didn't land". Nothing consumes
+// these yet — they exist so the signal can be designed from real data.
+model StoryTarget {
+  id                String    @id @default(cuid())
+  storyId           String
+  dictionaryEntryId String
+  // Exact inflected form as it appears in Story.text, verified before insert
+  surfaceForm       String
+  // null until the story is completed; false = the learner tapped it
+  understood        Boolean?
+  respondedAt       DateTime?
+
+  story           Story           @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  dictionaryEntry DictionaryEntry @relation(fields: [dictionaryEntryId], references: [id])
+
+  @@unique([storyId, dictionaryEntryId])
+  @@index([dictionaryEntryId])
+}
+
 // ── Email magic link OTPs ─────────────────────────────────────────────────────
 
 model EmailOtp {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   email     String
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([email])
 }

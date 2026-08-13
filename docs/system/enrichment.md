@@ -54,11 +54,14 @@ break the dictionary page.
    only when `GEMINI_API_KEY` is unset; a real API error **throws** so the job
    retries.
 4. **Unsplash** image, searched by translation (falling back to the headword).
-5. **Audio**: ElevenLabs first (`eleven_multilingual_v2`, voice from
-   `ELEVENLABS_VOICE_ID`), falling back to Google Cloud TTS (`de-DE`, neutral)
+5. **Audio**: ElevenLabs first (voice and model from `ELEVENLABS_VOICE_ID` /
+   `ELEVENLABS_MODEL_ID`), falling back to Google Cloud TTS (`de-DE`, neutral)
    on any error or when unconfigured. One mp3 for the headword keyed by entry id,
    plus one per example keyed `<entryId>-ex<n>`, written to
    `static/audio/` and served at `/api/static/audio/<key>.mp3`.
+   `TtsProvider` lives in `apps/api/src/tts/` and is shared with micro-stories
+   (`stories.md`) via `TtsModule`; its ElevenLabs request timeout scales with
+   text length, so a headword and a whole story both get a workable budget.
 6. One transaction: delete old examples, write everything, insert new examples,
    upsert the image credit, status → `ENRICHED`.
 

@@ -13,10 +13,13 @@ vi.mock('../../api', () => ({
     name: 'Test User',
     avatarUrl: null,
     cefrLevel: 'A1.1',
+    interests: [],
   }),
+  // The dashboard surfaces a story waiting; nothing is waiting by default.
+  fetchLatestStory: vi.fn().mockResolvedValue(null),
 }));
 
-const { fetchDashboard, fetchMe } = await import('../../api');
+const { fetchDashboard, fetchMe, fetchLatestStory } = await import('../../api');
 
 const DASHBOARD: DashboardResponse = {
   streak: 5,
@@ -45,7 +48,7 @@ const DASHBOARD: DashboardResponse = {
 describe('DashboardPage', () => {
   it('renders stats, heatmap, and an accessible activity list with no a11y violations', async () => {
     vi.mocked(fetchDashboard).mockResolvedValue(DASHBOARD);
-    vi.mocked(fetchMe).mockResolvedValue({ id: 'u1', email: 'test@example.com', name: 'Test', avatarUrl: null, cefrLevel: 'A1.1' });
+    vi.mocked(fetchMe).mockResolvedValue({ id: 'u1', email: 'test@example.com', name: 'Test', avatarUrl: null, cefrLevel: 'A1.1', interests: [] });
     const { container } = renderWithProviders(<DashboardPage />);
 
     await waitFor(() => expect(screen.getByText('day streak')).toBeInTheDocument());
@@ -60,5 +63,68 @@ describe('DashboardPage', () => {
     expect(screen.getByText(d2)).toBeInTheDocument();
 
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  describe("today's read", () => {
+    const WAITING_STORY = {
+      id: 'story-1',
+      status: 'READY' as const,
+      stage: null,
+      origin: 'DAILY' as const,
+      topic: 'football',
+      source: {
+        title: 'PSG schafft den Supercup-Doppelpack',
+        url: 'https://www.kicker.de/psg-1242244/artikel',
+        name: 'kicker',
+        publishedAt: '2026-08-12T20:55:54.000Z',
+      },
+      cefrLevel: 'A2.1',
+      title: 'Ein grüner Tag',
+      text: 'Das Haus ist grün.',
+      translation: 'The house is green.',
+      audioUrl: null,
+      error: null,
+      completedAt: null,
+      createdAt: '2026-08-12T05:00:00.000Z',
+      targets: [],
+    };
+
+    it('links to a scheduled story so the learner can find it', async () => {
+      // Until push notifications exist, this card is the only thing that tells
+      // a learner the scheduler wrote them something overnight.
+      vi.mocked(fetchDashboard).mockResolvedValue(DASHBOARD);
+      vi.mocked(fetchLatestStory).mockResolvedValue(WAITING_STORY);
+
+      renderWithProviders(<DashboardPage />);
+
+      const link = await screen.findByRole('link', { name: /Today's read/ });
+      expect(link).toHaveAttribute('href', '/story');
+      expect(screen.getByText('Ein grüner Tag')).toBeInTheDocument();
+      expect(screen.getByText('Football · via kicker')).toBeInTheDocument();
+    });
+
+    it('shows nothing when no story is waiting', async () => {
+      vi.mocked(fetchDashboard).mockResolvedValue(DASHBOARD);
+      vi.mocked(fetchLatestStory).mockResolvedValue(null);
+
+      renderWithProviders(<DashboardPage />);
+
+      await waitFor(() => expect(screen.getByText('day streak')).toBeInTheDocument());
+      expect(screen.queryByText("Today's read")).not.toBeInTheDocument();
+    });
+
+    it('does not advertise a story that failed to generate', async () => {
+      vi.mocked(fetchDashboard).mockResolvedValue(DASHBOARD);
+      vi.mocked(fetchLatestStory).mockResolvedValue({
+        ...WAITING_STORY,
+        status: 'FAILED',
+        text: null,
+      });
+
+      renderWithProviders(<DashboardPage />);
+
+      await waitFor(() => expect(screen.getByText('day streak')).toBeInTheDocument());
+      expect(screen.queryByRole('link', { name: /Today's read/ })).not.toBeInTheDocument();
+    });
   });
 });

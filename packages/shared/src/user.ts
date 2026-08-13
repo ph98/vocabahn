@@ -37,9 +37,18 @@ export const userSchema = z.object({
   avatarUrl: z.string().url().nullable(),
   timezone: z.string().nullable().optional(),
   cefrLevel: z.string().nullable(),
+  // Topic slugs from STORY_TOPICS. Empty means no preference stated, which the
+  // story picker reads as "any topic", not "no topics".
+  interests: z.array(z.string()).default([]),
 });
 
 export type User = z.infer<typeof userSchema>;
+
+export const updateInterestsSchema = z.object({
+  interests: z.array(z.string()).max(20),
+});
+
+export type UpdateInterestsBody = z.infer<typeof updateInterestsSchema>;
 
 export const updateCefrLevelSchema = z.object({
   cefrLevel: z.string().nullable(),
@@ -63,4 +72,11 @@ export const authTokensSchema = z.object({
 
 export type AuthTokens = z.infer<typeof authTokensSchema>;
 
+export const authConfigSchema = z.object({
+  googleClientId: z.string().nullable(),
+});
+
+export type AuthConfig = z.infer<typeof authConfigSchema>;
+
 export const CEFR_LEVELS_LIST = CEFR_LEVELS;
+

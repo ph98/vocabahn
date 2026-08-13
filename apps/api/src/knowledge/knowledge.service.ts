@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ReviewRating, DictionaryEntry } from '@prisma/client';
-import type { AutoGraduation, KnownWord } from '@vocabahn/shared';
+import type { AutoGraduation, KnownWord, User as SharedUser } from '@vocabahn/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AUTO_GRADUATE_MIN_REPS,
@@ -308,7 +308,7 @@ export class KnowledgeService {
   async setUserCefrLevel(
     userId: string,
     level: string | null,
-  ): Promise<{ user: { id: string; email: string; name: string | null; avatarUrl: string | null; timezone?: string | null; cefrLevel: string | null }; graduation: AutoGraduation | null }> {
+  ): Promise<{ user: SharedUser; graduation: AutoGraduation | null }> {
     const previousUser = await this.prisma.user.findUnique({ where: { id: userId }, select: { cefrLevel: true } });
     const prevIndex = cefrIndex(previousUser?.cefrLevel);
 
@@ -326,7 +326,15 @@ export class KnowledgeService {
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: { cefrLevel: targetLevel },
-      select: { id: true, email: true, name: true, avatarUrl: true, timezone: true, cefrLevel: true },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatarUrl: true,
+        timezone: true,
+        cefrLevel: true,
+        interests: true,
+      },
     });
 
     let graduation: AutoGraduation | null = null;

@@ -39,6 +39,7 @@ describe('App', () => {
       name: 'Test User',
       avatarUrl: null,
       cefrLevel: null,
+      interests: [],
     });
     const { container } = renderWithProviders(<App />);
 
@@ -59,6 +60,7 @@ describe('App', () => {
       name: 'Test User',
       avatarUrl: null,
       cefrLevel: null,
+      interests: [],
     });
     renderWithProviders(<App />);
     await waitFor(() => expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument());
@@ -88,6 +90,7 @@ describe('App', () => {
       name: 'Test User',
       avatarUrl: null,
       cefrLevel: null,
+      interests: [],
     });
     renderWithProviders(<App />);
     await waitFor(() => expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument());

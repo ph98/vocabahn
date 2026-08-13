@@ -2,7 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import type { Response } from 'express';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { PrismaService } from '../prisma/prisma.service';
-import type { TtsProvider } from './providers/tts.provider';
+import type { TtsProvider } from '../tts/tts.provider';
 import { StaticAudioController } from './static-audio.controller';
 
 type MockPrisma = {

@@ -87,7 +87,9 @@ export class TtsProvider {
           similarity_boost: 0.75,
         },
       }),
-      signal: AbortSignal.timeout(10000), // 10 seconds timeout
+      // Scales with length: a headword returns in well under the 10 s floor,
+      // but a whole micro-story is ~700 characters and needs considerably longer.
+      signal: AbortSignal.timeout(Math.min(60_000, 10_000 + text.length * 40)),
     });
 
     if (!response.ok) {
