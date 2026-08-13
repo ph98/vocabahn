@@ -6,8 +6,8 @@ and taps the words that didn't land.
 
 Code: `apps/api/src/stories/`, `apps/web/src/components/StoryPage.tsx`,
 `apps/web/src/lib/story-text.ts`, `packages/shared/src/story.ts`,
-`apps/api/src/sources/` for the articles (`sources.md`), and `apps/api/src/tts/`
-for narration.
+`apps/api/src/sources/` for the articles (`sources.md`), `apps/api/src/tts/`
+for narration, and `apps/api/src/images/` for the illustration.
 
 This is the only place a learner interacts with an LLM directly. Everywhere else
 AI runs behind the scenes (`enrichment.md`).
@@ -213,6 +213,39 @@ Two details make story-length text work where the per-word path did not:
   self-heals the same way dictionary audio does. **Observed**: deleting the mp3
   and re-requesting it returns a fresh 200.
 
+## Illustration
+
+One Unsplash photo per story, rendered above the German as a 16:9 banner. It
+gives the reader a scene to anchor on before decoding the text, which is the
+comprehensible-input effect the whole feature is for.
+
+The search query is the hard part and the model supplies it. `imageQuery` is a
+required field on the same structured response that returns the text — 2 to 4
+concrete English nouns naming what a photograph of the scene would show. There
+is no second AI call. Unsplash is English-keyword-driven, so searching on the
+German title or body returns junk; when the field is missing the English
+`translation` is used instead, and when there is no English at all the search is
+skipped.
+
+`orientation=landscape`, against the dictionary's `squarish` — a banner and a
+thumbnail want different photographs, not one photograph cropped twice.
+
+The fetch runs through the processor's `safe()` wrapper next to the TTS call and
+inherits the same policy: **a failed image costs the learner the picture, never
+the story or their quota.** An unset `UNSPLASH_ACCESS_KEY`, a timeout, an API
+error and a search that matched nothing all end the same way — `imageUrl` null
+and the story `READY`.
+
+Attribution is stored inline on the story (`imageAuthorName`, `imageAuthorUrl`,
+`imageSourceUrl`) rather than through `ImageCredit`, which is hard-bound to
+`DictionaryEntry` by a unique required relation. The web credit line is the
+shared `UnsplashCredit` component, the same one the dictionary card uses, which
+is where the UTM parameters Unsplash requires are applied (`enrichment.md`).
+
+`Story.image` is null for every story generated before this shipped. The page
+treats that as an ordinary state: nothing renders, and because the aspect ratio
+is fixed on the `<img>` itself, nothing below it moves when the file arrives.
+
 ## The comprehension signal
 
 `StoryTarget.understood` is the record: `false` for a word the learner tapped,
@@ -243,6 +276,7 @@ would read as a bug.
 | `STORY_DIGEST_ACTIVE_DAYS` | 14 | Days since last review before a learner is treated as dormant and skipped. |
 | `SOURCE_REFRESH_INTERVAL_MS` | 7200000 | How often publisher feeds are re-polled (`sources.md`). |
 | `GEMINI_API_KEY` | — | Unset disables generation entirely; the job throws and the story fails. |
+| `UNSPLASH_ACCESS_KEY` | — | Unset means no illustration. The story is unaffected. |
 
 ## Limitations
 
@@ -281,6 +315,13 @@ would read as a bug.
   to follow along with.
 - Quota is consumed on enqueue. A story that fails all three attempts still cost
   the learner one of their ten.
+- Nothing checks that the illustration matches the story. The model's
+  `imageQuery` is passed to Unsplash and the top result is taken on trust, so a
+  vague query can put a generic stock photo above a specific text.
+- The illustration is fetched once, at generation time, and the chosen photo's
+  URL is stored. Nothing re-checks or re-fetches it: if Unsplash later removes
+  the photo the figure disappears on the client and the story keeps no record
+  that it ever had one.
 - Stories accumulate; nothing prunes old rows.
 - `completedAt` can be rewritten by calling `complete` again — the endpoint is
   idempotent by overwrite, not append. There is no history of a learner's

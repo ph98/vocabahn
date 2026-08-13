@@ -43,6 +43,21 @@ export const storySourceSchema = z.object({
 });
 export type StorySource = z.infer<typeof storySourceSchema>;
 
+// A scene-setting Unsplash photo, found during generation from an English
+// description the model returns with the text. Null is a normal state — stories
+// written before this existed, an unset UNSPLASH_ACCESS_KEY, and any search
+// that errored or matched nothing all land here. Attribution travels with the
+// URL because Unsplash's terms require crediting the photographer wherever the
+// photo is shown.
+export const storyImageSchema = z.object({
+  url: z.string(),
+  authorName: z.string(),
+  authorUrl: z.string().nullable(),
+  // The photo's own page on Unsplash
+  sourceUrl: z.string().nullable(),
+});
+export type StoryImage = z.infer<typeof storyImageSchema>;
+
 export const storySchema = z.object({
   id: z.string(),
   status: storyStatusSchema,
@@ -57,6 +72,8 @@ export const storySchema = z.object({
   translation: z.string().nullable(),
   // Narration of the German text; null when synthesis is off or failed
   audioUrl: z.string().nullable(),
+  // Illustration above the text; null when unconfigured, failed, or pre-dating it
+  image: storyImageSchema.nullable(),
   error: z.string().nullable(),
   completedAt: z.string().nullable(),
   createdAt: z.string(),

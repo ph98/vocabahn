@@ -16,6 +16,7 @@ import { useFadeIn } from '../lib/motion';
 import { segmentStory } from '../lib/story-text';
 import { trackEvent } from '../lib/telemetry';
 import { IllustrationEmptyQueue } from './Illustrations';
+import { UnsplashCredit } from './UnsplashCredit';
 
 // Surviving a reload matters here: every story costs a generation from the
 // learner's daily quota, so losing the reference would waste one. The server's
@@ -136,6 +137,41 @@ function SourceCredit({ source }: { source: NonNullable<Story['source']> }) {
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * A scene to anchor on before decoding the German. The alt text deliberately
+ * does not describe the photo or restate the story: reading the German is the
+ * exercise, and a screen-reader user should be told this is decoration for the
+ * story, not handed a second version of it.
+ */
+function StoryImage({ image, title }: { image: NonNullable<Story['image']>; title: string | null }) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => setFailed(false), [image.url]);
+
+  // A photo Unsplash has since removed drops out entirely rather than leaving a
+  // broken-image icon and an orphan credit above the text.
+  if (failed) return null;
+
+  return (
+    <figure className="mt-4">
+      {/* The aspect ratio is fixed on the element itself, so the box is the
+          same size before the file arrives as after — nothing below it moves. */}
+      <img
+        src={image.url}
+        alt={title ? `Illustration for the story: ${title}` : 'Illustration for this story'}
+        loading="lazy"
+        onError={() => setFailed(true)}
+        className="aspect-[16/9] w-full rounded-2xl bg-surface-800 object-cover"
+      />
+      <UnsplashCredit
+        authorName={image.authorName}
+        authorUrl={image.authorUrl}
+        photoUrl={image.sourceUrl}
+      />
+    </figure>
   );
 }
 
@@ -485,6 +521,10 @@ export function StoryPage() {
                 {story.topic && story.cefrLevel && <span aria-hidden="true">·</span>}
                 {story.cefrLevel && <span>Level {story.cefrLevel}</span>}
               </p>
+
+              {/* Null for every story written before this existed, and for any
+                  whose lookup failed — a normal state, rendered as nothing. */}
+              {story.image && <StoryImage image={story.image} title={story.title} />}
 
               {story.audioUrl && (
                 <div className="mt-4">

@@ -5,7 +5,7 @@ import { ENRICHMENT_QUEUE } from './enrichment.constants';
 import { EnrichmentProcessor } from './enrichment.processor';
 import { EnrichmentService } from './enrichment.service';
 import { GeminiProvider } from './providers/gemini.provider';
-import { UnsplashProvider } from './providers/unsplash.provider';
+import { ImagesModule } from '../images/images.module';
 import { TtsModule } from '../tts/tts.module';
 
 import { StaticAudioController } from './static-audio.controller';
@@ -14,6 +14,7 @@ import { StaticAudioController } from './static-audio.controller';
   imports: [
     BullModule.registerQueue({ name: ENRICHMENT_QUEUE }),
     forwardRef(() => DictionaryModule),
+    ImagesModule,
     TtsModule,
   ],
   controllers: [StaticAudioController],
@@ -21,7 +22,6 @@ import { StaticAudioController } from './static-audio.controller';
     EnrichmentService,
     EnrichmentProcessor,
     GeminiProvider,
-    UnsplashProvider,
   ],
   exports: [EnrichmentService],
 })

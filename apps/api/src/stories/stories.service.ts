@@ -315,6 +315,16 @@ export class StoriesService {
       text: story.text,
       translation: story.translation,
       audioUrl: story.audioUrl,
+      // Gated on the URL for the same reason `source` is: an attribution
+      // caption with no photo above it is worse than no caption at all.
+      image: story.imageUrl
+        ? {
+            url: story.imageUrl,
+            authorName: story.imageAuthorName ?? 'Unknown',
+            authorUrl: story.imageAuthorUrl,
+            sourceUrl: story.imageSourceUrl,
+          }
+        : null,
       error: story.error,
       completedAt: story.completedAt?.toISOString() ?? null,
       createdAt: story.createdAt.toISOString(),

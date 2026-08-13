@@ -83,6 +83,7 @@ describe('DashboardPage', () => {
       text: 'Das Haus ist grün.',
       translation: 'The house is green.',
       audioUrl: null,
+      image: null,
       error: null,
       completedAt: null,
       createdAt: '2026-08-12T05:00:00.000Z',

@@ -4,7 +4,9 @@ How a bare `DictionaryEntry` acquires a translation, examples, an image, and
 audio. The highest-complexity flow in the repo and the only one that spends
 money.
 
-Code: `apps/api/src/enrichment/`, `apps/api/src/feedback/`.
+Code: `apps/api/src/enrichment/`, `apps/api/src/feedback/`, plus
+`apps/api/src/images/` and `apps/api/src/tts/` for the two external providers it
+shares with micro-stories.
 
 ## Laziness is the design
 
@@ -53,7 +55,10 @@ break the dictionary page.
    0–2 false friends, `register` from a 9-value enum, mnemonic. Returns `null`
    only when `GEMINI_API_KEY` is unset; a real API error **throws** so the job
    retries.
-4. **Unsplash** image, searched by translation (falling back to the headword).
+4. **Unsplash** image, searched by translation (falling back to the headword),
+   `orientation=squarish` for the entry's square thumbnail. `UnsplashProvider`
+   lives in `apps/api/src/images/` and is shared with micro-stories
+   (`stories.md`) through `ImagesModule`, which ask for `landscape` instead.
 5. **Audio**: ElevenLabs first (voice and model from `ELEVENLABS_VOICE_ID` /
    `ELEVENLABS_MODEL_ID`), falling back to Google Cloud TTS (`de-DE`, neutral)
    on any error or when unconfigured. One mp3 for the headword keyed by entry id,
@@ -67,6 +72,21 @@ break the dictionary page.
 
 Steps 4 and 5 run through a `safe()` wrapper that logs and swallows — image and
 audio are polish and must never block `ENRICHED`. Only Gemini can fail a job.
+
+## What Unsplash is owed
+
+Their API guidelines ask for two things back, and both are handled once, in
+shared code, so the dictionary and story paths cannot drift apart:
+
+- Selecting a photo pings its `download_location`, which is how an application
+  reports that it is using the photo and credits the photographer with it. The
+  ping is swallowed on failure — it is bookkeeping owed to Unsplash, and losing
+  it must not lose the learner the image already in hand.
+- Every attribution link carries `utm_source=vocabahn&utm_medium=referral`.
+  `UnsplashCredit` (`apps/web/src/components/UnsplashCredit.tsx`) renders
+  "Photo by X on Unsplash" for both the entry image and the story banner, and
+  appends the parameters at render time — so entries whose credit was stored
+  before this existed are compliant too.
 
 `@OnWorkerEvent('failed')` writes status `FAILED` and a truncated
 `enrichmentError` **only after all retries are exhausted**, so transient
