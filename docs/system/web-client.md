@@ -319,7 +319,7 @@ term, to every hit. Full taxonomy in `analytics.md`.
 - The `offline-pack` endpoint has **no client consumer** (#23). There is no download
   control anywhere in the UI, so the top-1000 pack is unreachable
   (`dictionary.controller.ts`).
-- Test coverage is thin (#28): __COUNT__ (with `jest-axe`
+- Test coverage is thin (#28): 203 Vitest cases across 22 files (with `jest-axe`
   wired up in `src/test/`), and 19 Playwright specs across `landing`,
   `dictionary`, `review`, `story`. Most routes are untested; of the error paths,
   only the boundary, the error states themselves, and the auth gate are covered.

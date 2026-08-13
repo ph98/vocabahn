@@ -619,8 +619,8 @@ export default function App() {
   // A redirect sign-in (Google OAuth, magic link) completes with a full page
   // load, so `login` is reported here, once a session actually exists.
   useEffect(() => {
-    if (user) flushPendingLogin();
-  }, [user]);
+    if (signedIn) flushPendingLogin();
+  }, [signedIn]);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
