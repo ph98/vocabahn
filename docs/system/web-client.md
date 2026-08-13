@@ -12,8 +12,9 @@ Code: `apps/web/src/App.tsx` (539 lines — shell, nav, and route table),
 One Tap prompt. Signed in → `AppNav` and the route table. There is no router
 guard: the routes simply are not mounted when there is no user.
 
-Routes, all lazy-loaded behind one `Suspense` except the dictionary, profile, and
-landing pages:
+Routes, all lazy-loaded behind one `RouteBoundary` — suspense fallback plus an
+error boundary, see **Errors** — except the dictionary, profile, and landing
+pages:
 
 ```
 /                 DashboardPage          /review           ReviewSession
@@ -177,18 +178,71 @@ The GitHub mark is inlined as an SVG because `lucide-react` v1 dropped its brand
 icons, and the link carries a visible text label rather than relying on
 `aria-label`.
 
+## Errors
+
+`src/components/errors/` is the whole error surface. One presentational
+component, `ErrorState`, backs every state — rounded icon tile, optional code
+eyebrow, heading, muted explanation, actions — and the named states are its
+usages, not templates to copy. Each renders standalone: no router error, no app
+nav, no signed-in user, so a signed-out visitor sees the same page.
+
+| State | Shown when |
+| :--- | :--- |
+| `RouteNotFoundState` | A URL with no route. `NotFoundPage` is this and nothing else |
+| `ResourceNotFoundState` | The route exists but the deck / course / word does not |
+| `ForbiddenState` | 403 — someone else's private deck |
+| `ServerErrorState` | 5xx, or an uncaught render error |
+| `ServerUnreachableState` | The API never answered |
+| `OfflineState` | The device has no network |
+| `NewVersionAvailableState` | A dynamic import failed because this tab is on an old build |
+| `MaintenanceState` | Planned downtime, when something says so |
+
+`classifyError(error)` is the single mapping from a thrown value to one of
+these, so a 403 from any endpoint lands on the same page; `ErrorStateForError`
+renders the result. Order matters inside it: a status code proves the network
+worked and wins over the offline check, and a failed module import while
+offline is an offline problem rather than a stale deploy.
+
+Every state has a full-page form and a compact `inline` form, so a panel that
+fails inside a working page does not blow away the screen. The full-page form
+renders the `<h1>` and moves focus to it on mount — the same "you are somewhere
+new" signal `RouteAnnouncer` gives for ordinary navigation. Entrance motion goes
+through `lib/motion`, so nothing animates under `prefers-reduced-motion`.
+
+Two boundaries make throws reachable. `RouteBoundary` wraps each lazy route
+tree (it owns the `Suspense` fallback as well) and clears itself when the
+pathname changes, so a link out of an error page works. `AppErrorBoundary` sits
+above the shell in `main.tsx` for a throw in `App` itself, where there is no
+`<main>` left to render into. Both report to Sentry through `trackError`, which
+returns the event id so `ServerErrorState` can print a reference a support
+request can be matched against.
+
+The failure this is built for is the redeploy. With `registerType: 'autoUpdate'`,
+a tab holding the previous build's `index.html` asks for a content-hashed chunk
+that no longer exists; the `lazy()` import rejects with a browser-specific
+"failed to fetch dynamically imported module". `classifyError` recognises that
+shape and answers with `NewVersionAvailableState`, whose single action asks the
+service worker for the new revision and then reloads (`lib/app-update.ts`) —
+`skipWaiting` and `clientsClaim` are on, so it takes over immediately.
+
 ## Limitations
 
-- **No 404 route** (#28). An unmatched path under a signed-in user renders the shell
-  with an empty content area.
+- **A signed-out visitor never sees the 404 page.** The signed-out route table
+  ends in `<Route path="*" element={<LandingPage />} />`, so any unknown URL
+  renders the marketing page instead. The 404 page itself works for signed-out
+  visitors (its CTA says "Go to the home page", not "dashboard") — it is simply
+  not routed to.
+- **The offline state is defined but not wired to `useOnlineStatus`.**
+  `OfflineState` is reached from a failed request while `navigator.onLine` is
+  false, not from a route-level offline check.
 - **No route for the email magic link** (#13) — see `accounts.md`.
 - The `offline-pack` endpoint has **no client consumer** (#23). There is no download
   control anywhere in the UI, so the top-1000 pack is unreachable
   (`dictionary.controller.ts`).
-- Test coverage is thin (#28): 88 Vitest cases across 16 files (with `jest-axe`
+- Test coverage is thin (#28): 137 Vitest cases across 19 files (with `jest-axe`
   wired up in `src/test/`), and 18 Playwright specs across `landing`,
-  `dictionary`, `review`, `story`. Most routes and every error path are
-  untested.
+  `dictionary`, `review`, `story`. Most routes are untested; of the error paths,
+  only the boundary and the error states themselves are covered.
 - The toast region's clearance of the mobile nav rests on the CSS custom
   properties above, not on a rendered check — jsdom has no layout, and no
   Playwright spec covers a 375 px viewport.

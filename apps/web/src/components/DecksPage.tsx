@@ -18,6 +18,7 @@ import { useStaggerIn } from '../lib/motion';
 import { trackEvent } from '../lib/telemetry';
 import { ProgressBar } from './ProgressBar';
 import { PullToRefresh } from './PullToRefresh';
+import { ErrorStateForError } from './errors';
 import type { DeckSummary } from '@vocabahn/shared';
 
 // ── Deck list page ────────────────────────────────────────────────────────────
@@ -207,7 +208,7 @@ function DeckCard({ deck }: { deck: DeckSummary }) {
 }
 
 export function DecksPage() {
-  const { data, isPending, isError, refetch } = useQuery({ queryKey: ['decks'], queryFn: fetchDecks });
+  const { data, isPending, isError, error, refetch } = useQuery({ queryKey: ['decks'], queryFn: fetchDecks });
   const [showCreate, setShowCreate] = useState(false);
   const myListRef = useRef<HTMLUListElement>(null);
   const pubListRef = useRef<HTMLUListElement>(null);
@@ -230,7 +231,7 @@ export function DecksPage() {
       </div>
 
       {isPending && <p aria-live="polite">Loading decks…</p>}
-      {isError && <p aria-live="polite" className="text-accent-red">Couldn't load decks.</p>}
+      {isError && <ErrorStateForError error={error} onRetry={() => void refetch()} inline />}
 
       {data && (
         <>
@@ -354,7 +355,7 @@ export function DeckDetailPage() {
   const [editDescription, setEditDescription] = useState('');
   const [editIsPublic, setEditIsPublic] = useState(false);
 
-  const { data: deck, isPending, isError } = useQuery({
+  const { data: deck, isPending, isError, error } = useQuery({
     queryKey: ['deck', id],
     queryFn: () => fetchDeck(id!),
     enabled: !!id,
@@ -388,7 +389,18 @@ export function DeckDetailPage() {
   };
 
   if (isPending) return <p aria-live="polite">Loading deck…</p>;
-  if (isError || !deck) return <p aria-live="polite" className="text-accent-red">Deck not found.</p>;
+  // A deck the server refuses (someone else's private deck) and a deck that is
+  // gone are different answers; both come back through the shared error page.
+  if (isError || !deck) {
+    return (
+      <ErrorStateForError
+        error={error}
+        resource="deck"
+        backTo="/library"
+        backLabel="Back to your library"
+      />
+    );
+  }
 
   return (
     <section aria-label="Deck detail" className="space-y-4">

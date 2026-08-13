@@ -20,6 +20,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { addWordToDeck, fetchDecks, fetchDictionaryEntry, fetchFeedback, markWordKnown, searchDictionary, submitFeedback } from '../api';
 import { prefersReducedMotion } from '../lib/motion';
 import { trackEvent } from '../lib/telemetry';
+import { ErrorStateForError } from './errors';
 import { Tab, TabList, TabPanel } from './Tabs';
 import { UnsplashCredit } from './UnsplashCredit';
 
@@ -61,7 +62,7 @@ function EntryDetail({
   onBack: () => void;
   onSelectWord: (word: string) => void;
 }) {
-  const { data: entry, isPending, isError } = useQuery({
+  const { data: entry, isPending, isError, error, refetch } = useQuery({
     queryKey: ['dictionary-entry', word],
     queryFn: () => fetchDictionaryEntry(word),
     // Poll while the background pipeline enriches the entry
@@ -107,9 +108,15 @@ function EntryDetail({
         </div>
       )}
       {isError && (
-        <p aria-live="polite" className="text-accent-red">
-          Couldn't load “{word}”.
-        </p>
+        <ErrorStateForError
+          error={error}
+          resource="word"
+          resourceName={word}
+          backTo="/dictionary"
+          backLabel="Search the dictionary"
+          onRetry={() => void refetch()}
+          inline
+        />
       )}
       {entry && <EntryBody key={entry.word} entry={entry} onSelectWord={onSelectWord} />}
     </div>
