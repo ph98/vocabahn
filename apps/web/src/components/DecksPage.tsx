@@ -16,6 +16,7 @@ import {
 } from '../api';
 import { useStaggerIn } from '../lib/motion';
 import { trackEvent } from '../lib/telemetry';
+import { ProgressBar } from './ProgressBar';
 import { PullToRefresh } from './PullToRefresh';
 import type { DeckSummary } from '@vocabahn/shared';
 
@@ -154,7 +155,10 @@ function DeckCard({ deck }: { deck: DeckSummary }) {
           <p className="mt-2 text-sm text-surface-500">{deck.wordCount} words</p>
         </div>
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-2">
+        <ProgressBar progress={deck.progress} />
+      </div>
+      <div className="mt-2 flex flex-wrap gap-2">
         {deck.wordCount > 0 && (
           <Link
             to={`/review?deckId=${deck.id}`}
@@ -460,6 +464,9 @@ export function DeckDetailPage() {
               </div>
               {deck.description && <p className="mt-1 text-sm text-surface-400">{deck.description}</p>}
               <p className="mt-2 text-sm text-surface-500">{deck.wordCount} words</p>
+              <div className="mt-2 max-w-sm">
+                <ProgressBar progress={deck.progress} />
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {deck.words.length > 0 && (

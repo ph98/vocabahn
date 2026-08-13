@@ -54,9 +54,47 @@ Six published courses, **observed** with these word counts:
 them. Progress and per-word card state are computed only for enrolled courses;
 an unenrolled course shows word count and nothing else.
 
-Progress is three buckets over FSRS state: `learned` (`REVIEW`), `inProgress`
-(any other existing card), `notStarted` (words with no card). **Observed** as the
-two-segment green/amber bars on the dashboard and library.
+## Progress
+
+One definition, shared by courses and decks: `summarizeProgress` in
+`apps/api/src/common/progress.ts`, wired to the wire format `progressSchema` in
+`packages/shared/src/progress.ts`. Three disjoint buckets that always sum to the
+number of **distinct** dictionary entries in the collection:
+
+| Bucket | Contains |
+| :--- | :--- |
+| `learned` | `knownState` is `AUTO_KNOWN` or `USER_KNOWN`, **or** FSRS state is `REVIEW` |
+| `inProgress` | FSRS `LEARNING` or `RELEARNING` |
+| `notStarted` | no card at all, or a card still in FSRS `NEW` |
+
+Three decisions are load-bearing here, because a card carries two independent
+state axes (`learning.md`):
+
+- **`knownState` is read before FSRS `state`.** Auto-graduation and manual
+  marking both leave the FSRS columns alone, so a word graduated while still
+  `LEARNING` is `learned`. Reading FSRS state alone leaves such a word "in
+  progress" permanently and the bar can never reach 100%.
+- **`RELEARNING` is `inProgress`, not `learned`.** A lapsed word will be shown
+  again within minutes and has to be re-earned, so the bar moving backwards
+  after a lapse is the honest reading. The UI names the bucket "In progress" and
+  its tooltip says it covers relearning, so the movement is explained rather
+  than mysterious.
+- **`NEW` is `notStarted`.** Enrolment creates one card per course word up
+  front, so "has a card" does not mean "started" — treating it that way reported
+  a freshly enrolled course as 100 % in progress and pinned `notStarted` at
+  zero.
+
+Entry ids are deduplicated before counting, so a collection that lists the same
+entry twice counts it once.
+
+Courses report `progress: null` when the user is not enrolled; the web client
+renders that as a distinct "not tracked" placeholder rather than as 0 %. Decks
+always report progress — including someone else's public deck, where it answers
+"how many of these words do *you* already know".
+
+`ProgressBar.tsx` renders the bar, the per-bucket counts and percentages
+(largest-remainder rounded so they sum to exactly 100), a legend, and a
+hover/focus tooltip carrying each bucket's definition.
 
 ## User decks
 
@@ -69,6 +107,11 @@ without triggering background enrichment or spending quota, and creates
 corresponding `Card` rows for the user in batch. Fetching due cards with `deckId`
 filters reviews to that deck and ensures card rows exist for all deck entries.
 
+Every deck summary carries the requesting user's `progress` over its words,
+computed by the same `summarizeProgress` the courses use. `GET /decks` collects
+the entry ids of every deck on the page and issues **one** card query for all of
+them, not one per deck.
+
 ## Limitations
 
 - **C1 and C2 vocabulary is incomplete (issue #3).** C1 and C2 courses are explicitly flagged as `isComplete: false` and render "Incomplete / Beta" badges across the catalog, detail pages, and dashboard. The `generate:c1-c2` batch pipeline is established to continue classifying remaining high-frequency advanced words from `de_full.txt` into `data/german_cefr_wordlist.json`.
@@ -76,7 +119,9 @@ filters reviews to that deck and ensures card rows exist for all deck entries.
   next to "View words").
 - `Course.published` is respected by `listCourses` but not by `getCourse` (#28), so an
   unpublished course is still readable by slug.
-- `listCourses` loads every `CourseWord` id for all six courses (~7,700 rows) and
-  then issues a per-course card query, and the dashboard calls it on every load.
+- `listCourses` loads every `CourseWord` id for all six courses (~7,700 rows) on
+  every call, and the dashboard calls it on every load. It now issues a single
+  card query covering all enrolled courses rather than one per course, but the
+  `CourseWord` fan-out itself is unchanged.
 - Community/official track distinctions, deck ratings, and deck cloning do not
   exist; `isPublic` is the only sharing mechanism.

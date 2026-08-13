@@ -41,7 +41,7 @@ function CourseCard({ course }: { course: CourseSummary }) {
 
       <p className="mt-3 text-sm text-surface-500">{course.wordCount} words</p>
       <div className="mt-2">
-        <ProgressBar progress={course.progress} wordCount={course.wordCount} />
+        <ProgressBar progress={course.progress} emptyLabel="Enrol to track your progress." />
       </div>
 
       <div className="mt-4 flex gap-2">

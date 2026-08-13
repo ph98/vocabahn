@@ -7,12 +7,14 @@ import type { DictionaryService } from '../dictionary/dictionary.service';
 type MockPrisma = {
   userDeck: {
     findUnique: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
   };
   userDeckWord: {
     createMany: ReturnType<typeof vi.fn>;
   };
   card: {
     createMany: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
   };
   $transaction: ReturnType<typeof vi.fn>;
 };
@@ -31,12 +33,14 @@ describe('DecksService', () => {
     mockPrisma = {
       userDeck: {
         findUnique: vi.fn(),
+        findMany: vi.fn(),
       },
       userDeckWord: {
         createMany: vi.fn(),
       },
       card: {
         createMany: vi.fn(),
+        findMany: vi.fn(),
       },
       $transaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
     };
@@ -124,6 +128,63 @@ describe('DecksService', () => {
         failed: [],
       });
       expect(mockDictionary.findOrCreateEntry).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('listDecks progress', () => {
+    const deck = (id: string, entryIds: string[], overrides: Record<string, unknown> = {}) => ({
+      id,
+      title: `Deck ${id}`,
+      description: null,
+      isPublic: false,
+      createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      _count: { words: entryIds.length },
+      user: { name: 'Test User' },
+      words: entryIds.map((dictionaryEntryId) => ({ dictionaryEntryId })),
+      ...overrides,
+    });
+
+    it('summarizes every deck from a single card query', async () => {
+      mockPrisma.userDeck.findMany
+        .mockResolvedValueOnce([deck('deck-1', ['e1', 'e2']), deck('deck-2', ['e3'])])
+        .mockResolvedValueOnce([deck('deck-3', ['e1', 'e4'], { isPublic: true })]);
+      mockPrisma.card.findMany.mockResolvedValue([
+        { dictionaryEntryId: 'e1', state: 'LEARNING', knownState: 'AUTO_KNOWN' },
+        { dictionaryEntryId: 'e2', state: 'RELEARNING', knownState: 'ACTIVE' },
+        { dictionaryEntryId: 'e3', state: 'NEW', knownState: 'ACTIVE' },
+      ]);
+
+      const result = await service.listDecks('user-1');
+
+      // Three decks, one query — no N+1.
+      expect(mockPrisma.card.findMany).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.card.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', dictionaryEntryId: { in: ['e1', 'e2', 'e3', 'e4'] } },
+        select: { dictionaryEntryId: true, state: true, knownState: true },
+      });
+
+      expect(result.myDecks[0].progress).toEqual({ learned: 1, inProgress: 1, notStarted: 0 });
+      expect(result.myDecks[1].progress).toEqual({ learned: 0, inProgress: 0, notStarted: 1 });
+      // Someone else's public deck reports *this* user's progress over its words.
+      expect(result.publicDecks[0].progress).toEqual({ learned: 1, inProgress: 0, notStarted: 1 });
+    });
+
+    it('skips the card query entirely when no deck has words', async () => {
+      mockPrisma.userDeck.findMany.mockResolvedValueOnce([deck('deck-1', [])]).mockResolvedValueOnce([]);
+
+      const result = await service.listDecks('user-1');
+
+      expect(mockPrisma.card.findMany).not.toHaveBeenCalled();
+      expect(result.myDecks[0].progress).toEqual({ learned: 0, inProgress: 0, notStarted: 0 });
+    });
+
+    it('counts a duplicated entry once', async () => {
+      mockPrisma.userDeck.findMany.mockResolvedValueOnce([deck('deck-1', ['e1', 'e1'])]).mockResolvedValueOnce([]);
+      mockPrisma.card.findMany.mockResolvedValue([{ dictionaryEntryId: 'e1', state: 'REVIEW', knownState: 'ACTIVE' }]);
+
+      const result = await service.listDecks('user-1');
+
+      expect(result.myDecks[0].progress).toEqual({ learned: 1, inProgress: 0, notStarted: 0 });
     });
   });
 });

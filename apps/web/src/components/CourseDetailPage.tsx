@@ -4,6 +4,7 @@ import type { FsrsState } from '@vocabahn/shared';
 import { Link, useParams } from 'react-router-dom';
 import { enrollCourse, fetchCourse, unenrollCourse } from '../api';
 import { trackEvent } from '../lib/telemetry';
+import { ProgressBar } from './ProgressBar';
 
 const STATE_LABELS: Record<FsrsState, string> = {
   NEW: 'New',
@@ -87,7 +88,11 @@ export function CourseDetailPage() {
             </div>
           </div>
 
-          <div className="mt-4 flex gap-2">
+          <div className="mt-3 max-w-sm">
+            <ProgressBar progress={course.progress} emptyLabel="Enrol to track your progress." />
+          </div>
+
+          <div className="mt-3 flex gap-2">
             {course.enrolled ? (
               <>
                 <Link
