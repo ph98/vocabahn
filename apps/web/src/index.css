@@ -50,6 +50,19 @@
   --vb-toast-max-width: 26rem;
   /* Above the nav and its popover, both of which sit at z-50. */
   --vb-toast-z: 60;
+
+  /* Product feedback trigger. It shares the toast region's bottom edge, so it
+     clears the nav by construction, and steps up by one toast's height while a
+     toast is on screen (see `.vb-feedback-trigger`). */
+  --vb-feedback-inset-bottom: var(--vb-toast-inset-bottom);
+  --vb-feedback-inset-right: 1rem;
+  /* How far the trigger steps up while a toast is on screen. Measured, not
+     guessed: a one-line toast is 62 px and one with a description is 80 px, so
+     88 px clears the taller of the two with 8 px to spare. */
+  --vb-feedback-toast-clearance: 5.5rem;
+  /* Above the nav (z-50), below the toast region (z-60): a toast must never be
+     covered by the trigger, even mid-transition. */
+  --vb-feedback-z: 55;
 }
 
 /* From `md` up the nav is part of the document flow, so toasts only need to
@@ -58,6 +71,11 @@
   :root {
     --vb-mobile-nav-height: 0px;
     --vb-toast-inset-bottom: 1.5rem;
+    --vb-feedback-inset-right: 1.5rem;
+    /* The toast list is centred and capped at 26rem, so from 768px up a
+       right-edge trigger cannot reach it and no step-up is needed:
+       viewport − 72px ≥ (viewport + 416px) / 2 holds for viewport ≥ 560px. */
+    --vb-feedback-toast-clearance: 0rem;
   }
 }
 
@@ -166,6 +184,31 @@ body {
   }
 }
 
+/* --- Product feedback trigger ----------------------------------------------
+   Fixed bottom-right, sharing the toast region's bottom edge so it clears the
+   mobile nav for free. Below 26rem of viewport the toast list is full-width and
+   would sit under the trigger, so a live toast pushes it up by one toast's
+   height; the `:has()` selector is what makes that a pure-CSS reaction to the
+   toast region's own contents. Above `md` the clearance is 0 — the toast list
+   is centred and 26rem wide, and cannot reach the right edge. */
+.vb-feedback-trigger {
+  position: fixed;
+  right: var(--vb-feedback-inset-right);
+  bottom: var(--vb-feedback-inset-bottom);
+  z-index: var(--vb-feedback-z);
+  /* Colours are transitioned here rather than with `transition-colors` on the
+     element: this rule is unlayered and would otherwise win the cascade
+     against the Tailwind utility and silently drop the hover transition. */
+  transition:
+    bottom 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+body:has(.vb-toast) .vb-feedback-trigger {
+  bottom: calc(var(--vb-feedback-inset-bottom) + var(--vb-feedback-toast-clearance));
+}
+
 /* The entrance for a story word's popover. It lives on the inner surface, not
    on the positioned wrapper, so this transform never fights the one keeping the
    popover inside the viewport. */
@@ -191,6 +234,11 @@ body {
   .vb-toast,
   .vb-word-popover {
     animation: none;
+  }
+
+  /* The trigger still moves out of a toast's way — it just jumps. */
+  .vb-feedback-trigger {
+    transition: none;
   }
 }
 

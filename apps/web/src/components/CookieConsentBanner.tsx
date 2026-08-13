@@ -47,7 +47,9 @@ export function CookieConsentBanner() {
         <div className="space-y-1 text-sm">
           <p className="font-semibold text-surface-100">Privacy & Analytics</p>
           <p className="text-surface-300 leading-relaxed text-xs">
-            We use privacy-focused analytics and error tracking to improve your learning experience. No data is shared with third parties for advertising. Read our{' '}
+            We use privacy-focused analytics, error tracking, and — once you are signed in — a feedback button that
+            sends a report only when you press send. No session recording, no heatmaps, and no data shared with third
+            parties for advertising. Read our{' '}
             <Link
               to="/privacy"
               className="font-medium text-accent-indigo underline underline-offset-2 hover:text-indigo-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"

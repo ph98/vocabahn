@@ -61,6 +61,7 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-${GOOGLE_CLIENT_ID}}
+        VITE_USERSNAP_API_KEY: ${VITE_USERSNAP_API_KEY:-}
     restart: unless-stopped
     ports:
       - "80:80"

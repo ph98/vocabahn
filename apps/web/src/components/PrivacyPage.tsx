@@ -27,7 +27,7 @@ export function PrivacyPage() {
           <ArrowLeft className="size-4" aria-hidden="true" />
           <span>Back to Vocabahn</span>
         </Link>
-        <span className="text-xs text-surface-400 font-mono">Last updated: July 2026</span>
+        <span className="text-xs text-surface-400 font-mono">Last updated: August 2026</span>
       </div>
 
       {/* Main Glassmorphic Card */}
@@ -146,10 +146,12 @@ export function PrivacyPage() {
           <section aria-labelledby="privacy-providers">
             <div className="flex items-center gap-3 mb-3 text-surface-100 font-bold text-lg">
               <Server className="size-5 text-accent-indigo shrink-0" aria-hidden="true" />
-              <h2 id="privacy-providers">4. Third-Party AI & Media Infrastructure</h2>
+              <h2 id="privacy-providers">4. Third-Party Services</h2>
             </div>
             <p className="mb-3">
-              To enrich German vocabulary entries, Vocabahn integrates with third-party service providers:
+              To enrich German vocabulary entries, to understand how the app is used, and to let you report
+              problems, Vocabahn integrates with third-party service providers. The last two categories are
+              consent-gated; the enrichment providers never receive anything about you.
             </p>
             <ul className="list-disc list-inside space-y-2 pl-2 text-surface-400">
               <li><strong>Google Gemini AI:</strong> Used to generate translations, CEFR levels, and mnemonics for vocabulary words.</li>
@@ -161,6 +163,18 @@ export function PrivacyPage() {
                 chosen — and <strong>never the German words you look up or study</strong>. Word pages are reported as
                 <code> /word/:word</code>, dictionary searches as a term <em>length</em> rather than a term, and no
                 account id, email or free text is ever sent.
+              </li>
+              <li>
+                <strong>Usersnap (product feedback):</strong> Powers the <strong>Feedback</strong> button. Like
+                Google Analytics it is loaded <strong>only after you grant consent above</strong>, and additionally
+                only once you are signed in — never on the landing page, and never during a review session. It is a
+                feedback tool, not a tracker: there is <strong>no session recording and no heatmap</strong>, so
+                nothing you type or click is captured in the background. Usersnap receives data only when{' '}
+                <em>you</em> open the dialog and press send, and then it receives what you chose to write, the
+                screenshot you were shown before sending, the page address, your browser and screen size, and the
+                app version. We attach the route in redacted form (<code>/word/:word</code>), but note that a
+                screenshot of a word page naturally shows that word. No account id and no email address is attached
+                to a report.
               </li>
             </ul>
             <p className="mt-3">

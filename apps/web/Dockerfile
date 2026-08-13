@@ -14,6 +14,11 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 ARG VITE_GOOGLE_CLIENT_ID
 ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+# Product feedback widget. `.env` is dockerignored, so a build arg is the only
+# way a VITE_ variable reaches the bundle. Unset builds a working app with no
+# feedback trigger.
+ARG VITE_USERSNAP_API_KEY
+ENV VITE_USERSNAP_API_KEY=$VITE_USERSNAP_API_KEY
 RUN pnpm --filter @vocabahn/shared build \
  && pnpm --filter @vocabahn/web build
 
