@@ -328,27 +328,6 @@ body:has(.vb-toast) .vb-feedback-trigger {
   }
 }
 
-.react-calendar-heatmap text {
-  fill: var(--color-surface-400);
-  font-size: 6px;
-}
-
-.react-calendar-heatmap rect {
-  rx: 2;
-  ry: 2;
-}
-
-.react-calendar-heatmap .color-empty {
-  fill: light-dark(var(--color-surface-100), var(--color-surface-900));
-  stroke: light-dark(var(--color-surface-200), var(--color-surface-800));
-  stroke-width: 1px;
-}
-
-.react-calendar-heatmap .color-scale-1 { fill: url(#heatmap-grad-1); filter: drop-shadow(0 0 2px var(--color-indigo-500)); }
-.react-calendar-heatmap .color-scale-2 { fill: url(#heatmap-grad-2); filter: drop-shadow(0 0 3px var(--color-indigo-500)); }
-.react-calendar-heatmap .color-scale-3 { fill: url(#heatmap-grad-3); filter: drop-shadow(0 0 4px var(--color-indigo-400)); }
-.react-calendar-heatmap .color-scale-4 { fill: url(#heatmap-grad-4); filter: drop-shadow(0 0 6px var(--color-indigo-400)); }
-
 @keyframes shimmer {
   100% {
     transform: translateX(100%);
