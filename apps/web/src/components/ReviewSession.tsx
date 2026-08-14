@@ -6,6 +6,13 @@ import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { useDrag } from '@use-gesture/react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import {
+  Check,
+  CheckCircle2,
+  Keyboard,
+  RotateCcw,
+  X,
+} from 'lucide-react';
 import { fetchDictionaryEntry, fetchDueCards, submitReview, undoLastReview } from '../api';
 import { useSettings } from '../hooks/useSettings';
 import { dequeueLatestReview, enqueueReview, flushQueue, getQueueCount } from '../offline/queue';
@@ -28,27 +35,61 @@ const RATING_LABELS: Record<ReviewRating, string> = {
   EASY: 'Easy',
 };
 
+const RATING_INTERVALS: Record<ReviewRating, string> = {
+  AGAIN: '< 10m',
+  HARD: '1d',
+  GOOD: '3d',
+  EASY: '7d',
+};
+
 const RATING_COLORS: Record<ReviewRating, string> = {
-  AGAIN: 'border-red-400/40 bg-red-500/10 text-accent-red hover:bg-red-500/15',
-  HARD: 'border-amber-400/40 bg-amber-400/10 text-accent-amber hover:bg-amber-400/15',
-  GOOD: 'border-emerald-400/40 bg-emerald-500/10 text-accent-emerald hover:bg-emerald-500/15',
-  EASY: 'border-sky-400/40 bg-sky-500/10 text-accent-sky hover:bg-sky-500/15',
+  AGAIN:
+    'border-red-400/40 bg-red-500/10 text-accent-red hover:bg-red-500/20 active:bg-red-500/25 shadow-sm shadow-red-950/20',
+  HARD:
+    'border-amber-400/40 bg-amber-400/10 text-accent-amber hover:bg-amber-400/20 active:bg-amber-400/25 shadow-sm shadow-amber-950/20',
+  GOOD:
+    'border-emerald-400/40 bg-emerald-500/10 text-accent-emerald hover:bg-emerald-500/20 active:bg-emerald-500/25 shadow-sm shadow-emerald-950/20',
+  EASY:
+    'border-sky-400/40 bg-sky-500/10 text-accent-sky hover:bg-sky-500/20 active:bg-sky-500/25 shadow-sm shadow-sky-950/20',
 };
 
 const RATING_BADGE_COLORS: Record<ReviewRating, string> = {
-  AGAIN: 'border border-red-400/40 bg-red-400/20 text-accent-red',
-  HARD: 'border border-amber-300/40 bg-amber-300/20 text-accent-amber',
-  GOOD: 'border border-emerald-400/40 bg-emerald-400/20 text-accent-emerald',
-  EASY: 'border border-sky-400/40 bg-sky-400/20 text-accent-sky',
+  AGAIN: 'border-2 border-red-500/60 bg-red-500/25 text-accent-red shadow-lg shadow-red-500/20',
+  HARD: 'border-2 border-amber-400/60 bg-amber-400/25 text-accent-amber shadow-lg shadow-amber-400/20',
+  GOOD: 'border-2 border-emerald-400/60 bg-emerald-500/25 text-accent-emerald shadow-lg shadow-emerald-500/20',
+  EASY: 'border-2 border-sky-400/60 bg-sky-500/25 text-accent-sky shadow-lg shadow-sky-500/20',
 };
 
-/** Keyboard/swipe direction hint shown inside each rating button. */
-const RATING_KEY_HINTS: Record<ReviewRating, string> = {
-  AGAIN: '←',
-  HARD: '↓',
-  GOOD: '→',
-  EASY: '↑',
+const RATING_NUMBER_HINTS: Record<ReviewRating, string> = {
+  AGAIN: '1',
+  HARD: '2',
+  GOOD: '3',
+  EASY: '4',
 };
+
+const ARTICLES: Record<string, string> = { m: 'der', f: 'die', n: 'das' };
+
+function articleFor(gender: string | null | undefined): string | null {
+  if (!gender) return null;
+  return gender
+    .split(',')
+    .map((g) => ARTICLES[g.trim()])
+    .filter(Boolean)
+    .join('/');
+}
+
+function getArticleBadgeStyle(art: string) {
+  if (art.includes('der')) {
+    return 'border-sky-400/40 bg-sky-500/15 text-sky-400';
+  }
+  if (art.includes('die')) {
+    return 'border-rose-400/40 bg-rose-500/15 text-rose-400';
+  }
+  if (art.includes('das')) {
+    return 'border-emerald-400/40 bg-emerald-500/15 text-emerald-400';
+  }
+  return 'border-surface-700 bg-surface-800/80 text-surface-300';
+}
 
 // Swipe direction each rating flies off toward (used for both the drag
 // gesture mapping and the button-triggered fly-off animation).
@@ -59,7 +100,7 @@ const RATING_OFFSET: Record<ReviewRating, { x: number; y: number }> = {
   HARD: { x: 0, y: 1 },
 };
 
-const SWIPE_THRESHOLD = 100;
+const SWIPE_THRESHOLD = 90;
 const FLY_DISTANCE = 500;
 
 /**
@@ -78,20 +119,198 @@ type PendingUndo = {
   graduatedCount: number;
 };
 
-function CardFront({ entry, revealed }: { entry: CardEntry; revealed: boolean }) {
+/** Shortcuts dialog helper modal */
+function ShortcutsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  if (!isOpen) return null;
+
   return (
     <div
-      className={`flex flex-col items-center justify-center gap-4 text-center transition-[padding] duration-300 ${revealed ? 'py-10' : 'py-16 sm:py-20'}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shortcuts-dialog-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
     >
-      {entry.pos && (
-        <span className="rounded-full border border-surface-800 bg-surface-950/60 px-3 py-1 text-xs font-medium uppercase tracking-widest text-surface-400">
-          {entry.pos}
-        </span>
+      <button
+        type="button"
+        aria-label="Close shortcuts modal"
+        className="fixed inset-0 bg-surface-950/80 backdrop-blur-sm animate-fade-in cursor-default"
+        onClick={onClose}
+      />
+      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-surface-700 bg-surface-900 p-6 shadow-2xl">
+        <div className="flex items-center justify-between border-b border-surface-800 pb-4">
+          <div className="flex items-center gap-2">
+            <Keyboard className="size-5 text-indigo-400" />
+            <h3 id="shortcuts-dialog-title" className="text-base font-semibold text-surface-100">
+              Keyboard Shortcuts
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close shortcuts guide"
+            className="flex min-h-9 min-w-9 items-center justify-center rounded-xl border border-surface-700 text-surface-400 transition-colors hover:bg-surface-800 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-3 text-sm">
+          <div className="flex items-center justify-between rounded-xl bg-surface-950/60 p-2.5">
+            <span className="text-surface-300">Reveal card answer</span>
+            <div className="flex items-center gap-1.5">
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                Space
+              </kbd>
+              <span className="text-surface-500">or</span>
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                Enter
+              </kbd>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl bg-surface-950/60 p-2.5">
+            <span className="text-surface-300">Rate Again (&lt; 10m)</span>
+            <div className="flex items-center gap-1.5">
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                1
+              </kbd>
+              <span className="text-surface-500">or</span>
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                ←
+              </kbd>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl bg-surface-950/60 p-2.5">
+            <span className="text-surface-300">Rate Hard (1d)</span>
+            <div className="flex items-center gap-1.5">
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                2
+              </kbd>
+              <span className="text-surface-500">or</span>
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                ↓
+              </kbd>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl bg-surface-950/60 p-2.5">
+            <span className="text-surface-300">Rate Good (3d)</span>
+            <div className="flex items-center gap-1.5">
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                3
+              </kbd>
+              <span className="text-surface-500">or</span>
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                →
+              </kbd>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl bg-surface-950/60 p-2.5">
+            <span className="text-surface-300">Rate Easy (7d)</span>
+            <div className="flex items-center gap-1.5">
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                4
+              </kbd>
+              <span className="text-surface-500">or</span>
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                ↑
+              </kbd>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl bg-surface-950/60 p-2.5">
+            <span className="text-surface-300">Replay pronunciation</span>
+            <div className="flex items-center gap-1.5">
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                R
+              </kbd>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between rounded-xl bg-surface-950/60 p-2.5">
+            <span className="text-surface-300">Undo last rating</span>
+            <div className="flex items-center gap-1.5">
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                U
+              </kbd>
+              <span className="text-surface-500">or</span>
+              <kbd className="rounded border border-surface-700 bg-surface-800 px-2 py-1 text-xs font-mono text-surface-200">
+                ⌘Z
+              </kbd>
+            </div>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-6 min-h-11 w-full rounded-xl bg-surface-800 text-sm font-medium text-surface-200 transition-colors hover:bg-surface-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CardFront({
+  entry,
+  revealed,
+}: {
+  entry: CardEntry;
+  revealed: boolean;
+}) {
+  const article = articleFor(entry.gender);
+
+  return (
+    <div
+      className={`flex flex-col items-center justify-center gap-4 text-center transition-[padding] duration-300 ${
+        revealed ? 'py-8' : 'py-14 sm:py-20'
+      }`}
+    >
+      {/* Top Metadata Badges */}
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {article && (
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-bold font-mono uppercase tracking-wider ${getArticleBadgeStyle(
+              article,
+            )}`}
+          >
+            {article}
+          </span>
+        )}
+        {entry.pos && (
+          <span className="rounded-full border border-surface-800 bg-surface-950/80 px-3 py-1 text-xs font-medium uppercase tracking-widest text-surface-400">
+            {entry.pos}
+          </span>
+        )}
+        {entry.cefrLevel && (
+          <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-0.5 text-xs font-bold font-mono text-indigo-400">
+            {entry.cefrLevel}
+          </span>
+        )}
+      </div>
+
+      {/* Main German Headword */}
+      <div className="space-y-1">
+        <p className="text-4xl font-bold tracking-tight text-surface-100 sm:text-5xl lg:text-6xl" lang="de">
+          {entry.word}
+        </p>
+        {entry.ipa && (
+          <p className="text-sm font-mono text-surface-400 opacity-90 tracking-wide">
+            /{entry.ipa}/
+          </p>
+        )}
+      </div>
+
+      {/* Audio pronunciation button */}
+      {entry.audioUrl && (
+        <div className="mt-1 flex items-center gap-2">
+          <AudioButton src={entry.audioUrl} label={`Play pronunciation of ${entry.word}`} />
+        </div>
       )}
-      <p className="text-4xl font-semibold tracking-tight text-surface-100 sm:text-5xl" lang="de">
-        {entry.word}
-      </p>
-      {entry.audioUrl && <AudioButton src={entry.audioUrl} label={`Play pronunciation of ${entry.word}`} />}
     </div>
   );
 }
@@ -108,7 +327,7 @@ function CardBack({
 }) {
   if (detail) {
     return (
-      <div className="border-t border-surface-800 pt-4 text-left">
+      <div className="border-t border-surface-800/80 pt-6 text-left">
         <EntryBody entry={detail} onSelectWord={onSelectWord} />
       </div>
     );
@@ -116,23 +335,32 @@ function CardBack({
 
   const example = entry.examples[0];
   return (
-    <div className="space-y-3 border-t border-surface-800 py-6 pt-4 text-center">
+    <div className="space-y-4 border-t border-surface-800/80 py-6 pt-5 text-center">
       {entry.imageUrl && (
-        <img src={entry.imageUrl} alt="" loading="lazy" className="mx-auto mb-2 size-24 rounded-xl object-cover" />
+        <div className="mx-auto overflow-hidden rounded-2xl border border-surface-800 bg-surface-950 shadow-md">
+          <img
+            src={entry.imageUrl}
+            alt=""
+            loading="lazy"
+            className="mx-auto max-h-48 w-full object-cover sm:max-h-56"
+          />
+        </div>
       )}
       {entry.emoji && <span className="text-5xl block">{entry.emoji}</span>}
-      <p className="text-xl">{entry.translation ?? '—'}</p>
+      <p className="text-2xl font-semibold tracking-tight text-surface-100">
+        {entry.translation ?? '—'}
+      </p>
       {example && (
-        <div className="rounded-xl bg-surface-950 p-3 text-left text-sm">
-          <p lang="de">
+        <div className="rounded-2xl border border-surface-800 bg-surface-950/80 p-4 text-left shadow-sm">
+          <p className="text-base text-surface-200" lang="de">
             {example.de}
             {example.audioUrl && (
-              <span className="ml-2">
+              <span className="ml-2 inline-block align-middle">
                 <AudioButton src={example.audioUrl} label="Play example sentence" />
               </span>
             )}
           </p>
-          <p className="mt-1 text-surface-400">{example.en}</p>
+          <p className="mt-1.5 text-sm text-surface-400">{example.en}</p>
         </div>
       )}
     </div>
@@ -143,10 +371,12 @@ function SessionSummary({
   stats,
   onReviewMore,
   deckId,
+  courseId,
 }: {
   stats: Record<ReviewRating, number>;
   onReviewMore: () => void;
   deckId?: string | null;
+  courseId?: string | null;
 }) {
   const total = RATINGS.reduce((sum, r) => sum + stats[r], 0);
   const recalled = stats.GOOD + stats.EASY;
@@ -158,66 +388,95 @@ function SessionSummary({
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={spring}
       aria-label="Session summary"
-      className="relative overflow-hidden rounded-3xl border border-surface-800 bg-surface-900 p-8 text-center shadow-xl"
+      className="relative overflow-hidden rounded-3xl border border-surface-800 bg-surface-900 p-6 sm:p-10 text-center shadow-2xl backdrop-blur-md"
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-24 left-1/2 size-64 -translate-x-1/2 rounded-full bg-emerald-400/10 blur-3xl"
+        className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-emerald-500/15 blur-3xl"
       />
-      <svg viewBox="0 0 52 52" aria-hidden="true" className="mx-auto size-16 text-accent-emerald">
-        <motion.circle
-          cx="26"
-          cy="26"
-          r="23"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
-        />
-        <motion.path
-          d="M15.5 27.5l7 7 14-15"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 0.35, delay: 0.4, ease: 'easeOut' }}
-        />
-      </svg>
-      <h2 className="mt-4 text-2xl font-semibold tracking-tight">Session complete</h2>
-      <p className="mt-1 text-surface-400">
+
+      <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/30 text-accent-emerald shadow-lg shadow-emerald-950/30">
+        <svg viewBox="0 0 52 52" aria-hidden="true" className="size-12">
+          <motion.circle
+            cx="26"
+            cy="26"
+            r="23"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+          />
+          <motion.path
+            d="M15.5 27.5l7 7 14-15"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.35, delay: 0.4, ease: 'easeOut' }}
+          />
+        </svg>
+      </div>
+
+      <h2 className="mt-5 text-3xl font-bold tracking-tight text-surface-100 sm:text-4xl">
+        Session complete
+      </h2>
+      <p className="mt-2 text-base text-surface-400">
         <CountUp value={total} className="font-semibold text-surface-200" /> card{total === 1 ? '' : 's'} reviewed
-        {total > 0 && <> · {accuracy}% recalled</>}
+        {total > 0 && (
+          <>
+            {' '}
+            ·{' '}
+            <span
+              className={`font-semibold ${
+                accuracy >= 80
+                  ? 'text-accent-emerald'
+                  : accuracy >= 60
+                  ? 'text-accent-amber'
+                  : 'text-accent-red'
+              }`}
+            >
+              {accuracy}% recalled
+            </span>
+          </>
+        )}
       </p>
-      <ul className="mt-6 grid grid-cols-4 gap-2 text-sm">
+
+      <ul className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
         {RATINGS.map((r, i) => (
           <motion.li
             key={r}
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ ...springSnappy, delay: 0.25 + i * 0.06 }}
-            className={`rounded-2xl border px-2 py-3 ${RATING_COLORS[r]}`}
+            className={`flex flex-col items-center justify-center rounded-2xl border p-3.5 transition-all ${RATING_COLORS[r]}`}
           >
-            <p className="text-xl font-semibold tabular-nums">{stats[r]}</p>
-            <p className="text-xs font-medium uppercase tracking-wide opacity-80">{RATING_LABELS[r]}</p>
+            <p className="text-2xl font-bold tabular-nums">{stats[r]}</p>
+            <p className="mt-0.5 text-xs font-semibold uppercase tracking-wider opacity-85">
+              {RATING_LABELS[r]}
+            </p>
+            <span className="mt-1 text-[11px] opacity-60">
+              {total > 0 ? `${Math.round((stats[r] / total) * 100)}%` : '0%'}
+            </span>
           </motion.li>
         ))}
       </ul>
-      <div className="mt-8 flex justify-center gap-2">
+
+      <div className="mt-10 flex flex-col-reverse sm:flex-row items-center justify-center gap-3">
         <Link
-          to={deckId ? '/decks' : '/courses'}
-          className="min-h-11 content-center rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          to={deckId ? `/decks/${deckId}` : courseId ? `/courses/${courseId}` : '/courses'}
+          className="min-h-12 w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-surface-700 px-5 py-3 text-sm font-medium text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-100 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
-          {deckId ? 'Back to decks' : 'Back to courses'}
+          {deckId ? 'Back to deck' : courseId ? 'Back to course' : 'Back to courses'}
         </Link>
         <button
           type="button"
           onClick={onReviewMore}
-          className="min-h-11 rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-950/50 transition-[background-color,transform] hover:bg-indigo-400 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-12 w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-[background-color,transform] hover:bg-indigo-400 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           Review more
         </button>
@@ -246,6 +505,7 @@ export function ReviewSession() {
   const cardRef = useRef<HTMLDivElement>(null);
   const autoplayRef = useRef<HTMLAudioElement>(null);
   const hintRefs = useRef<Partial<Record<ReviewRating, HTMLDivElement | null>>>({});
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   const card = queue?.[index];
 
@@ -515,12 +775,12 @@ export function ReviewSession() {
         return;
       }
       if (prefersReducedMotion()) return;
-      gsap.set(cardRef.current, { x: mx, y: 0, rotation: mx / 20 });
+      gsap.set(cardRef.current, { x: mx, y: 0, rotation: mx / 22 });
 
       // Show directional affordance hint (AGAIN for left drag, GOOD for right drag).
       const absX = Math.abs(mx);
       const hintRating: ReviewRating = mx < 0 ? 'AGAIN' : 'GOOD';
-      const hintOpacity = Math.min(Math.max((absX - 20) / (SWIPE_THRESHOLD - 20), 0), 0.92);
+      const hintOpacity = Math.min(Math.max((absX - 20) / (SWIPE_THRESHOLD - 20), 0), 0.95);
       RATINGS.forEach((r) => {
         const el = hintRefs.current[r];
         if (!el) return;
@@ -529,6 +789,10 @@ export function ReviewSession() {
     },
     {
       axis: 'x',
+      // Touch-only gesture: eliminates desktop mouse dragging so text selection,
+      // tab clicks, and desktop pointer interactions remain frictionless.
+      pointer: { touch: true, mouse: false },
+      filterTaps: true,
       touchAction: 'pan-y',
     },
   );
@@ -560,6 +824,13 @@ export function ReviewSession() {
     setAnnouncement('Answer revealed.');
   };
 
+  const playAudio = () => {
+    const el = autoplayRef.current;
+    if (el && entry?.audioUrl) {
+      void el.play().catch(() => {});
+    }
+  };
+
   // Auto-play the word's pronunciation as soon as a new card is shown.
   useEffect(() => {
     const el = autoplayRef.current;
@@ -570,39 +841,106 @@ export function ReviewSession() {
     }
   }, [index, entry?.audioUrl, settings.autoplayAudio]);
 
-  // Keyboard shortcuts: Space/Enter reveals the answer; arrow keys rate the
-  // card (← Again · → Good · ↑ Easy · ↓ Hard), with or without revealing it.
+  // Keyboard shortcuts:
+  // - Space/Enter reveals the answer
+  // - 1 / ArrowLeft: Again
+  // - 2 / ArrowDown: Hard
+  // - 3 / ArrowRight: Good
+  // - 4 / ArrowUp: Easy
+  // - R: Replay audio
+  // - ?: Toggle shortcuts guide
   useEffect(() => {
     if (!card) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
+
+      // Ignore shortcuts if the user is typing in an input, textarea, or contentEditable
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setShowShortcuts((s) => !s);
+        return;
+      }
+
+      if (e.key === 'Escape' && showShortcuts) {
+        e.preventDefault();
+        setShowShortcuts(false);
+        return;
+      }
+
+      // Audio replay with 'R', 'P', or 'A'
+      if (
+        (e.code === 'KeyR' || e.code === 'KeyP' || e.code === 'KeyA') &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey
+      ) {
+        e.preventDefault();
+        playAudio();
+        return;
+      }
+
+      // Reveal with Space or Enter
       if (!revealed && (e.code === 'Space' || e.code === 'Enter')) {
         e.preventDefault();
         reveal();
         return;
       }
-      switch (e.key) {
-        case 'ArrowLeft':
-          e.preventDefault();
-          rate('AGAIN');
-          break;
-        case 'ArrowRight':
-          e.preventDefault();
-          rate('GOOD');
-          break;
-        case 'ArrowUp':
-          e.preventDefault();
-          rate('EASY');
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          rate('HARD');
-          break;
+
+      // Rate with Arrow keys or Number keys (1, 2, 3, 4)
+      if (
+        e.key === 'ArrowLeft' ||
+        e.code === 'Digit1' ||
+        e.code === 'Numpad1' ||
+        e.key === '1'
+      ) {
+        e.preventDefault();
+        rate('AGAIN');
+        return;
+      }
+      if (
+        e.key === 'ArrowRight' ||
+        e.code === 'Digit3' ||
+        e.code === 'Numpad3' ||
+        e.key === '3'
+      ) {
+        e.preventDefault();
+        rate('GOOD');
+        return;
+      }
+      if (
+        e.key === 'ArrowUp' ||
+        e.code === 'Digit4' ||
+        e.code === 'Numpad4' ||
+        e.key === '4'
+      ) {
+        e.preventDefault();
+        rate('EASY');
+        return;
+      }
+      if (
+        e.key === 'ArrowDown' ||
+        e.code === 'Digit2' ||
+        e.code === 'Numpad2' ||
+        e.key === '2'
+      ) {
+        e.preventDefault();
+        rate('HARD');
+        return;
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [card, revealed]);
+  }, [card, revealed, showShortcuts, entry?.audioUrl]);
 
   // Undo shortcut: `u`, or the platform's Cmd/Ctrl+Z. Bound separately from the
   // rating keys because it also has to work on the summary screen, where the
@@ -611,6 +949,17 @@ export function ReviewSession() {
     if (!canUndo) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return;
+
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
       const chord = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z';
       const plainU = e.key.toLowerCase() === 'u' && !e.metaKey && !e.ctrlKey && !e.altKey;
       if (!chord && !plainU) return;
@@ -623,239 +972,331 @@ export function ReviewSession() {
 
   return (
     <MotionConfig reducedMotion="user">
-    <section aria-label="Review session" className="space-y-4">
-      <div className="flex min-h-11 items-center justify-between gap-3">
-        <h2 className="text-sm font-medium uppercase tracking-wide text-surface-400">Review</h2>
-        {pendingUndo !== null && (
-          <button
-            type="button"
-            onClick={undoLastRating}
-            disabled={!canUndo}
-            aria-label="Undo last rating"
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-surface-700 px-3 py-2 text-sm font-medium text-surface-200 transition-colors hover:border-surface-600 hover:bg-surface-800 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
-            <span aria-hidden="true">↺</span>
-            Undo
-            <kbd
-              aria-hidden="true"
-              className="ml-0.5 hidden rounded border border-surface-700 px-1 text-[10px] font-normal text-surface-500 sm:inline"
-            >
-              U
-            </kbd>
-          </button>
-        )}
-      </div>
-
-      <p aria-live="polite" className="sr-only">
-        {announcement}
-      </p>
-
-      {(!isOnline || queuedCount > 0) && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="rounded-xl border border-amber-300/30 bg-amber-300/10 px-4 py-2.5 text-sm text-accent-amber"
-        >
-          {!isOnline ? "You're offline — reviews are saved on this device" : 'Syncing offline reviews…'}
-          {queuedCount > 0 && ` (${queuedCount} queued)`}
-        </div>
-      )}
-
-      {undoMutation.isError && (
-        <p
-          role="status"
-          aria-live="polite"
-          className="rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2.5 text-sm text-accent-red"
-        >
-          Couldn't undo that rating on the server — it may still count toward scheduling.
-        </p>
-      )}
-
-      {autoGraduatedCount > 0 && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="flex items-center justify-between gap-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-2.5 text-sm text-accent-emerald"
-        >
-          <p>
-            {autoGraduatedCount} word{autoGraduatedCount === 1 ? '' : 's'} auto-marked as known
-          </p>
+      <section aria-label="Review session" className="mx-auto max-w-2xl space-y-4 px-1 sm:px-0">
+        {/* Session HUD Header */}
+        <div className="flex min-h-12 items-center justify-between gap-3 border-b border-surface-800/80 pb-3">
           <div className="flex items-center gap-2">
-            <Link
-              to="/known-words"
-              className="min-h-11 content-center rounded-lg px-2 font-medium underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              Review / undo
-            </Link>
-            <button
-              type="button"
-              onClick={() => setAutoGraduatedCount(0)}
-              aria-label="Dismiss"
-              className="min-h-11 min-w-11 rounded-lg text-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-
-      {isPending && <p aria-live="polite">Loading due cards…</p>}
-      {isError && <p aria-live="polite" className="text-accent-red">Couldn't load due cards.</p>}
-
-      {queue && queue.length === 0 && (
-        <div className="rounded-3xl border border-surface-800 bg-surface-900 p-8 text-center shadow-xl">
-          <p>All caught up — nothing due right now.</p>
-          <Link
-            to={deckId ? '/decks' : '/courses'}
-            className="mt-4 inline-block min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-          >
-            {deckId ? 'Back to decks' : 'Back to courses'}
-          </Link>
-        </div>
-      )}
-
-      {queue && queue.length > 0 && !card && (
-        <SessionSummary
-          stats={stats}
-          deckId={deckId}
-          onReviewMore={() => {
-            setIndex(0);
-            setStats({ AGAIN: 0, HARD: 0, GOOD: 0, EASY: 0 });
-            // A new session: it gets its own summary event and its own clock.
-            analyticsRef.current.completeReported = false;
-            analyticsRef.current.startedAt = Date.now();
-            analyticsRef.current.offlineQueued = 0;
-            // A fresh queue invalidates the stored index the undo points at.
-            setPendingUndo(null);
-            void queryClient.invalidateQueries({ queryKey: ['due-cards', courseId, deckId] });
-          }}
-        />
-      )}
-
-      {queue && card && entry && (
-        <>
-          <div className="flex items-center gap-3 px-1">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-800" aria-hidden="true">
-              <motion.div
-                className="h-full rounded-full bg-indigo-500"
-                initial={false}
-                animate={{ width: `${(index / queue.length) * 100}%` }}
-                transition={spring}
-              />
-            </div>
-            <p className="text-xs font-medium tabular-nums text-surface-400">
-              {index + 1} / {queue.length}
-            </p>
-          </div>
-
-          {(entry.enrichmentStatus === 'PENDING' || entry.enrichmentStatus === 'ENRICHING') && (
-            <p
-              role="status"
-              className="mt-2 mx-auto max-w-[fit-content] flex items-center justify-center gap-2 rounded-lg bg-accent-amber/10 px-3 py-1.5 text-xs font-medium text-accent-amber"
-            >
-              <span
-                aria-hidden="true"
-                className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none rounded-full border-[1.5px] border-accent-amber/30 border-t-accent-amber"
-              />
-              Enriching in background…
-            </p>
-          )}
-
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption -- pronunciation autoplay, no spoken content beyond the word */}
-          <audio ref={autoplayRef} className="hidden" />
-
-          <div
-            {...bindDrag()}
-            ref={cardRef}
-            role="group"
-            aria-label="Flashcard"
-            className="relative touch-pan-y select-none rounded-3xl border border-surface-800 bg-surface-900 p-6 shadow-xl"
-          >
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-400/50 to-transparent"
-            />
-            {RATINGS.map((r) => (
-              <div
-                key={r}
-                ref={(el) => { hintRefs.current[r] = el; }}
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-3xl opacity-0"
-              >
-                <span className={`rounded-xl px-5 py-2 text-2xl font-bold backdrop-blur-sm ${RATING_BADGE_COLORS[r]}`}>
-                  {RATING_LABELS[r]}
-                </span>
-              </div>
-            ))}
-            <CardFront entry={entry} revealed={revealed} />
-            {revealed && (
-              <motion.div
-                initial={{ opacity: 0, y: 18 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={spring}
-              >
-                <CardBack
-                  entry={entry}
-                  detail={detail}
-                  onSelectWord={(w) => navigate(`/word/${encodeURIComponent(w)}`)}
-                />
-              </motion.div>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-surface-400">
+              Review
+            </h2>
+            {deckId && (
+              <span className="rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-indigo-400">
+                Deck
+              </span>
+            )}
+            {courseId && (
+              <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-accent-emerald">
+                Course
+              </span>
             )}
           </div>
 
-          <div className="min-h-[4.75rem]">
-            <AnimatePresence mode="popLayout" initial={false}>
-              {!revealed ? (
-                <motion.div
-                  key="show-answer"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={springSnappy}
-                  className="space-y-2"
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowShortcuts(true)}
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-surface-700 bg-surface-900/60 text-surface-400 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            >
+              <Keyboard className="size-4" />
+            </button>
+
+            {pendingUndo !== null && (
+              <button
+                type="button"
+                onClick={undoLastRating}
+                disabled={!canUndo}
+                aria-label="Undo last rating"
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-surface-700 bg-surface-900/60 px-3.5 py-2 text-sm font-medium text-surface-200 shadow-sm transition-all hover:border-surface-600 hover:bg-surface-800 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                <RotateCcw className="size-3.5 text-surface-400" />
+                <span>Undo</span>
+                <kbd
+                  aria-hidden="true"
+                  className="ml-1 hidden rounded border border-surface-700 bg-surface-800 px-1.5 py-0.5 text-[10px] font-mono text-surface-400 sm:inline"
                 >
-                  <motion.button
-                    type="button"
-                    onClick={reveal}
-                    whileTap={{ scale: 0.97 }}
-                    className="min-h-12 w-full rounded-2xl bg-indigo-500 px-4 py-3 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  U
+                </kbd>
+              </button>
+            )}
+          </div>
+        </div>
+
+        <p aria-live="polite" className="sr-only">
+          {announcement}
+        </p>
+
+        {/* Offline / Queued Status Banner */}
+        {(!isOnline || queuedCount > 0) && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center gap-2 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm font-medium text-accent-amber shadow-sm"
+          >
+            <span className="size-2 rounded-full bg-accent-amber animate-pulse" aria-hidden="true" />
+            {!isOnline ? "You're offline — reviews are saved locally" : 'Syncing offline reviews…'}
+            {queuedCount > 0 && ` (${queuedCount} queued)`}
+          </div>
+        )}
+
+        {/* Undo Error Banner */}
+        {undoMutation.isError && (
+          <p
+            role="status"
+            aria-live="polite"
+            className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-accent-red shadow-sm"
+          >
+            Couldn't undo that rating on the server — it may still count toward scheduling.
+          </p>
+        )}
+
+        {/* Auto-Graduated Banner */}
+        {autoGraduatedCount > 0 && (
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-accent-emerald shadow-sm"
+          >
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle2 className="size-4 shrink-0 text-accent-emerald" />
+              <p>
+                {autoGraduatedCount} word{autoGraduatedCount === 1 ? '' : 's'} auto-marked as known
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                to="/known-words"
+                className="min-h-11 content-center rounded-lg px-2.5 font-semibold underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                Review / undo
+              </Link>
+              <button
+                type="button"
+                onClick={() => setAutoGraduatedCount(0)}
+                aria-label="Dismiss"
+                className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-lg text-surface-400 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isPending && (
+          <div className="flex flex-col items-center justify-center py-16 text-center" aria-live="polite">
+            <div className="size-10 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+            <p className="mt-4 text-sm font-medium text-surface-400">Loading due cards…</p>
+          </div>
+        )}
+
+        {isError && (
+          <div className="rounded-3xl border border-red-500/20 bg-surface-900 p-8 text-center" aria-live="polite">
+            <p className="text-sm font-medium text-accent-red">Couldn't load due cards.</p>
+          </div>
+        )}
+
+        {/* All Caught Up State */}
+        {queue && queue.length === 0 && (
+          <div className="rounded-3xl border border-surface-800 bg-surface-900 p-8 sm:p-12 text-center shadow-xl backdrop-blur-md">
+            <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-accent-emerald">
+              <Check className="size-8" />
+            </div>
+            <h3 className="mt-4 text-xl font-bold tracking-tight text-surface-100">All caught up</h3>
+            <p className="mt-1 text-sm text-surface-400">
+              All caught up — nothing due right now.
+            </p>
+            <div className="mt-6">
+              <Link
+                to={deckId ? `/decks/${deckId}` : courseId ? `/courses/${courseId}` : '/library'}
+                className="inline-flex min-h-12 items-center justify-center rounded-xl bg-surface-800 border border-surface-700 px-5 py-2.5 text-sm font-semibold text-surface-200 transition-colors hover:border-surface-600 hover:bg-surface-700 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              >
+                {deckId ? 'Back to decks' : 'Back to courses'}
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Session Finished Summary */}
+        {queue && queue.length > 0 && !card && (
+          <SessionSummary
+            stats={stats}
+            deckId={deckId}
+            courseId={courseId}
+            onReviewMore={() => {
+              setIndex(0);
+              setStats({ AGAIN: 0, HARD: 0, GOOD: 0, EASY: 0 });
+              analyticsRef.current.completeReported = false;
+              analyticsRef.current.startedAt = Date.now();
+              analyticsRef.current.offlineQueued = 0;
+              setPendingUndo(null);
+              void queryClient.invalidateQueries({ queryKey: ['due-cards', courseId, deckId] });
+            }}
+          />
+        )}
+
+        {/* Active Flashcard View */}
+        {queue && card && entry && (
+          <>
+            {/* Progress Bar & Counter */}
+            <div className="flex items-center gap-3 px-1">
+              <div
+                className="h-2 flex-1 overflow-hidden rounded-full bg-surface-800/80 shadow-inner"
+                aria-hidden="true"
+              >
+                <motion.div
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-sky-500 to-indigo-400"
+                  initial={false}
+                  animate={{ width: `${(index / queue.length) * 100}%` }}
+                  transition={spring}
+                />
+              </div>
+              <p className="text-xs font-semibold tabular-nums text-surface-400">
+                {index + 1} / {queue.length}
+              </p>
+            </div>
+
+            {/* Background enrichment pill */}
+            {(entry.enrichmentStatus === 'PENDING' || entry.enrichmentStatus === 'ENRICHING') && (
+              <p
+                role="status"
+                className="mx-auto max-w-[fit-content] flex items-center justify-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 px-3 py-1 text-xs font-medium text-accent-amber"
+              >
+                <span
+                  aria-hidden="true"
+                  className="size-3 shrink-0 animate-spin motion-reduce:animate-none rounded-full border-[1.5px] border-accent-amber/30 border-t-accent-amber"
+                />
+                Enriching in background…
+              </p>
+            )}
+
+            {/* Hidden pronunciation autoplay element */}
+            {/* eslint-disable-next-line jsx-a11y/media-has-caption -- pronunciation autoplay, no spoken content beyond the word */}
+            <audio ref={autoplayRef} className="hidden" />
+
+            {/* Tactile Flashcard Frame */}
+            <div
+              {...bindDrag()}
+              ref={cardRef}
+              role="group"
+              aria-label="Flashcard"
+              className="relative touch-pan-y select-none rounded-3xl border border-surface-800/90 bg-surface-900/95 p-6 sm:p-8 shadow-2xl backdrop-blur-md transition-shadow"
+            >
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-400/40 to-transparent"
+              />
+
+              {/* Directional Overlay Hints during touch drag */}
+              {RATINGS.map((r) => (
+                <div
+                  key={r}
+                  ref={(el) => {
+                    hintRefs.current[r] = el;
+                  }}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-3xl opacity-0 transition-opacity"
+                >
+                  <span
+                    className={`rounded-2xl px-6 py-2.5 text-2xl font-black backdrop-blur-md ${RATING_BADGE_COLORS[r]}`}
                   >
-                    Show answer
-                  </motion.button>
-                  <p className="text-center text-xs text-surface-500">Press Space or Enter to reveal</p>
-                </motion.div>
-              ) : (
-                <motion.div key="ratings" className="space-y-2">
-                  <div className="grid grid-cols-4 gap-2">
-                    {RATINGS.map((r, i) => (
-                      <motion.button
-                        key={r}
-                        type="button"
-                        onClick={() => rate(r)}
-                        initial={{ opacity: 0, y: 14, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ ...springSnappy, delay: i * 0.045 }}
-                        whileTap={{ scale: 0.93 }}
-                        className={`flex min-h-12 flex-col items-center justify-center rounded-2xl border px-2 py-2 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${RATING_COLORS[r]}`}
-                      >
-                        {RATING_LABELS[r]}
-                        <span aria-hidden="true" className="mt-0.5 hidden text-[10px] font-normal opacity-60 sm:block">
-                          {RATING_KEY_HINTS[r]}
-                        </span>
-                      </motion.button>
-                    ))}
-                  </div>
-                  <p className="text-center text-xs text-surface-500">
-                    Swipe or press arrow keys: ← Again · → Good · ↑ Easy · ↓ Hard
-                  </p>
+                    {RATING_LABELS[r]}
+                  </span>
+                </div>
+              ))}
+
+              {/* Card Front */}
+              <CardFront entry={entry} revealed={revealed} />
+
+              {/* Card Back / Revealed Details */}
+              {revealed && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={spring}
+                >
+                  <CardBack
+                    entry={entry}
+                    detail={detail}
+                    onSelectWord={(w) => navigate(`/word/${encodeURIComponent(w)}`)}
+                  />
                 </motion.div>
               )}
-            </AnimatePresence>
-          </div>
-        </>
-      )}
-    </section>
+            </div>
+
+            {/* Bottom Action / Rating Bar */}
+            <div className="min-h-[5.5rem] pt-1">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {!revealed ? (
+                  <motion.div
+                    key="show-answer"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={springSnappy}
+                    className="space-y-2.5"
+                  >
+                    <motion.button
+                      type="button"
+                      onClick={reveal}
+                      aria-label="Show answer"
+                      whileTap={{ scale: 0.98 }}
+                      className="group flex min-h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-indigo-500 px-6 py-3.5 text-base font-semibold text-white shadow-xl shadow-indigo-500/25 transition-all hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    >
+                      <span>Show answer</span>
+                      <kbd
+                        aria-hidden="true"
+                        className="rounded-md border border-indigo-400/40 bg-indigo-600/50 px-2 py-0.5 text-xs font-mono font-medium text-white/90"
+                      >
+                        Space
+                      </kbd>
+                    </motion.button>
+                    <p className="text-center text-xs text-surface-500">
+                      Press Space or Enter to reveal
+                    </p>
+                  </motion.div>
+                ) : (
+                  <motion.div key="ratings" className="space-y-3">
+                    <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                      {RATINGS.map((r, i) => (
+                        <motion.button
+                          key={r}
+                          type="button"
+                          onClick={() => rate(r)}
+                          aria-label={RATING_LABELS[r]}
+                          initial={{ opacity: 0, y: 14, scale: 0.92 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ ...springSnappy, delay: i * 0.04 }}
+                          whileTap={{ scale: 0.94 }}
+                          className={`group flex min-h-14 flex-col items-center justify-center rounded-2xl border px-2 py-2.5 text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${RATING_COLORS[r]}`}
+                        >
+                          <span className="font-bold tracking-tight">{RATING_LABELS[r]}</span>
+                          <div className="mt-0.5 flex items-center gap-1.5 opacity-75">
+                            <span className="text-[11px] font-normal">{RATING_INTERVALS[r]}</span>
+                            <span
+                              aria-hidden="true"
+                              className="hidden rounded bg-current/10 px-1 py-0.2 text-[9px] font-mono sm:inline"
+                            >
+                              {RATING_NUMBER_HINTS[r]}
+                            </span>
+                          </div>
+                        </motion.button>
+                      ))}
+                    </div>
+                    <p className="text-center text-xs text-surface-500">
+                      Press 1–4 or arrow keys to rate · R to replay audio
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </>
+        )}
+
+        {/* Keyboard Shortcuts Modal */}
+        <ShortcutsModal isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
+      </section>
     </MotionConfig>
   );
 }
