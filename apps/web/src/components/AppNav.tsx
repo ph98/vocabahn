@@ -1,12 +1,34 @@
 import { useGSAP } from '@gsap/react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import gsap from 'gsap';
-import { BadgeCheck, BookOpen, CircleUserRound, HelpCircle, Monitor, Moon, Sun } from 'lucide-react';
+import {
+  BadgeCheck,
+  BookOpen,
+  ChevronRight,
+  CircleUserRound,
+  HelpCircle,
+  LogOut,
+  Monitor,
+  Moon,
+  Sun,
+} from 'lucide-react';
 import { MotionConfig, motion } from 'motion/react';
-import { useEffect, useRef, useState, type ComponentType, type RefObject } from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type KeyboardEvent,
+  type RefObject,
+} from 'react';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { logout } from '../api';
 import { useSessionUser } from '../hooks/useSession';
 import { prefersReducedMotion, springSnappy } from '../lib/motion';
 import { type Theme, useTheme } from '../lib/theme';
+import { CEFRBadge } from './CEFRBadge';
+import { Logo } from './Logo';
+import { useToast } from './Toast';
 
 /**
  * The signed-in navigation, split out of `App.tsx` and loaded lazily.
@@ -19,13 +41,11 @@ import { type Theme, useTheme } from '../lib/theme';
  * fallback reserves the nav's height.
  */
 
-const THEME_CYCLE: Theme[] = ['system', 'light', 'dark'];
-const THEME_ICON: Record<Theme, ComponentType<{ className?: string; 'aria-hidden'?: boolean }>> = {
-  system: Monitor,
-  light: Sun,
-  dark: Moon,
-};
-const THEME_LABEL: Record<Theme, string> = { system: 'System theme', light: 'Light theme', dark: 'Dark theme' };
+const THEME_OPTIONS: { theme: Theme; label: string; icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }> }[] = [
+  { theme: 'system', label: 'System', icon: Monitor },
+  { theme: 'light',  label: 'Light',  icon: Sun },
+  { theme: 'dark',   label: 'Dark',   icon: Moon },
+];
 
 function NavSvgIcon({ d, className = '' }: { d: string; className?: string }) {
   return (
@@ -51,21 +71,86 @@ const ICON_DASHBOARD = 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.5
 const ICON_MORE = 'M6.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM12.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0zM18.75 12a.75.75 0 11-1.5 0 .75.75 0 011.5 0z';
 
 const MORE_PATHS = ['/story', '/known-words', '/help', '/profile'] as const;
-const MORE_ITEMS = [
-  { to: '/story',       label: 'Story',         icon: BookOpen },
-  { to: '/known-words', label: 'Known words', icon: BadgeCheck },
-  { to: '/help',        label: 'Help & Guide', icon: HelpCircle },
-  { to: '/profile',     label: 'Profile',      icon: CircleUserRound },
-] as const;
 
-function MorePanel({ onClose, buttonRef }: {
+interface MenuSectionItem {
+  to: string;
+  label: string;
+  description: string;
+  icon: ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+}
+
+const LEARNING_ITEMS: MenuSectionItem[] = [
+  {
+    to: '/story',
+    label: 'Micro-Stories',
+    description: 'AI-generated reading practice with real news',
+    icon: BookOpen,
+  },
+  {
+    to: '/known-words',
+    label: 'Known Words',
+    description: 'Vocabulary inventory & CEFR progression',
+    icon: BadgeCheck,
+  },
+];
+
+const ACCOUNT_ITEMS: MenuSectionItem[] = [
+  {
+    to: '/profile',
+    label: 'Profile & Settings',
+    description: 'CEFR level, topics, reminders & account',
+    icon: CircleUserRound,
+  },
+  {
+    to: '/help',
+    label: 'Help & User Guide',
+    description: 'Shortcuts, FAQs & spaced repetition guide',
+    icon: HelpCircle,
+  },
+];
+
+/**
+ * Accessible Profile & Navigation Menu.
+ * Features:
+ * - Clear user profile summary header with avatar, name, email & CEFR badge
+ * - Grouped sections with high-contrast titles and clear, informative descriptions
+ * - Interactive 3-way theme picker
+ * - Integrated sign out button
+ * - WAI-ARIA Menu pattern with full keyboard navigation (Up/Down/Home/End/Escape/Tab)
+ * - Automatic focus management and outside click detection
+ */
+function ProfileMenu({
+  onClose,
+  buttonRef,
+}: {
   onClose: () => void;
   buttonRef: RefObject<HTMLButtonElement | null>;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const user = useSessionUser();
   const [style, setStyle] = useState<React.CSSProperties>({ visibility: 'hidden' });
   const [theme, setTheme] = useTheme();
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const navigate = useNavigate();
 
+  const signOutMutation = useMutation({
+    mutationFn: () => logout(),
+    onSuccess: () => {
+      queryClient.setQueryData(['me'], null);
+      toast.info('Signed out', { id: 'auth:signout' });
+      onClose();
+      navigate('/');
+    },
+    onError: () => {
+      toast.error("Couldn't sign out", {
+        id: 'auth:signout',
+        description: 'Please check your connection and try again.',
+      });
+    },
+  });
+
+  // Calculate tethered position relative to the trigger button
   useEffect(() => {
     if (!buttonRef.current) return;
     const btn = buttonRef.current.getBoundingClientRect();
@@ -74,44 +159,239 @@ function MorePanel({ onClose, buttonRef }: {
     // Otherwise (desktop inline nav), show below it.
     setStyle(
       btn.top > window.innerHeight * 0.6
-        ? { bottom: window.innerHeight - btn.top + 8, right, visibility: 'visible' }
-        : { top: btn.bottom + 8, right, visibility: 'visible' },
+        ? { bottom: window.innerHeight - btn.top + 10, right, visibility: 'visible' }
+        : { top: btn.bottom + 10, right, visibility: 'visible' },
     );
   }, [buttonRef]);
 
+  // Entrance animation
   useGSAP(() => {
     if (prefersReducedMotion() || style.visibility !== 'visible') return;
     gsap.from(ref.current, { y: 10, opacity: 0, duration: 0.2, ease: 'power2.out' });
   }, { scope: ref, dependencies: [style.visibility] });
 
-  const itemClass = (active: boolean) =>
-    `flex items-center gap-2.5 rounded-xl px-3 min-h-11 w-full text-sm font-medium text-left transition-colors ${
-      active ? 'bg-indigo-500/15 text-accent-indigo' : 'text-surface-300 hover:bg-surface-800'
-    }`;
+  // Focus management: move focus into the menu when mounted
+  useEffect(() => {
+    if (style.visibility === 'visible' && ref.current) {
+      const firstFocusable = ref.current.querySelector<HTMLElement>(
+        'a[href], button:not([disabled])',
+      );
+      firstFocusable?.focus();
+    }
+  }, [style.visibility]);
 
-  const nextTheme = THEME_CYCLE[(THEME_CYCLE.indexOf(theme) + 1) % THEME_CYCLE.length] ?? 'system';
+  // Keyboard navigation for WAI-ARIA menu pattern
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      onClose();
+      buttonRef.current?.focus();
+      return;
+    }
+
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!ref.current) return;
+      const focusables = Array.from(
+        ref.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+      );
+      if (focusables.length === 0) return;
+
+      const currentIndex = focusables.indexOf(document.activeElement as HTMLElement);
+      const nextIndex =
+        e.key === 'ArrowDown'
+          ? currentIndex >= 0
+            ? (currentIndex + 1) % focusables.length
+            : 0
+          : currentIndex > 0
+            ? currentIndex - 1
+            : focusables.length - 1;
+      focusables[nextIndex]?.focus();
+      return;
+    }
+
+    if (e.key === 'Home') {
+      e.preventDefault();
+      const first = ref.current?.querySelector<HTMLElement>('a[href], button:not([disabled])');
+      first?.focus();
+      return;
+    }
+
+    if (e.key === 'End') {
+      e.preventDefault();
+      const focusables = ref.current?.querySelectorAll<HTMLElement>('a[href], button:not([disabled])');
+      if (focusables && focusables.length > 0) {
+        focusables[focusables.length - 1]?.focus();
+      }
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      // Natural tab out closes the menu smoothly
+      setTimeout(() => {
+        if (!ref.current?.contains(document.activeElement)) {
+          onClose();
+        }
+      }, 0);
+    }
+  };
+
+  const renderMenuItem = ({ to, label, description, icon: Icon }: MenuSectionItem) => (
+    <NavLink
+      key={to}
+      to={to}
+      role="menuitem"
+      onClick={onClose}
+      className={({ isActive }) =>
+        `group flex items-start gap-3 rounded-xl p-2.5 transition-all text-left min-h-[44px] ${
+          isActive
+            ? 'bg-accent-indigo/15 text-accent-indigo'
+            : 'text-surface-200 hover:bg-surface-800/80 hover:text-surface-100'
+        } focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo`
+      }
+    >
+      {({ isActive }) => (
+        <>
+          <div
+            className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg border transition-colors ${
+              isActive
+                ? 'border-accent-indigo/40 bg-accent-indigo/20 text-accent-indigo'
+                : 'border-surface-700/60 bg-surface-800/50 text-surface-400 group-hover:border-surface-600 group-hover:text-surface-200'
+            }`}
+          >
+            <Icon aria-hidden className="size-4" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <span className="block text-sm font-bold text-surface-100 group-hover:text-white leading-tight">
+              {label}
+            </span>
+            <span className="block text-xs text-surface-400 leading-snug mt-0.5">
+              {description}
+            </span>
+          </div>
+        </>
+      )}
+    </NavLink>
+  );
 
   return (
     <div
       ref={ref}
-      aria-label="Additional navigation"
-      className="fixed z-50 w-52 flex flex-col gap-1 rounded-2xl border border-surface-700/80 bg-surface-900/95 p-1.5 shadow-2xl shadow-black/60 backdrop-blur-md"
+      id="profile-menu-dropdown"
+      role="menu"
+      tabIndex={-1}
+      aria-label="Profile and quick navigation menu"
+      onKeyDown={handleKeyDown}
+      className="fixed z-50 w-72 sm:w-80 max-w-[calc(100vw-24px)] flex flex-col gap-2 rounded-2xl border border-surface-700/80 bg-surface-900/95 p-2.5 shadow-2xl shadow-black/60 backdrop-blur-xl max-h-[80vh] overflow-y-auto"
       style={style}
     >
-      {MORE_ITEMS.map(({ to, label, icon: Icon }) => (
-        <NavLink key={to} to={to} onClick={onClose} className={({ isActive }) => itemClass(isActive)}>
-          <Icon aria-hidden className="size-4" />
-          {label}
-        </NavLink>
-      ))}
-      <div className="my-1 h-px w-full bg-surface-800/60" aria-hidden="true" />
+      {/* User Info Header */}
+      {user && (
+        <Link
+          to="/profile"
+          role="menuitem"
+          onClick={onClose}
+          className="group flex items-center gap-3 rounded-xl border border-surface-700/50 bg-surface-800/40 p-2.5 transition-all hover:border-surface-600 hover:bg-surface-800/80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo"
+        >
+          {user.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="size-10 rounded-xl object-cover ring-1 ring-surface-700 shadow-sm"
+            />
+          ) : (
+            <div className="flex size-10 items-center justify-center rounded-xl bg-accent-indigo/15 text-accent-indigo ring-1 ring-accent-indigo/30 font-bold text-base shadow-sm">
+              {(user.name ?? user.email ?? 'U').charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="truncate text-sm font-bold text-surface-100 group-hover:text-white">
+                {user.name ?? 'Learner'}
+              </span>
+              {user.cefrLevel && <CEFRBadge level={user.cefrLevel} size="sm" />}
+            </div>
+            <p className="truncate text-xs text-surface-400">{user.email}</p>
+          </div>
+          <ChevronRight aria-hidden className="size-4 text-surface-500 group-hover:text-surface-300 transition-transform group-hover:translate-x-0.5" />
+        </Link>
+      )}
+
+      {/* Learning Tools Section */}
+      <div className="space-y-0.5">
+        <p className="px-2.5 pt-1.5 pb-1 text-[11px] font-bold uppercase tracking-wider text-surface-500">
+          Learning
+        </p>
+        {LEARNING_ITEMS.map(renderMenuItem)}
+      </div>
+
+      <div className="h-px w-full bg-surface-800/80 my-0.5" aria-hidden="true" />
+
+      {/* Account & Settings Section */}
+      <div className="space-y-0.5">
+        <p className="px-2.5 pt-1 pb-1 text-[11px] font-bold uppercase tracking-wider text-surface-500">
+          Preferences &amp; Support
+        </p>
+        {ACCOUNT_ITEMS.map(renderMenuItem)}
+      </div>
+
+      <div className="h-px w-full bg-surface-800/80 my-0.5" aria-hidden="true" />
+
+      {/* Appearance / Theme Selector */}
+      <div className="px-2.5 py-1.5">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-bold text-surface-300">Appearance</span>
+          <span className="text-[11px] font-medium text-surface-500 capitalize">{theme}</span>
+        </div>
+        <div
+          role="group"
+          aria-label="Theme mode selection"
+          className="flex items-center gap-1 rounded-xl bg-surface-800/60 p-1 border border-surface-700/50"
+        >
+          {THEME_OPTIONS.map(({ theme: t, label, icon: ThemeIcon }) => {
+            const isActive = theme === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                role="menuitemradio"
+                aria-checked={isActive}
+                aria-label={`Switch to ${label} theme`}
+                onClick={() => setTheme(t)}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg py-1.5 text-xs font-bold transition-all min-h-[36px] ${
+                  isActive
+                    ? 'bg-surface-700 text-surface-100 shadow-sm'
+                    : 'text-surface-400 hover:text-surface-200 hover:bg-surface-700/40'
+                } focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo`}
+              >
+                <ThemeIcon aria-hidden className="size-3.5" />
+                <span>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="h-px w-full bg-surface-800/80 my-0.5" aria-hidden="true" />
+
+      {/* Sign Out Button */}
       <button
         type="button"
-        onClick={() => { setTheme(nextTheme); onClose(); }}
-        className={itemClass(false)}
+        role="menuitem"
+        disabled={signOutMutation.isPending}
+        onClick={() => signOutMutation.mutate()}
+        className="flex items-center gap-3 rounded-xl p-2.5 text-xs font-bold text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 transition-colors w-full text-left min-h-[44px] focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-400 disabled:opacity-50"
       >
-        {(() => { const ThemeIcon = THEME_ICON[theme]; return <ThemeIcon aria-hidden className="size-4" />; })()}
-        {THEME_LABEL[theme]}
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-400">
+          <LogOut aria-hidden className="size-4" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className="block text-sm font-bold leading-tight">Sign out</span>
+          <span className="block text-xs text-rose-400/70 font-normal leading-snug mt-0.5">
+            Safely end your session
+          </span>
+        </div>
       </button>
     </div>
   );
@@ -123,7 +403,6 @@ export function AppNav() {
   const user = useSessionUser();
   const navRef = useRef<HTMLElement>(null);
   const moreButtonRef = useRef<HTMLButtonElement>(null);
-  const logoMarkRef = useRef<HTMLImageElement>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const dictionaryActive = pathname.startsWith('/dictionary') || pathname.startsWith('/word/');
   const moreActive = MORE_PATHS.some((p) => pathname.startsWith(p));
@@ -137,17 +416,9 @@ export function AppNav() {
     );
   }, { scope: navRef });
 
-  useGSAP(() => {
-    if (prefersReducedMotion() || !logoMarkRef.current) return;
-    gsap.to(logoMarkRef.current, {
-      rotation: 360,
-      duration: 25,
-      repeat: -1,
-      ease: 'none',
-    });
-  }, { scope: logoMarkRef });
-
-  useEffect(() => { setMoreOpen(false); }, [pathname]);
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [pathname]);
 
   // Mobile: vertical icon+label stack. Desktop: horizontal icon+label pill.
   const itemClass = (active: boolean) =>
@@ -175,9 +446,16 @@ export function AppNav() {
   return (
     <MotionConfig reducedMotion="user">
       {moreOpen && (
-        <div className="fixed inset-0 z-40" aria-hidden="true" onClick={() => setMoreOpen(false)} />
+        <div
+          className="fixed inset-0 z-40"
+          aria-hidden="true"
+          onClick={() => {
+            setMoreOpen(false);
+            moreButtonRef.current?.focus();
+          }}
+        />
       )}
-      {moreOpen && <MorePanel onClose={() => setMoreOpen(false)} buttonRef={moreButtonRef} />}
+      {moreOpen && <ProfileMenu onClose={() => setMoreOpen(false)} buttonRef={moreButtonRef} />}
 
       <nav
         ref={navRef}
@@ -192,14 +470,14 @@ export function AppNav() {
           'md:bg-surface-800/40 md:p-2 md:shadow-premium md:backdrop-blur-xl md:pb-2',
         ].join(' ')}
       >
-        {/* Desktop Branding Icon */}
-        <div className="hidden md:flex items-center pl-2 pr-3 border-r border-surface-800/50 mr-1">
+        {/* Desktop Branding Logo & App Name */}
+        <div className="hidden md:flex items-center pl-1 pr-3 border-r border-surface-700/40 mr-1 shrink-0">
           <Link
             to="/"
             aria-label="Vocabahn Home"
-            className="flex items-center justify-center size-8 rounded-full bg-surface-900 shadow-sm border border-surface-700/50 select-none group transition-all hover:scale-105 hover:border-accent-indigo/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white overflow-hidden"
+            className="flex items-center gap-2.5 px-2 py-1.5 rounded-xl transition-all duration-200 hover:bg-surface-700/30 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo group"
           >
-            <img ref={logoMarkRef} src="/logo.png" alt="Vocabahn" width={800} height={240} className="w-full h-full object-cover" />
+            <Logo variant="full" size="md" />
           </Link>
         </div>
 
@@ -269,18 +547,30 @@ export function AppNav() {
           )}
         </NavLink>
 
+        {/* Profile & More Menu Trigger */}
         <button
           ref={moreButtonRef}
+          id="profile-menu-button"
           type="button"
           onClick={() => setMoreOpen((o) => !o)}
           aria-expanded={moreOpen}
-          aria-haspopup="true"
+          aria-haspopup="menu"
+          aria-controls="profile-menu-dropdown"
           aria-label="Profile navigation options"
           className={itemClass(moreActive || moreOpen)}
         >
-          {moreActive && activeIndicator}
+          {(moreActive || moreOpen) && activeIndicator}
           {user?.avatarUrl ? (
-            <img src={user.avatarUrl} alt="" className="size-[22px] rounded-full object-cover shadow-sm border border-surface-700/50" />
+            <img
+              src={user.avatarUrl}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="size-[22px] rounded-full object-cover shadow-sm border border-surface-700/50"
+            />
+          ) : user ? (
+            <div className="flex size-[22px] items-center justify-center rounded-full bg-accent-indigo/20 text-accent-indigo text-[10px] font-bold border border-accent-indigo/40">
+              {(user.name ?? user.email ?? 'U').charAt(0).toUpperCase()}
+            </div>
           ) : (
             <NavSvgIcon d={ICON_MORE} />
           )}
