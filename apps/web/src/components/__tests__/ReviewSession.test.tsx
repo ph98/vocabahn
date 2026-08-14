@@ -491,5 +491,15 @@ describe('ReviewSession keyboard navigation & shortcuts', () => {
       expect(screen.getAllByText('A1').length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  it('renders flashcard within a contained scroll container', async () => {
+    const { container } = renderWithProviders(<ReviewSession />);
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+
+    const scroller = container.querySelector('.vb-card-scroll');
+    expect(scroller).toBeInTheDocument();
+    expect(scroller).toHaveClass('overflow-y-auto');
+  });
 });
+
 

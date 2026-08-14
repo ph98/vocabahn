@@ -50,5 +50,9 @@ if (typeof window !== 'undefined') {
     writable: true,
     configurable: true,
   });
+
+  window.scrollTo = () => {};
+  Element.prototype.scrollTo = () => {};
 }
+
 

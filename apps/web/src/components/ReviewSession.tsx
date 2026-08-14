@@ -267,7 +267,7 @@ function CardFront({
   return (
     <div
       className={`flex flex-col items-center justify-center gap-4 text-center transition-[padding] duration-300 ${
-        revealed ? 'py-8' : 'py-14 sm:py-20'
+        revealed ? 'py-4 sm:py-6' : 'py-10 sm:py-16'
       }`}
     >
       {/* Top Metadata Badges */}
@@ -388,14 +388,14 @@ function SessionSummary({
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={spring}
       aria-label="Session summary"
-      className="relative overflow-hidden rounded-3xl border border-surface-800 bg-surface-900 p-6 sm:p-10 text-center shadow-2xl backdrop-blur-md"
+      className="relative flex flex-1 min-h-0 flex-col justify-center overflow-y-auto overscroll-contain rounded-3xl border border-surface-800 bg-surface-900 p-6 sm:p-10 text-center shadow-2xl backdrop-blur-md vb-card-scroll"
     >
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-24 left-1/2 size-72 -translate-x-1/2 rounded-full bg-emerald-500/15 blur-3xl"
       />
 
-      <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/30 text-accent-emerald shadow-lg shadow-emerald-950/30">
+      <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-emerald-500/10 border border-emerald-500/30 text-accent-emerald shadow-lg shadow-emerald-950/30 shrink-0">
         <svg viewBox="0 0 52 52" aria-hidden="true" className="size-12">
           <motion.circle
             cx="26"
@@ -422,10 +422,10 @@ function SessionSummary({
         </svg>
       </div>
 
-      <h2 className="mt-5 text-3xl font-bold tracking-tight text-surface-100 sm:text-4xl">
+      <h2 className="mt-5 text-3xl font-bold tracking-tight text-surface-100 sm:text-4xl shrink-0">
         Session complete
       </h2>
-      <p className="mt-2 text-base text-surface-400">
+      <p className="mt-2 text-base text-surface-400 shrink-0">
         <CountUp value={total} className="font-semibold text-surface-200" /> card{total === 1 ? '' : 's'} reviewed
         {total > 0 && (
           <>
@@ -446,7 +446,7 @@ function SessionSummary({
         )}
       </p>
 
-      <ul className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+      <ul className="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm shrink-0">
         {RATINGS.map((r, i) => (
           <motion.li
             key={r}
@@ -466,7 +466,7 @@ function SessionSummary({
         ))}
       </ul>
 
-      <div className="mt-10 flex flex-col-reverse sm:flex-row items-center justify-center gap-3">
+      <div className="mt-10 flex flex-col-reverse sm:flex-row items-center justify-center gap-3 shrink-0">
         <Link
           to={deckId ? `/decks/${deckId}` : courseId ? `/courses/${courseId}` : '/courses'}
           className="min-h-12 w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-surface-700 px-5 py-3 text-sm font-medium text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-100 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
@@ -503,6 +503,7 @@ export function ReviewSession() {
   const [stats, setStats] = useState<Record<ReviewRating, number>>({ AGAIN: 0, HARD: 0, GOOD: 0, EASY: 0 });
   const revealedAt = useRef<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const autoplayRef = useRef<HTMLAudioElement>(null);
   const hintRefs = useRef<Partial<Record<ReviewRating, HTMLDivElement | null>>>({});
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -529,6 +530,18 @@ export function ReviewSession() {
   const refreshQueuedCount = () => {
     void getQueueCount().then(setQueuedCount);
   };
+
+  // Scroll to top on mount so the review session sits clean in view
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, []);
+
+  // Reset internal card scroll position whenever index changes or revealed state toggles
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+  }, [index, revealed]);
 
   // Sync any reviews queued while offline as soon as we're back online.
   useEffect(() => {
@@ -972,133 +985,160 @@ export function ReviewSession() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <section aria-label="Review session" className="mx-auto max-w-2xl space-y-4 px-1 sm:px-0">
+      <section
+        aria-label="Review session"
+        className="mx-auto flex w-full max-w-2xl flex-col h-[calc(100dvh-var(--vb-mobile-nav-height,0px)-4.5rem)] md:h-[calc(100dvh-6.5rem)] max-h-[880px] min-h-[500px] px-2 sm:px-0"
+      >
         {/* Session HUD Header */}
-        <div className="flex min-h-12 items-center justify-between gap-3 border-b border-surface-800/80 pb-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-surface-400">
-              Review
-            </h2>
-            {deckId && (
-              <span className="rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-indigo-400">
-                Deck
-              </span>
-            )}
-            {courseId && (
-              <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-accent-emerald">
-                Course
-              </span>
-            )}
-          </div>
+        <div className="shrink-0 space-y-3 pb-2">
+          <div className="flex min-h-11 items-center justify-between gap-3 border-b border-surface-800/80 pb-2.5">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-surface-400">
+                Review
+              </h2>
+              {deckId && (
+                <span className="rounded-md border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-indigo-400">
+                  Deck
+                </span>
+              )}
+              {courseId && (
+                <span className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-accent-emerald">
+                  Course
+                </span>
+              )}
+            </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setShowShortcuts(true)}
-              aria-label="Keyboard shortcuts"
-              title="Keyboard shortcuts (?)"
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl border border-surface-700 bg-surface-900/60 text-surface-400 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
-            >
-              <Keyboard className="size-4" />
-            </button>
-
-            {pendingUndo !== null && (
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={undoLastRating}
-                disabled={!canUndo}
-                aria-label="Undo last rating"
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-xl border border-surface-700 bg-surface-900/60 px-3.5 py-2 text-sm font-medium text-surface-200 shadow-sm transition-all hover:border-surface-600 hover:bg-surface-800 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                onClick={() => setShowShortcuts(true)}
+                aria-label="Keyboard shortcuts"
+                title="Keyboard shortcuts (?)"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-surface-700 bg-surface-900/60 text-surface-400 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
               >
-                <RotateCcw className="size-3.5 text-surface-400" />
-                <span>Undo</span>
-                <kbd
-                  aria-hidden="true"
-                  className="ml-1 hidden rounded border border-surface-700 bg-surface-800 px-1.5 py-0.5 text-[10px] font-mono text-surface-400 sm:inline"
-                >
-                  U
-                </kbd>
+                <Keyboard className="size-4" />
               </button>
-            )}
+
+              {pendingUndo !== null && (
+                <button
+                  type="button"
+                  onClick={undoLastRating}
+                  disabled={!canUndo}
+                  aria-label="Undo last rating"
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-surface-700 bg-surface-900/60 px-3 py-1.5 text-sm font-medium text-surface-200 shadow-sm transition-all hover:border-surface-600 hover:bg-surface-800 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  <RotateCcw className="size-3.5 text-surface-400" />
+                  <span>Undo</span>
+                  <kbd
+                    aria-hidden="true"
+                    className="ml-1 hidden rounded border border-surface-700 bg-surface-800 px-1.5 py-0.5 text-[10px] font-mono text-surface-400 sm:inline"
+                  >
+                    U
+                  </kbd>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
-        <p aria-live="polite" className="sr-only">
-          {announcement}
-        </p>
-
-        {/* Offline / Queued Status Banner */}
-        {(!isOnline || queuedCount > 0) && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex items-center gap-2 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-sm font-medium text-accent-amber shadow-sm"
-          >
-            <span className="size-2 rounded-full bg-accent-amber animate-pulse" aria-hidden="true" />
-            {!isOnline ? "You're offline — reviews are saved locally" : 'Syncing offline reviews…'}
-            {queuedCount > 0 && ` (${queuedCount} queued)`}
-          </div>
-        )}
-
-        {/* Undo Error Banner */}
-        {undoMutation.isError && (
-          <p
-            role="status"
-            aria-live="polite"
-            className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm font-medium text-accent-red shadow-sm"
-          >
-            Couldn't undo that rating on the server — it may still count toward scheduling.
+          <p aria-live="polite" className="sr-only">
+            {announcement}
           </p>
-        )}
 
-        {/* Auto-Graduated Banner */}
-        {autoGraduatedCount > 0 && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-sm text-accent-emerald shadow-sm"
-          >
-            <div className="flex items-center gap-2 font-medium">
-              <CheckCircle2 className="size-4 shrink-0 text-accent-emerald" />
-              <p>
-                {autoGraduatedCount} word{autoGraduatedCount === 1 ? '' : 's'} auto-marked as known
+          {/* Offline / Queued Status Banner */}
+          {(!isOnline || queuedCount > 0) && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-center gap-2 rounded-2xl border border-amber-300/30 bg-amber-300/10 px-3.5 py-2 text-xs font-medium text-accent-amber shadow-sm"
+            >
+              <span className="size-2 rounded-full bg-accent-amber animate-pulse" aria-hidden="true" />
+              {!isOnline ? "You're offline — reviews are saved locally" : 'Syncing offline reviews…'}
+              {queuedCount > 0 && ` (${queuedCount} queued)`}
+            </div>
+          )}
+
+          {/* Undo Error Banner */}
+          {undoMutation.isError && (
+            <p
+              role="status"
+              aria-live="polite"
+              className="rounded-2xl border border-red-400/30 bg-red-500/10 px-3.5 py-2 text-xs font-medium text-accent-red shadow-sm"
+            >
+              Couldn't undo that rating on the server — it may still count toward scheduling.
+            </p>
+          )}
+
+          {/* Auto-Graduated Banner */}
+          {autoGraduatedCount > 0 && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-3.5 py-2 text-xs text-accent-emerald shadow-sm"
+            >
+              <div className="flex items-center gap-2 font-medium">
+                <CheckCircle2 className="size-3.5 shrink-0 text-accent-emerald" />
+                <p>
+                  {autoGraduatedCount} word{autoGraduatedCount === 1 ? '' : 's'} auto-marked as known
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/known-words"
+                  className="content-center rounded-lg px-2 font-semibold underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  Review / undo
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setAutoGraduatedCount(0)}
+                  aria-label="Dismiss"
+                  className="flex size-7 items-center justify-center rounded-lg text-lg text-surface-400 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Progress Bar & Counter */}
+          {queue && card && entry && (
+            <div className="flex items-center gap-3 px-1">
+              <div
+                className="h-2 flex-1 overflow-hidden rounded-full bg-surface-800/80 shadow-inner"
+                aria-hidden="true"
+              >
+                <motion.div
+                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-sky-500 to-indigo-400"
+                  initial={false}
+                  animate={{ width: `${(index / queue.length) * 100}%` }}
+                  transition={spring}
+                />
+              </div>
+              <p className="text-xs font-semibold tabular-nums text-surface-400">
+                {index + 1} / {queue.length}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <Link
-                to="/known-words"
-                className="min-h-11 content-center rounded-lg px-2.5 font-semibold underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                Review / undo
-              </Link>
-              <button
-                type="button"
-                onClick={() => setAutoGraduatedCount(0)}
-                aria-label="Dismiss"
-                className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-lg text-surface-400 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              >
-                ×
-              </button>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {isPending && (
-          <div className="flex flex-col items-center justify-center py-16 text-center" aria-live="polite">
-            <div className="size-10 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-            <p className="mt-4 text-sm font-medium text-surface-400">Loading due cards…</p>
+          <div className="flex flex-1 items-center justify-center py-16 text-center" aria-live="polite">
+            <div>
+              <div className="mx-auto size-10 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+              <p className="mt-4 text-sm font-medium text-surface-400">Loading due cards…</p>
+            </div>
           </div>
         )}
 
         {isError && (
-          <div className="rounded-3xl border border-red-500/20 bg-surface-900 p-8 text-center" aria-live="polite">
+          <div className="flex flex-1 items-center justify-center rounded-3xl border border-red-500/20 bg-surface-900 p-8 text-center" aria-live="polite">
             <p className="text-sm font-medium text-accent-red">Couldn't load due cards.</p>
           </div>
         )}
 
         {/* All Caught Up State */}
         {queue && queue.length === 0 && (
-          <div className="rounded-3xl border border-surface-800 bg-surface-900 p-8 sm:p-12 text-center shadow-xl backdrop-blur-md">
+          <div className="flex flex-1 flex-col items-center justify-center rounded-3xl border border-surface-800 bg-surface-900 p-8 sm:p-12 text-center shadow-xl backdrop-blur-md">
             <div className="mx-auto flex size-16 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-accent-emerald">
               <Check className="size-8" />
             </div>
@@ -1137,54 +1177,38 @@ export function ReviewSession() {
 
         {/* Active Flashcard View */}
         {queue && card && entry && (
-          <>
-            {/* Progress Bar & Counter */}
-            <div className="flex items-center gap-3 px-1">
-              <div
-                className="h-2 flex-1 overflow-hidden rounded-full bg-surface-800/80 shadow-inner"
-                aria-hidden="true"
-              >
-                <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-sky-500 to-indigo-400"
-                  initial={false}
-                  animate={{ width: `${(index / queue.length) * 100}%` }}
-                  transition={spring}
-                />
-              </div>
-              <p className="text-xs font-semibold tabular-nums text-surface-400">
-                {index + 1} / {queue.length}
-              </p>
-            </div>
-
+          <div className="relative flex flex-1 min-h-0 flex-col">
             {/* Background enrichment pill */}
             {(entry.enrichmentStatus === 'PENDING' || entry.enrichmentStatus === 'ENRICHING') && (
-              <p
-                role="status"
-                className="mx-auto max-w-[fit-content] flex items-center justify-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 px-3 py-1 text-xs font-medium text-accent-amber"
-              >
-                <span
-                  aria-hidden="true"
-                  className="size-3 shrink-0 animate-spin motion-reduce:animate-none rounded-full border-[1.5px] border-accent-amber/30 border-t-accent-amber"
-                />
-                Enriching in background…
-              </p>
+              <div className="shrink-0 pb-2">
+                <p
+                  role="status"
+                  className="mx-auto max-w-[fit-content] flex items-center justify-center gap-2 rounded-full bg-amber-500/10 border border-amber-500/20 px-3 py-1 text-xs font-medium text-accent-amber"
+                >
+                  <span
+                    aria-hidden="true"
+                    className="size-3 shrink-0 animate-spin motion-reduce:animate-none rounded-full border-[1.5px] border-accent-amber/30 border-t-accent-amber"
+                  />
+                  Enriching in background…
+                </p>
+              </div>
             )}
 
             {/* Hidden pronunciation autoplay element */}
             {/* eslint-disable-next-line jsx-a11y/media-has-caption -- pronunciation autoplay, no spoken content beyond the word */}
             <audio ref={autoplayRef} className="hidden" />
 
-            {/* Tactile Flashcard Frame */}
+            {/* Tactile Flashcard Frame (Flex-1 min-h-0) */}
             <div
               {...bindDrag()}
               ref={cardRef}
               role="group"
               aria-label="Flashcard"
-              className="relative touch-pan-y select-none rounded-3xl border border-surface-800/90 bg-surface-900/95 p-6 sm:p-8 shadow-2xl backdrop-blur-md transition-shadow"
+              className="relative flex flex-1 min-h-0 flex-col touch-pan-y select-none rounded-3xl border border-surface-800/90 bg-surface-900/95 shadow-2xl backdrop-blur-md overflow-hidden transition-shadow"
             >
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-400/40 to-transparent"
+                className="pointer-events-none absolute inset-x-0 top-0 z-30 h-px bg-gradient-to-r from-transparent via-indigo-400/40 to-transparent"
               />
 
               {/* Directional Overlay Hints during touch drag */}
@@ -1195,7 +1219,7 @@ export function ReviewSession() {
                     hintRefs.current[r] = el;
                   }}
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-3xl opacity-0 transition-opacity"
+                  className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-3xl opacity-0 transition-opacity"
                 >
                   <span
                     className={`rounded-2xl px-6 py-2.5 text-2xl font-black backdrop-blur-md ${RATING_BADGE_COLORS[r]}`}
@@ -1205,27 +1229,39 @@ export function ReviewSession() {
                 </div>
               ))}
 
-              {/* Card Front */}
-              <CardFront entry={entry} revealed={revealed} />
+              {/* Internal Scrollable Card Body */}
+              <div
+                ref={scrollContainerRef}
+                className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-6 sm:p-8 space-y-4 focus-visible:outline-none vb-card-scroll"
+              >
+                {/* Card Front */}
+                <CardFront entry={entry} revealed={revealed} />
 
-              {/* Card Back / Revealed Details */}
-              {revealed && (
-                <motion.div
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={spring}
-                >
-                  <CardBack
-                    entry={entry}
-                    detail={detail}
-                    onSelectWord={(w) => navigate(`/word/${encodeURIComponent(w)}`)}
-                  />
-                </motion.div>
-              )}
+                {/* Card Back / Revealed Details */}
+                {revealed && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={spring}
+                  >
+                    <CardBack
+                      entry={entry}
+                      detail={detail}
+                      onSelectWord={(w) => navigate(`/word/${encodeURIComponent(w)}`)}
+                    />
+                  </motion.div>
+                )}
+              </div>
+
+              {/* Bottom Scroll Gradient Fade (subtle visual indicator when scrollable) */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-6 bg-gradient-to-t from-surface-900/90 to-transparent"
+              />
             </div>
 
-            {/* Bottom Action / Rating Bar */}
-            <div className="min-h-[5.5rem] pt-1">
+            {/* Bottom Action / Rating Bar (Shrink-0) */}
+            <div className="shrink-0 pt-3">
               <AnimatePresence mode="popLayout" initial={false}>
                 {!revealed ? (
                   <motion.div
@@ -1234,14 +1270,14 @@ export function ReviewSession() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                     transition={springSnappy}
-                    className="space-y-2.5"
+                    className="space-y-2"
                   >
                     <motion.button
                       type="button"
                       onClick={reveal}
                       aria-label="Show answer"
                       whileTap={{ scale: 0.98 }}
-                      className="group flex min-h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-indigo-500 px-6 py-3.5 text-base font-semibold text-white shadow-xl shadow-indigo-500/25 transition-all hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                      className="group flex min-h-13 sm:min-h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-xl shadow-indigo-500/25 transition-all hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                     >
                       <span>Show answer</span>
                       <kbd
@@ -1256,7 +1292,7 @@ export function ReviewSession() {
                     </p>
                   </motion.div>
                 ) : (
-                  <motion.div key="ratings" className="space-y-3">
+                  <motion.div key="ratings" className="space-y-2">
                     <div className="grid grid-cols-4 gap-2 sm:gap-3">
                       {RATINGS.map((r, i) => (
                         <motion.button
@@ -1264,12 +1300,12 @@ export function ReviewSession() {
                           type="button"
                           onClick={() => rate(r)}
                           aria-label={RATING_LABELS[r]}
-                          initial={{ opacity: 0, y: 14, scale: 0.92 }}
+                          initial={{ opacity: 0, y: 12, scale: 0.94 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0 }}
-                          transition={{ ...springSnappy, delay: i * 0.04 }}
+                          transition={{ ...springSnappy, delay: i * 0.03 }}
                           whileTap={{ scale: 0.94 }}
-                          className={`group flex min-h-14 flex-col items-center justify-center rounded-2xl border px-2 py-2.5 text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${RATING_COLORS[r]}`}
+                          className={`group flex min-h-13 sm:min-h-14 flex-col items-center justify-center rounded-2xl border px-2 py-2 text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${RATING_COLORS[r]}`}
                         >
                           <span className="font-bold tracking-tight">{RATING_LABELS[r]}</span>
                           <div className="mt-0.5 flex items-center gap-1.5 opacity-75">
@@ -1291,7 +1327,7 @@ export function ReviewSession() {
                 )}
               </AnimatePresence>
             </div>
-          </>
+          </div>
         )}
 
         {/* Keyboard Shortcuts Modal */}
