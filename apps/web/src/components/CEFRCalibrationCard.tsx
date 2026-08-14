@@ -4,6 +4,7 @@ import { updateCefrLevel } from '../api';
 import { CEFRBadge } from './CEFRBadge';
 import { MAIN_CEFR_LEVELS, CEFR_LEVELS, type MainCefrLevel, type AutoGraduation, type User } from '@vocabahn/shared';
 import { trackEvent } from '../lib/telemetry';
+import { useToast } from './Toast';
 import { Sparkles, Check, ChevronDown, ChevronUp, Compass, Award } from 'lucide-react';
 
 const LEVEL_DESCRIPTIONS: Record<MainCefrLevel, { title: string; desc: string; color: string }> = {
@@ -23,6 +24,7 @@ interface CEFRCalibrationProps {
 
 export function CEFRCalibrationCard({ user, onDismiss, compact = false }: CEFRCalibrationProps) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   const [selectedMain, setSelectedMain] = useState<MainCefrLevel>('B1');
   const [selectedSubLevel, setSelectedSubLevel] = useState<string>('B1.1');
   const [showAdvancedSublevels, setShowAdvancedSublevels] = useState(false);
@@ -40,6 +42,19 @@ export function CEFRCalibrationCard({ user, onDismiss, compact = false }: CEFRCa
       queryClient.invalidateQueries({ queryKey: ['known-words'] });
       queryClient.invalidateQueries({ queryKey: ['courses'] });
       setGraduationInfo(data.graduation);
+      toast.success(`German level calibrated to ${data.user.cefrLevel}`, {
+        id: 'setting:cefrLevel',
+        description:
+          data.graduation && data.graduation.count > 0
+            ? `Auto-graduated ${data.graduation.count} lower-level words.`
+            : 'Card introduction ordering updated.',
+      });
+    },
+    onError: () => {
+      toast.error("Couldn't calibrate level", {
+        id: 'setting:cefrLevel',
+        description: 'Please check your connection and try again.',
+      });
     },
   });
 

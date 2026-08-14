@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { STORY_TOPICS, topicLabel, type Story, type StoryTarget } from '@vocabahn/shared';
+import {
+  STORY_TOPICS,
+  isPresetTopic,
+  topicLabel,
+  type Story,
+  type StoryTarget,
+} from '@vocabahn/shared';
 import { isAxiosError } from 'axios';
 import { ExternalLink, Pause, Play } from 'lucide-react';
 import { MotionConfig } from 'motion/react';
@@ -9,6 +15,7 @@ import {
   completeStory,
   createStory,
   fetchLatestStory,
+  fetchMe,
   fetchStory,
   fetchStoryQuota,
 } from '../api';
@@ -230,11 +237,14 @@ function TopicPicker({
   value,
   onChange,
   disabled,
+  userInterests = [],
 }: {
   value: string | null;
   onChange: (topic: string | null) => void;
   disabled?: boolean;
+  userInterests?: string[];
 }) {
+  const customInterests = userInterests.filter((item) => !isPresetTopic(item));
   const chip = (active: boolean) =>
     `min-h-9 rounded-full border px-3.5 py-1.5 text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 ${
       active
@@ -249,6 +259,17 @@ function TopicPicker({
         <button type="button" onClick={() => onChange(null)} className={chip(value === null)} aria-pressed={value === null}>
           ✨ Surprise me
         </button>
+        {customInterests.map((custom) => (
+          <button
+            key={custom}
+            type="button"
+            onClick={() => onChange(custom)}
+            aria-pressed={value === custom}
+            className={chip(value === custom)}
+          >
+            <span aria-hidden="true">🏷️</span> {custom}
+          </button>
+        ))}
         {STORY_TOPICS.map((topic) => (
           <button
             key={topic.slug}
@@ -281,6 +302,11 @@ export function StoryPage() {
   const [showEnglish, setShowEnglish] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const markedNoteId = useId();
+
+  const { data: user } = useQuery({
+    queryKey: ['me'],
+    queryFn: fetchMe,
+  });
 
   const { data: quota } = useQuery({
     queryKey: ['story-quota'],
@@ -463,7 +489,12 @@ export function StoryPage() {
               that didn't land.
             </p>
 
-            <TopicPicker value={topic} onChange={setTopic} disabled={generate.isPending} />
+            <TopicPicker
+              value={topic}
+              onChange={setTopic}
+              disabled={generate.isPending}
+              userInterests={user?.interests}
+            />
 
             <button
               type="button"

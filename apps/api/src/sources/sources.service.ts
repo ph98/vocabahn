@@ -31,7 +31,7 @@ export class SourcesService {
 
     for (const topic of STORY_TOPIC_SLUGS) {
       let added = 0;
-      for (const feed of TOPIC_FEEDS[topic]) {
+      for (const feed of TOPIC_FEEDS[topic] ?? []) {
         try {
           added += await this.refreshFeed(topic, feed);
         } catch (err) {

@@ -224,17 +224,34 @@ export class AuthService {
   }
 
   /**
-   * Stores the topics a learner wants their stories to be about. Unknown slugs
-   * are dropped rather than rejected: the taxonomy can shrink between a client
-   * build and the server, and a stale chip should not fail the whole save.
+   * Stores the topics a learner wants their stories to be about.
+   * Supports both preset topic slugs and custom personalized topic strings
+   * (sanitized, trimmed, up to 50 chars each, max 50 topics total).
    */
   async updateInterests(userId: string, interests: string[]): Promise<User> {
-    const known = [...new Set(interests)].filter((slug) =>
-      (STORY_TOPIC_SLUGS as string[]).includes(slug),
-    );
+    const seen = new Set<string>();
+    const sanitized: string[] = [];
+
+    for (const raw of interests) {
+      if (typeof raw !== 'string') continue;
+      const clean = raw.trim().replace(/[\r\n\t]+/g, ' ');
+      if (!clean || clean.length > 50) continue;
+
+      const lower = clean.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        // If it matches a preset slug case-insensitively, use the canonical slug
+        const presetSlug = (STORY_TOPIC_SLUGS as string[]).find(
+          (s) => s.toLowerCase() === lower,
+        );
+        sanitized.push(presetSlug ?? clean);
+        if (sanitized.length >= 50) break;
+      }
+    }
+
     const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: { interests: known },
+      data: { interests: sanitized },
     });
     return this.toPublicUser(updated);
   }

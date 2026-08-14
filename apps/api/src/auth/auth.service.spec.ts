@@ -166,4 +166,53 @@ describe('AuthService & OAuth Cookies', () => {
       expect(result.refreshToken).toBe('mock_token');
     });
   });
+
+  describe('updateInterests', () => {
+    it('saves preset topic slugs and custom personalized topics, deduplicating case-insensitively', async () => {
+      mockPrisma.user.update.mockImplementation(async ({ data }: { data: { interests: string[] } }) => ({
+        id: 'user-123',
+        email: 'test@example.com',
+        name: 'Test User',
+        avatarUrl: null,
+        cefrLevel: 'B1.1',
+        interests: data.interests,
+      }));
+
+      const result = await authService.updateInterests('user-123', [
+        'NEWS',
+        'Specialty Coffee',
+        'specialty coffee',
+        '  Formula 1  ',
+        'cinema',
+        '',
+        '   ',
+      ]);
+
+      expect(result.interests).toEqual(['news', 'Specialty Coffee', 'Formula 1', 'cinema']);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-123' },
+        data: { interests: ['news', 'Specialty Coffee', 'Formula 1', 'cinema'] },
+      });
+    });
+
+    it('caps interests at 50 items and ignores entries over 50 chars', async () => {
+      mockPrisma.user.update.mockImplementation(async ({ data }: { data: { interests: string[] } }) => ({
+        id: 'user-123',
+        email: 'test@example.com',
+        name: 'Test User',
+        avatarUrl: null,
+        cefrLevel: 'B1.1',
+        interests: data.interests,
+      }));
+
+      const longTopic = 'a'.repeat(55);
+      const input = [longTopic, ...Array.from({ length: 60 }, (_, i) => `Topic ${i}`)];
+
+      const result = await authService.updateInterests('user-123', input);
+
+      expect(result.interests).toHaveLength(50);
+      expect(result.interests).not.toContain(longTopic);
+      expect(result.interests[0]).toBe('Topic 0');
+    });
+  });
 });

@@ -183,19 +183,27 @@ export class StoriesService {
 
   /**
    * Which subject this story is about: what the learner asked for, else one of
-   * their stated interests, else nothing — an unsourced story rather than a
-   * subject they never chose.
+   * their stated interests (preset or custom), else nothing — an unsourced story
+   * rather than a subject they never chose.
    *
    * Interests are sampled rather than cycled in order, so a learner who picked
-   * three topics gets a mix instead of the first one every morning.
+   * multiple topics gets a mix instead of the first one every morning.
    */
   private resolveTopic(requested: string | undefined, interests: string[]): string | null {
-    if (requested && (STORY_TOPIC_SLUGS as string[]).includes(requested)) return requested;
-    // An unknown slug is a client bug, not a reason to fail the request; fall
-    // through to the learner's own interests.
-    const known = interests.filter((slug) => (STORY_TOPIC_SLUGS as string[]).includes(slug));
-    if (known.length === 0) return null;
-    return known[Math.floor(Math.random() * known.length)] ?? null;
+    if (requested && typeof requested === 'string') {
+      const clean = requested.trim();
+      if (clean.length > 0 && clean.length <= 50) {
+        const preset = (STORY_TOPIC_SLUGS as string[]).find(
+          (s) => s.toLowerCase() === clean.toLowerCase(),
+        );
+        return preset ?? clean;
+      }
+    }
+    const valid = (interests ?? []).filter(
+      (slug) => typeof slug === 'string' && slug.trim().length > 0,
+    );
+    const chosen = valid[Math.floor(Math.random() * valid.length)];
+    return chosen ? chosen.trim() : null;
   }
 
   async get(userId: string, storyId: string): Promise<SharedStory> {

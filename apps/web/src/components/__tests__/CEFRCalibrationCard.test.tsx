@@ -20,7 +20,7 @@ const MOCK_USER: User = {
 };
 
 describe('CEFRCalibrationCard', () => {
-  it('renders calibration choices and allows setting a level', async () => {
+  it('renders calibration choices and allows setting a level with toast feedback', async () => {
     vi.mocked(updateCefrLevel).mockResolvedValue({
       user: { ...MOCK_USER, cefrLevel: 'B1.1' },
       graduation: { count: 3, words: ['hallo', 'danke', 'ja'] },
@@ -37,5 +37,18 @@ describe('CEFRCalibrationCard', () => {
 
     await waitFor(() => expect(updateCefrLevel).toHaveBeenCalledWith('B1.1'));
     expect(screen.getByText('German Level Calibrated!')).toBeInTheDocument();
+    expect(await screen.findByText(/German level calibrated to B1.1/)).toBeInTheDocument();
+  });
+
+  it('shows an error toast if calibration fails', async () => {
+    vi.mocked(updateCefrLevel).mockRejectedValue(new Error('Network error'));
+
+    renderWithProviders(<CEFRCalibrationCard user={MOCK_USER} />);
+
+    const saveButton = screen.getByRole('button', { name: /Set Level to B1/i });
+    fireEvent.click(saveButton);
+
+    await waitFor(() => expect(updateCefrLevel).toHaveBeenCalledWith('B1.1'));
+    expect(await screen.findByText("Couldn't calibrate level")).toBeInTheDocument();
   });
 });
