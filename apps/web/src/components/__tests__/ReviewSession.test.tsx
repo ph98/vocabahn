@@ -424,3 +424,72 @@ describe('ReviewSession analytics', () => {
     expect(JSON.stringify(sentEvents())).not.toContain('deck-1');
   });
 });
+
+describe('ReviewSession keyboard navigation & shortcuts', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    globalThis.indexedDB = new IDBFactory();
+    forceReducedMotion();
+    setOnline(true);
+    vi.mocked(fetchDueCards).mockResolvedValue([CARD, SECOND_CARD]);
+    vi.mocked(fetchDictionaryEntry).mockImplementation((word: string) =>
+      Promise.resolve({ ...ENTRY_DETAIL, id: `entry-${word}`, word, gender: 'n', cefrLevel: 'A1' }),
+    );
+    vi.mocked(submitReview).mockResolvedValue({ card: CARD, autoGraduated: null });
+    vi.mocked(undoLastReview).mockResolvedValue({ card: CARD, undoneRating: 'GOOD', revertedGraduation: false });
+    vi.mocked(syncReviews).mockResolvedValue(0);
+  });
+
+  it('reveals answer on Space key and rates with number keys 1-4', async () => {
+    renderWithProviders(<ReviewSession />);
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+
+    // Press Space to reveal
+    fireEvent.keyDown(window, { code: 'Space', key: ' ' });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Good' })).toBeInTheDocument());
+
+    // Press '3' to rate Good
+    fireEvent.keyDown(window, { key: '3', code: 'Digit3' });
+    await waitFor(() => expect(submitReview).toHaveBeenCalledWith('card-1', expect.objectContaining({ rating: 'GOOD' })));
+    await waitFor(() => expect(screen.getByText('Baum')).toBeInTheDocument());
+  });
+
+  it('rates with arrow keys', async () => {
+    renderWithProviders(<ReviewSession />);
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+
+    // Rate Again directly with ArrowLeft
+    fireEvent.keyDown(window, { key: 'ArrowLeft', code: 'ArrowLeft' });
+    await waitFor(() => expect(submitReview).toHaveBeenCalledWith('card-1', expect.objectContaining({ rating: 'AGAIN' })));
+    await waitFor(() => expect(screen.getByText('Baum')).toBeInTheDocument());
+  });
+
+  it('opens and closes the keyboard shortcuts modal', async () => {
+    renderWithProviders(<ReviewSession />);
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+
+    // Open with '?' button
+    const shortcutsBtn = screen.getByRole('button', { name: 'Keyboard shortcuts' });
+    fireEvent.click(shortcutsBtn);
+
+    expect(screen.getByRole('dialog', { name: 'Keyboard Shortcuts' })).toBeInTheDocument();
+    expect(screen.getByText('Reveal card answer')).toBeInTheDocument();
+
+    // Close with Escape key
+    fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Keyboard Shortcuts' })).not.toBeInTheDocument();
+  });
+
+  it('renders gender article and CEFR badges when available', async () => {
+    renderWithProviders(<ReviewSession />);
+    await waitFor(() => expect(screen.getByText('Haus')).toBeInTheDocument());
+
+    // Reveal to load detail with gender 'n' and CEFR 'A1'
+    fireEvent.click(screen.getByRole('button', { name: 'Show answer' }));
+    await waitFor(() => {
+      expect(screen.getAllByText('das').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText('A1').length).toBeGreaterThanOrEqual(1);
+    });
+  });
+});
+
