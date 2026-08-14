@@ -12,6 +12,14 @@ vi.mock('../../api', () => ({
   fetchLatestStory: vi.fn(),
   completeStory: vi.fn(),
   fetchStoryQuota: vi.fn().mockResolvedValue({ used: 1, cap: 10 }),
+  fetchMe: vi.fn().mockResolvedValue({
+    id: 'user-1',
+    email: 'user@example.com',
+    name: 'Test User',
+    avatarUrl: null,
+    cefrLevel: 'B1.1',
+    interests: [],
+  }),
   // Never called from a story. Looking a word up through the dictionary would
   // trigger lazy enrichment and spend the learner's daily quota, so the story
   // payload carries what the popover shows.

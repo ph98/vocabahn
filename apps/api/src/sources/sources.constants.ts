@@ -23,7 +23,7 @@ export interface FeedDefinition {
  * `everyday` deliberately has no feed: there is no news wire for "ordinary
  * life", so that topic generates unsourced fiction, which is the honest answer.
  */
-export const TOPIC_FEEDS: Record<StoryTopic, FeedDefinition[]> = {
+export const TOPIC_FEEDS: Partial<Record<StoryTopic, FeedDefinition[]>> = {
   news: [{ url: 'https://www.tagesschau.de/index~rss2.xml', sourceName: 'tagesschau' }],
   football: [{ url: 'https://newsfeed.kicker.de/news/aktuell', sourceName: 'kicker' }],
   sport: [{ url: 'https://www.sportschau.de/index~rss2.xml', sourceName: 'Sportschau' }],

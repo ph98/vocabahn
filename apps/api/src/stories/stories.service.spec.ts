@@ -311,13 +311,20 @@ describe('StoriesService', () => {
       expect(createdData().topic).toBe('science');
     });
 
-    it('ignores an unknown slug rather than failing the request', async () => {
+    it('uses a custom topic when explicitly requested', async () => {
       prisma.user.findUnique.mockResolvedValue({ cefrLevel: 'B1.1', interests: ['science'] });
 
-      await service.create('user-1', 'UTC', 'not-a-topic');
+      await service.create('user-1', 'UTC', 'Specialty Coffee');
 
-      // The bad slug is dropped and the learner's own interest is used instead.
-      expect(createdData().topic).toBe('science');
+      expect(createdData().topic).toBe('Specialty Coffee');
+    });
+
+    it('falls back to custom interest when no topic is requested', async () => {
+      prisma.user.findUnique.mockResolvedValue({ cefrLevel: 'B1.1', interests: ['Formula 1'] });
+
+      await service.create('user-1');
+
+      expect(createdData().topic).toBe('Formula 1');
     });
 
     it('leaves the topic null when the learner has stated no interests', async () => {

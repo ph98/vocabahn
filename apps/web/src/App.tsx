@@ -527,7 +527,7 @@ export default function App() {
                 <Route path="/known-words" element={<KnownWordsPage />} />
                 <Route path="/decks" element={<Navigate to="/library" replace />} />
                 <Route path="/decks/:id" element={<DeckDetailPage />} />
-                <Route path="/profile" element={<div className="mx-auto max-w-sm"><ProfilePage /></div>} />
+                <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/help" element={<HelpPage />} />
                 <Route path="/guide" element={<Navigate to="/help" replace />} />
                 <Route path="/status" element={<div className="mx-auto max-w-sm"><StatusPage /></div>} />

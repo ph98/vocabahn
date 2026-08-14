@@ -45,7 +45,7 @@ export const userSchema = z.object({
 export type User = z.infer<typeof userSchema>;
 
 export const updateInterestsSchema = z.object({
-  interests: z.array(z.string()).max(20),
+  interests: z.array(z.string().min(1).max(50)).max(50),
 });
 
 export type UpdateInterestsBody = z.infer<typeof updateInterestsSchema>;
