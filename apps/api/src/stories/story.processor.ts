@@ -2,6 +2,7 @@ import { OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { topicLabel } from '@vocabahn/shared';
+import { DictionaryService } from '../dictionary/dictionary.service';
 import { UnsplashProvider } from '../images/unsplash.provider';
 import { PrismaService } from '../prisma/prisma.service';
 import { TtsProvider } from '../tts/tts.provider';
@@ -22,6 +23,7 @@ export class StoryProcessor extends WorkerHost {
     private readonly storyProvider: StoryProvider,
     private readonly tts: TtsProvider,
     private readonly unsplash: UnsplashProvider,
+    private readonly dictionary: DictionaryService,
   ) {
     super();
   }
@@ -108,8 +110,28 @@ export class StoryProcessor extends WorkerHost {
       this.tts.synthesize(`story-${storyId}`, generated.text),
     );
 
+    // Resolve dictionary entries for all words in the story so every word is interactive
+    const allWords = [...new Set(generated.text.match(/[\p{L}ÄÖÜäöüß-]+/gu) || [])];
+    const resolvedMap = await this.dictionary.resolveWordsToEntries(allWords);
+
+    const finalTargets: { dictionaryEntryId: string; surfaceForm: string }[] = [];
+    const seenEntryIds = new Set<string>();
+
+    for (const v of verified) {
+      seenEntryIds.add(v.entryId);
+      finalTargets.push({ dictionaryEntryId: v.entryId, surfaceForm: v.surfaceForm });
+    }
+
+    for (const word of allWords) {
+      const match = resolvedMap.get(word.toLowerCase()) ?? resolvedMap.get(word);
+      if (match && !seenEntryIds.has(match.id)) {
+        seenEntryIds.add(match.id);
+        finalTargets.push({ dictionaryEntryId: match.id, surfaceForm: word });
+      }
+    }
+
     await this.prisma.$transaction([
-      // Drop the placeholders; keep only words the text really contains.
+      // Drop the placeholders; keep verified words and all story words.
       this.prisma.storyTarget.deleteMany({ where: { storyId } }),
       this.prisma.story.update({
         where: { id: storyId },
@@ -141,8 +163,8 @@ export class StoryProcessor extends WorkerHost {
                 sourcePublished: null,
               }),
           targets: {
-            create: verified.map((t) => ({
-              dictionaryEntryId: t.entryId,
+            create: finalTargets.map((t) => ({
+              dictionaryEntryId: t.dictionaryEntryId,
               surfaceForm: t.surfaceForm,
             })),
           },

@@ -35,15 +35,17 @@ const SIZE_CLASSES = {
 
 export function CEFRBadge({ level, size = 'md', className = '' }: CEFRBadgeProps) {
   const normLevel = level?.toUpperCase() || 'A1';
-  const style: LevelStyle = LEVEL_COLORS[normLevel] ?? DEFAULT_STYLE;
+  const baseKey = normLevel.length >= 2 ? normLevel.slice(0, 2) : normLevel;
+  const style: LevelStyle = LEVEL_COLORS[normLevel] ?? LEVEL_COLORS[baseKey] ?? DEFAULT_STYLE;
   const sizeStyle = SIZE_CLASSES[size] ?? SIZE_CLASSES.md;
 
   return (
     <span
       className={`inline-flex items-center justify-center font-mono font-extrabold tracking-wider backdrop-blur-md transition-all duration-300 ${style.bg} ${style.text} ${style.border} ${style.glow} ${sizeStyle} ${className}`}
+      aria-label={`CEFR Level ${normLevel}`}
     >
       <svg
-        className="w-3.5 h-3.5 mr-1 fill-current opacity-80"
+        className="w-3.5 h-3.5 mr-1 fill-current opacity-80 shrink-0"
         viewBox="0 0 24 24"
         aria-hidden="true"
       >

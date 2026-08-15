@@ -15,17 +15,33 @@ export interface StorySegment {
  */
 export function segmentStory(text: string, targets: StoryTarget[]): StorySegment[] {
   if (!text) return [];
-  const bySurface = new Map(targets.filter((t) => t.surfaceForm).map((t) => [t.surfaceForm, t]));
-  if (bySurface.size === 0) return [{ text }];
+  const validTargets = targets.filter((t) => t.surfaceForm || t.word);
+  if (validTargets.length === 0) return [{ text }];
 
-  const alternatives = [...bySurface.keys()]
+  const bySurface = new Map<string, StoryTarget>();
+  const bySurfaceLower = new Map<string, StoryTarget>();
+  const byWordLower = new Map<string, StoryTarget>();
+
+  for (const t of validTargets) {
+    if (t.surfaceForm) {
+      bySurface.set(t.surfaceForm, t);
+      bySurfaceLower.set(t.surfaceForm.toLowerCase(), t);
+    }
+    if (t.word) {
+      byWordLower.set(t.word.toLowerCase(), t);
+    }
+  }
+
+  const keys = [...new Set([...bySurface.keys(), ...validTargets.map((t) => t.surfaceForm).filter(Boolean)])]
     // Longest first so a compound wins over a word nested inside it.
     .sort((a, b) => b.length - a.length)
     .map(escapeRegExp);
 
+  if (keys.length === 0) return [{ text }];
+
   // \b is ASCII-only in JS, which breaks on umlauts and ß. Letter lookarounds
   // give the same "whole word" behaviour across the full Unicode range.
-  const pattern = new RegExp(`(?<!\\p{L})(?:${alternatives.join('|')})(?!\\p{L})`, 'gu');
+  const pattern = new RegExp(`(?<!\\p{L})(?:${keys.join('|')})(?!\\p{L})`, 'gu');
 
   const segments: StorySegment[] = [];
   let cursor = 0;
@@ -33,8 +49,13 @@ export function segmentStory(text: string, targets: StoryTarget[]): StorySegment
   for (const match of text.matchAll(pattern)) {
     const start = match.index;
     if (start > cursor) segments.push({ text: text.slice(cursor, start) });
-    segments.push({ text: match[0], target: bySurface.get(match[0]) });
-    cursor = start + match[0].length;
+    const matchedText = match[0];
+    const target =
+      bySurface.get(matchedText) ??
+      bySurfaceLower.get(matchedText.toLowerCase()) ??
+      byWordLower.get(matchedText.toLowerCase());
+    segments.push({ text: matchedText, target });
+    cursor = start + matchedText.length;
   }
   if (cursor < text.length) segments.push({ text: text.slice(cursor) });
 

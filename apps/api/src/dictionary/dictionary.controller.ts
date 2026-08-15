@@ -49,9 +49,10 @@ export class DictionaryController {
   getEntry(
     @Param('word') word: string,
     @CurrentUserId() userId: string,
+    @Query('pos') pos?: string,
     @Query('timezone') timezone?: string,
   ): Promise<DictionaryEntryDetail> {
-    return this.dictionary.getEntry(word, userId, timezone);
+    return this.dictionary.getEntry(word, userId, pos, timezone);
   }
 }
 

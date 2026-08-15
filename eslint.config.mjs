@@ -11,8 +11,11 @@ export default tseslint.config(
       '**/node_modules/**',
       '.adminjs',
       '**/.adminjs/**',
+      'worktrees',
+      '**/worktrees/**',
       '**/*.config.*',
     ],
+
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

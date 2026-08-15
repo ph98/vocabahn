@@ -36,3 +36,7 @@ test-results/
 # Production Deployment
 backups/
 ssl/
+
+# Local git worktrees
+worktrees/
+

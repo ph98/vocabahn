@@ -91,5 +91,87 @@ describe('DictionaryService', () => {
       expect(result).toBeNull();
       expect(mockEnrichment.requestEnrichment).not.toHaveBeenCalled();
     });
+
+    it('filters by pos when pos is specified', async () => {
+      mockPrisma.dictionaryEntry.findFirst.mockResolvedValue(null);
+      mockPrisma.lexiconEntry.findMany.mockResolvedValue([
+        {
+          id: 'lex-verb',
+          word: 'weis',
+          pos: 'verb',
+          senses: [{ tags: [] }],
+          _count: { senses: 1 },
+        },
+      ]);
+      mockPrisma.dictionaryEntry.create.mockResolvedValue({
+        id: 'entry-verb',
+        word: 'weis',
+      });
+
+      const result = await service.findOrCreateEntry('weis', 'verb');
+
+      expect(result).toEqual({ id: 'entry-verb', word: 'weis' });
+      expect(mockPrisma.lexiconEntry.findMany).toHaveBeenCalledWith({
+        where: {
+          word: { equals: 'weis', mode: 'insensitive' },
+          pos: 'verb',
+        },
+        select: expect.anything(),
+      });
+      expect(mockPrisma.dictionaryEntry.create).toHaveBeenCalledWith({
+        data: { lexiconEntryId: 'lex-verb', word: 'weis' },
+        select: { id: true, word: true },
+      });
+    });
+  });
+
+  describe('getEntry', () => {
+    it('queries dictionaryEntry with pos filter when pos is provided', async () => {
+      const mockEntry = {
+        id: 'entry-verb',
+        word: 'weis',
+        translation: 'to point',
+        emoji: '👉',
+        cefrLevel: 'B1.1',
+        usageNote: null,
+        collocations: null,
+        falseFriends: null,
+        register: null,
+        mnemonic: null,
+        imageUrl: null,
+        audioUrl: null,
+        enrichmentStatus: 'ENRICHED',
+        examples: [],
+        imageCredit: null,
+        _count: { quizQuestions: 1 },
+        lexiconEntry: {
+          id: 'lex-verb',
+          word: 'weis',
+          pos: 'verb',
+          gender: null,
+          ipa: '/vaɪ̯s/',
+          hyphenation: 'weis',
+          etymology: null,
+          frequencyRank: 500,
+          raw: {},
+          senses: [{ glosses: ['to point', 'to show'], tags: [], topics: [], synonyms: [], antonyms: [] }],
+          forms: [],
+        },
+      };
+
+      mockPrisma.dictionaryEntry.findFirst.mockResolvedValue(mockEntry);
+
+      const result = await service.getEntry('weis', 'user-1', 'verb');
+
+      expect(result.id).toBe('entry-verb');
+      expect(result.pos).toBe('verb');
+      expect(mockPrisma.dictionaryEntry.findFirst).toHaveBeenCalledWith({
+        where: {
+          word: 'weis',
+          lexiconEntry: { pos: 'verb' },
+        },
+        include: expect.anything(),
+      });
+    });
   });
 });

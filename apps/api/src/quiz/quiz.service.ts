@@ -37,8 +37,8 @@ export class QuizService {
    * tab. Resolving through `findOrCreateEntry` keeps inflected forms working
    * (`Hunde` → `Hund`) and never spends enrichment quota.
    */
-  async getQuiz(word: string, userId: string): Promise<EntryQuizResponse> {
-    const resolved = await this.dictionary.findOrCreateEntry(word);
+  async getQuiz(word: string, userId: string, pos?: string): Promise<EntryQuizResponse> {
+    const resolved = await this.dictionary.findOrCreateEntry(word, pos);
     if (!resolved) {
       throw new NotFoundException(`No dictionary entry for "${word}"`);
     }

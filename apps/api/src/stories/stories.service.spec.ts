@@ -74,7 +74,41 @@ describe('StoriesService', () => {
 
   beforeEach(() => {
     prisma = {
-      card: { findMany: vi.fn().mockResolvedValue([]) },
+      card: {
+        findMany: vi.fn().mockResolvedValue([]),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'card-1',
+          userId: 'user-1',
+          dictionaryEntryId: 'e2',
+          state: 'NEW',
+          stability: 0,
+          difficulty: 0,
+          reps: 0,
+          lapses: 0,
+          due: new Date(),
+          lastReview: null,
+          knownState: 'ACTIVE',
+          reviewLogs: [],
+          user: { cefrLevel: 'B1.1' },
+          dictionaryEntry: { cefrLevel: 'B1.1', lexiconEntry: { frequencyRank: 500 } },
+        }),
+        upsert: vi.fn().mockResolvedValue({
+          id: 'card-1',
+          userId: 'user-1',
+          dictionaryEntryId: 'e2',
+          state: 'NEW',
+          stability: 0,
+          difficulty: 0,
+          reps: 0,
+          lapses: 0,
+          due: new Date(),
+          lastReview: null,
+          knownState: 'ACTIVE',
+        }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      reviewLog: { create: vi.fn().mockResolvedValue({}), findMany: vi.fn().mockResolvedValue([]) },
+      knowledgeScore: { upsert: vi.fn().mockResolvedValue({}) },
       user: {
         findUnique: vi.fn().mockResolvedValue({ cefrLevel: 'B1.1', interests: [] }),
       },
@@ -84,18 +118,20 @@ describe('StoriesService', () => {
         findFirst: vi.fn(),
         update: vi.fn(),
       },
-      storyTarget: { updateMany: vi.fn() },
+      storyTarget: { updateMany: vi.fn(), createMany: vi.fn().mockResolvedValue({ count: 0 }) },
       $transaction: vi.fn().mockResolvedValue([]),
     };
     queue = { add: vi.fn().mockResolvedValue(undefined) };
     redis = { get: vi.fn().mockResolvedValue(null), incr: vi.fn().mockResolvedValue(1), expire: vi.fn() };
     // No feed item by default; the source-picking tests opt in explicitly.
     sources = { pickForUser: vi.fn().mockResolvedValue(null) };
+    const dictionary = { resolveWordsToEntries: vi.fn().mockResolvedValue(new Map()) };
 
     service = new StoriesService(
       prisma as unknown as PrismaService,
       new KnowledgeService(prisma as unknown as PrismaService),
       sources as never,
+      dictionary as never,
       queue as never,
       redis as never,
     );
@@ -394,7 +430,9 @@ describe('StoriesService', () => {
 
   describe('latest', () => {
     it('returns the most recent unfinished story', async () => {
-      prisma.story.findFirst.mockResolvedValue(readyStory());
+      const storyObj = readyStory();
+      prisma.story.findFirst.mockResolvedValue(storyObj);
+      prisma.story.findUnique.mockResolvedValue(storyObj);
 
       const story = await service.latest('user-1');
 
@@ -550,6 +588,91 @@ describe('StoriesService', () => {
         where: { storyId: 'story-1', dictionaryEntryId: { notIn: [] } },
         data: { understood: true, respondedAt: expect.any(Date) },
       });
+    });
+  });
+
+  describe('interact', () => {
+    it('records CLICK_HARD interaction and schedules card with HARD rating in FSRS', async () => {
+      prisma.story.findUnique.mockResolvedValue({ id: 'story-1', userId: 'user-1' });
+
+      const res = await service.interact('user-1', 'story-1', {
+        entryId: 'e2',
+        action: 'CLICK_HARD',
+      });
+
+      expect(res).toEqual({ success: true, cardId: 'card-1', rating: 'HARD' });
+      expect(prisma.card.upsert).toHaveBeenCalledWith({
+        where: { userId_dictionaryEntryId: { userId: 'user-1', dictionaryEntryId: 'e2' } },
+        create: {
+          userId: 'user-1',
+          dictionaryEntryId: 'e2',
+          knownState: 'ACTIVE',
+          state: 'NEW',
+        },
+        update: {},
+      });
+      expect(prisma.card.update).toHaveBeenCalledWith({
+        where: { id: 'card-1' },
+        data: expect.objectContaining({ state: expect.any(String) }),
+      });
+      expect(prisma.reviewLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-1',
+          cardId: 'card-1',
+          rating: 'HARD',
+        }),
+      });
+      expect(prisma.$transaction).toHaveBeenCalledOnce();
+    });
+
+    it('records DONT_KNOW_AGAIN interaction and schedules card with AGAIN rating and sets understood to false', async () => {
+      prisma.story.findUnique.mockResolvedValue({ id: 'story-1', userId: 'user-1' });
+
+      const res = await service.interact('user-1', 'story-1', {
+        entryId: 'e2',
+        action: 'DONT_KNOW_AGAIN',
+      });
+
+      expect(res).toEqual({ success: true, cardId: 'card-1', rating: 'AGAIN' });
+      expect(prisma.card.update).toHaveBeenCalled();
+      expect(prisma.reviewLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-1',
+          cardId: 'card-1',
+          rating: 'AGAIN',
+        }),
+      });
+      expect(prisma.storyTarget.updateMany).toHaveBeenCalledWith({
+        where: { storyId: 'story-1', dictionaryEntryId: 'e2' },
+        data: { understood: false, respondedAt: expect.any(Date) },
+      });
+    });
+
+    it('resets target comprehension on RESET action', async () => {
+      prisma.story.findUnique.mockResolvedValue({ id: 'story-1', userId: 'user-1' });
+
+      const res = await service.interact('user-1', 'story-1', {
+        entryId: 'e2',
+        action: 'RESET',
+      });
+
+      expect(res).toEqual({ success: true });
+      expect(prisma.storyTarget.updateMany).toHaveBeenCalledWith({
+        where: { storyId: 'story-1', dictionaryEntryId: 'e2' },
+        data: { understood: null, respondedAt: null },
+      });
+      expect(prisma.card.upsert).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException if story does not belong to user', async () => {
+      prisma.story.findUnique.mockResolvedValue({ id: 'story-1', userId: 'other-user' });
+
+      await expect(
+        service.interact('user-1', 'story-1', {
+          entryId: 'e2',
+          action: 'CLICK_HARD',
+        }),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -6,6 +6,7 @@ import { topicLabel } from '@vocabahn/shared';
 import { ProgressBar } from './ProgressBar';
 import { ActivityHeatmap } from './ActivityHeatmap';
 import { CountUp } from './CountUp';
+import { CEFRBadge } from './CEFRBadge';
 import { CEFRCalibrationCard } from './CEFRCalibrationCard';
 import { useRef, type ComponentType } from 'react';
 import gsap from 'gsap';
@@ -256,9 +257,14 @@ export function DashboardPage() {
                 {data.courses.map((course) => (
                   <li key={course.id} className="group">
                     <div className="flex items-center justify-between gap-4">
-                      <Link to={`/courses/${course.slug}`} className="font-medium text-surface-100 group-hover:text-indigo-300 transition-colors text-lg">
-                        {course.title}
-                      </Link>
+                      <div className="flex items-center gap-2.5">
+                        <Link to={`/courses/${course.slug}`} className="font-medium text-surface-100 group-hover:text-indigo-300 transition-colors text-lg">
+                          {course.title}
+                        </Link>
+                        {course.cefrLevel && (
+                          <CEFRBadge level={course.cefrLevel} size="sm" />
+                        )}
+                      </div>
                       {!course.isComplete && (
                         <span className="shrink-0 rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-accent-amber">
                           Incomplete / Beta

@@ -55,7 +55,18 @@ export class CoursesService {
         enrollments: { where: { userId }, select: { id: true } },
         words: {
           orderBy: { order: 'asc' },
-          include: { dictionaryEntry: { select: { id: true, word: true, translation: true, emoji: true, cefrLevel: true } } },
+          include: {
+            dictionaryEntry: {
+              select: {
+                id: true,
+                word: true,
+                translation: true,
+                emoji: true,
+                cefrLevel: true,
+                lexiconEntry: { select: { pos: true } },
+              },
+            },
+          },
         },
       },
     });
@@ -85,9 +96,10 @@ export class CoursesService {
         order: w.order,
         dictionaryEntryId: w.dictionaryEntryId,
         word: w.dictionaryEntry.word,
+        pos: w.dictionaryEntry.lexiconEntry?.pos,
         translation: w.dictionaryEntry.translation,
         emoji: w.dictionaryEntry.emoji,
-        cefrLevel: w.dictionaryEntry.cefrLevel,
+        cefrLevel: w.dictionaryEntry.cefrLevel ?? course.cefrLevel,
         cardState: cardsByEntry.get(w.dictionaryEntryId)?.state ?? null,
       })),
     };

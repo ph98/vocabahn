@@ -4,6 +4,7 @@ import type { FsrsState } from '@vocabahn/shared';
 import { Link, useParams } from 'react-router-dom';
 import { enrollCourse, fetchCourse, unenrollCourse } from '../api';
 import { trackEvent } from '../lib/telemetry';
+import { CEFRBadge } from './CEFRBadge';
 import { ProgressBar } from './ProgressBar';
 import { ErrorStateForError } from './errors';
 
@@ -82,16 +83,14 @@ export function CourseDetailPage() {
               <h2 className="text-xl font-medium">{course.title}</h2>
               {course.description && <p className="mt-1 text-sm text-surface-400">{course.description}</p>}
             </div>
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-2">
               {!course.isComplete && (
                 <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-accent-amber">
                   Incomplete / Beta
                 </span>
               )}
               {course.cefrLevel && (
-                <span className="rounded-full bg-surface-800 px-2.5 py-1 text-xs font-medium text-surface-300">
-                  {course.cefrLevel}
-                </span>
+                <CEFRBadge level={course.cefrLevel} size="sm" />
               )}
             </div>
           </div>
@@ -134,6 +133,7 @@ export function CourseDetailPage() {
             <thead>
               <tr className="border-b border-surface-800 text-surface-400">
                 <th className="py-2 pr-3 font-medium">Word</th>
+                <th className="py-2 pr-3 font-medium">Level</th>
                 <th className="py-2 pr-3 font-medium">Translation</th>
                 {course.enrolled && <th className="py-2 font-medium">Status</th>}
               </tr>
@@ -146,7 +146,7 @@ export function CourseDetailPage() {
                       {w.emoji && <span>{w.emoji}</span>}
                       {w.word}
                       <Link
-                        to={`/word/${encodeURIComponent(w.word)}`}
+                        to={`/word/${encodeURIComponent(w.word)}${w.pos ? `?pos=${encodeURIComponent(w.pos)}` : ''}`}
                         className="inline-flex text-surface-500 hover:text-indigo-400 p-0.5 transition-colors"
                         title="View in dictionary"
                       >
@@ -155,6 +155,13 @@ export function CourseDetailPage() {
                         </svg>
                       </Link>
                     </span>
+                  </td>
+                  <td className="py-1.5 pr-3">
+                    {(w.cefrLevel || course.cefrLevel) ? (
+                      <CEFRBadge level={w.cefrLevel ?? course.cefrLevel!} size="sm" />
+                    ) : (
+                      <span className="text-surface-600">—</span>
+                    )}
                   </td>
                   <td className="py-1.5 pr-3 text-surface-400">{w.translation ?? '—'}</td>
                   {course.enrolled && (

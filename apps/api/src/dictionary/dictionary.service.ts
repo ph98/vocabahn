@@ -68,9 +68,9 @@ export class DictionaryService implements OnModuleInit {
     if (!entry) return;
 
     const result = this.toSearchResult(entry);
-    this.fuse.remove((doc) => doc.word === result.word);
+    this.fuse.remove((doc) => doc.word === result.word && doc.pos === result.pos);
     this.fuse.add(result);
-    this.logger.log(`updated search index for "${result.word}" (${id})`);
+    this.logger.log(`updated search index for "${result.word}" (${result.pos}) (${id})`);
   }
 
   search(q: string): DictionarySearchResult[] {
@@ -83,6 +83,7 @@ export class DictionaryService implements OnModuleInit {
    */
   async findOrCreateEntry(
     word: string,
+    pos?: string,
     depth = 0,
   ): Promise<{ id: string; word: string } | null> {
     const trimmed = word.trim();
@@ -90,11 +91,17 @@ export class DictionaryService implements OnModuleInit {
 
     let entry =
       (await this.prisma.dictionaryEntry.findFirst({
-        where: { word: trimmed },
+        where: {
+          word: trimmed,
+          ...(pos ? { lexiconEntry: { pos } } : {}),
+        },
         select: { id: true, word: true },
       })) ??
       (await this.prisma.dictionaryEntry.findFirst({
-        where: { word: { equals: trimmed, mode: 'insensitive' } },
+        where: {
+          word: { equals: trimmed, mode: 'insensitive' },
+          ...(pos ? { lexiconEntry: { pos } } : {}),
+        },
         select: { id: true, word: true },
       }));
 
@@ -107,7 +114,10 @@ export class DictionaryService implements OnModuleInit {
         _count: { select: { senses: true } },
       } as const;
       const candidates = await this.prisma.lexiconEntry.findMany({
-        where: { word: { equals: trimmed, mode: 'insensitive' } },
+        where: {
+          word: { equals: trimmed, mode: 'insensitive' },
+          ...(pos ? { pos } : {}),
+        },
         select: candidateSelect,
       });
 
@@ -131,7 +141,7 @@ export class DictionaryService implements OnModuleInit {
               lexiconEntry: { pos: best.pos, gender: null, frequencyRank: null },
             }),
           );
-          this.logger.log(`promoted "${best.word}" to active dictionary (pending enrichment)`);
+          this.logger.log(`promoted "${best.word}" (${best.pos}) to active dictionary (pending enrichment)`);
         } catch (err: unknown) {
           if (
             typeof err === 'object' &&
@@ -149,7 +159,7 @@ export class DictionaryService implements OnModuleInit {
       } else if (candidates.length > 0 && depth < 2) {
         const lemmaWord = await this.resolveLemmaWord(candidates.map((c) => c.id));
         if (lemmaWord && lemmaWord.toLowerCase() !== trimmed.toLowerCase()) {
-          return this.findOrCreateEntry(lemmaWord, depth + 1);
+          return this.findOrCreateEntry(lemmaWord, pos, depth + 1);
         }
         return null;
       } else {
@@ -161,6 +171,77 @@ export class DictionaryService implements OnModuleInit {
   }
 
   /**
+   * Resolves a batch of surface words into dictionary entries without enqueuing
+   * background enrichment or consuming quota. Returns a map from normalized surface form
+   * (lowercase) and exact word to the resolved entry ID and headword.
+   */
+  async resolveWordsToEntries(
+    words: string[],
+  ): Promise<Map<string, { id: string; word: string }>> {
+    const map = new Map<string, { id: string; word: string }>();
+    const cleanWords = [
+      ...new Set(
+        words
+          .map((w) => w.trim())
+          .filter((w) => w.length > 0 && /^[\p{L}ÄÖÜäöüß-]+$/u.test(w)),
+      ),
+    ];
+    if (cleanWords.length === 0) return map;
+
+    // 1. Bulk check existing DictionaryEntry
+    const existing = await this.prisma.dictionaryEntry.findMany({
+      where: {
+        OR: [
+          { word: { in: cleanWords } },
+          { word: { in: cleanWords.map((w) => w.toLowerCase()), mode: 'insensitive' } },
+        ],
+      },
+      select: { id: true, word: true },
+    });
+
+    for (const entry of existing) {
+      map.set(entry.word, { id: entry.id, word: entry.word });
+      map.set(entry.word.toLowerCase(), { id: entry.id, word: entry.word });
+    }
+
+    // 2. For words not found, try to resolve/promote
+    const missing = cleanWords.filter(
+      (w) => !map.has(w) && !map.has(w.toLowerCase()),
+    );
+
+    for (const word of missing) {
+      try {
+        const resolved = await this.findOrCreateEntry(word);
+        if (resolved) {
+          map.set(word, resolved);
+          map.set(word.toLowerCase(), resolved);
+          map.set(resolved.word, resolved);
+          map.set(resolved.word.toLowerCase(), resolved);
+        } else {
+          // Check WordForm table for inflected form pointing to a lemma
+          const wordForm = await this.prisma.wordForm.findFirst({
+            where: { form: { equals: word, mode: 'insensitive' } },
+            select: { entry: { select: { word: true } } },
+          });
+          if (wordForm?.entry?.word) {
+            const lemmaResolved = await this.findOrCreateEntry(wordForm.entry.word);
+            if (lemmaResolved) {
+              map.set(word, lemmaResolved);
+              map.set(word.toLowerCase(), lemmaResolved);
+              map.set(lemmaResolved.word, lemmaResolved);
+              map.set(lemmaResolved.word.toLowerCase(), lemmaResolved);
+            }
+          }
+        }
+      } catch {
+        // Ignore single word resolution failure
+      }
+    }
+
+    return map;
+  }
+
+  /**
    * Entry detail by headword. A word that exists in the lexicon but not yet in
    * the active dictionary is promoted to a PENDING stub instantly,
    * and viewing a not-yet-enriched word is what triggers enrichment — paid APIs
@@ -169,6 +250,7 @@ export class DictionaryService implements OnModuleInit {
   async getEntry(
     word: string,
     userId: string,
+    pos?: string,
     timeZone?: string,
     depth = 0,
   ): Promise<DictionaryEntryDetail> {
@@ -189,9 +271,18 @@ export class DictionaryService implements OnModuleInit {
     // German case carries meaning (e.g. "Frau" the noun vs "frau" the pronoun),
     // so an exact-case match must win over a same-spelling different-case entry.
     let entry =
-      (await this.prisma.dictionaryEntry.findFirst({ where: { word }, include })) ??
       (await this.prisma.dictionaryEntry.findFirst({
-        where: { word: { equals: word, mode: 'insensitive' } },
+        where: {
+          word,
+          ...(pos ? { lexiconEntry: { pos } } : {}),
+        },
+        include,
+      })) ??
+      (await this.prisma.dictionaryEntry.findFirst({
+        where: {
+          word: { equals: word, mode: 'insensitive' },
+          ...(pos ? { lexiconEntry: { pos } } : {}),
+        },
         include,
       }));
 
@@ -204,7 +295,10 @@ export class DictionaryService implements OnModuleInit {
         _count: { select: { senses: true } },
       } as const;
       const candidates = await this.prisma.lexiconEntry.findMany({
-        where: { word: { equals: word, mode: 'insensitive' } },
+        where: {
+          word: { equals: word, mode: 'insensitive' },
+          ...(pos ? { pos } : {}),
+        },
         select: candidateSelect,
       });
 
@@ -214,18 +308,33 @@ export class DictionaryService implements OnModuleInit {
         .sort((a, b) => compareLexiconCandidates(a, b, word))[0];
 
       if (best) {
-        entry = await this.prisma.dictionaryEntry.create({
-          data: { lexiconEntryId: best.id, word: best.word },
-          include,
-        });
-        this.fuse.add(this.toSearchResult(entry));
-        this.logger.log(`promoted "${best.word}" to active dictionary (pending enrichment)`);
+        try {
+          entry = await this.prisma.dictionaryEntry.create({
+            data: { lexiconEntryId: best.id, word: best.word },
+            include,
+          });
+          this.fuse.add(this.toSearchResult(entry));
+          this.logger.log(`promoted "${best.word}" (${best.pos}) to active dictionary (pending enrichment)`);
+        } catch (err: unknown) {
+          if (
+            typeof err === 'object' &&
+            err !== null &&
+            'code' in err &&
+            (err as { code: string }).code === 'P2002'
+          ) {
+            entry = await this.prisma.dictionaryEntry.findFirst({
+              where: { lexiconEntryId: best.id },
+              include,
+            });
+          }
+          if (!entry) throw new NotFoundException(`No entry for "${word}"`);
+        }
       } else if (candidates.length > 0 && depth < 2) {
         // The word exists only as an inflected/alternative form: show the
         // lemma's entry with a banner describing this form (e.g. "plural of Hund").
         const lemmaWord = await this.resolveLemmaWord(candidates.map((c) => c.id));
         if (lemmaWord && lemmaWord.toLowerCase() !== word.toLowerCase()) {
-          const lemmaEntry = await this.getEntry(lemmaWord, userId, timeZone, depth + 1);
+          const lemmaEntry = await this.getEntry(lemmaWord, userId, pos, timeZone, depth + 1);
           // Drop Wiktextract's "inflection of X:" boilerplate gloss, keeping
           // only the descriptive part (e.g. "first/third-person plural preterite").
           const descriptions = [
@@ -248,7 +357,8 @@ export class DictionaryService implements OnModuleInit {
 
     // Check for a primary sibling lexicon entry (e.g. "wenn" conj vs "Wenn" noun,
     // or "hallo" intj vs "Hallo" noun) or an alt-of case variant (e.g. "Du" pron -> "du").
-    if (depth < 2) {
+    // ONLY do sibling merge when NO specific POS was requested!
+    if (!pos && depth < 2) {
       const candidateSelect = {
         id: true,
         word: true,
@@ -265,7 +375,7 @@ export class DictionaryService implements OnModuleInit {
         .sort((a, b) => compareLexiconCandidates(a, b))[0];
 
       if (bestSibling && bestSibling.id !== entry.lexiconEntryId) {
-        const merged = await this.getEntry(bestSibling.word, userId, timeZone, depth + 1);
+        const merged = await this.getEntry(bestSibling.word, userId, undefined, timeZone, depth + 1);
         const existingGlosses = new Set(merged.senses.flatMap((s) => s.glosses));
         const extraSenses = entry.lexiconEntry.senses
           .filter((s) => !s.glosses.some((g) => existingGlosses.has(g)))
@@ -287,7 +397,7 @@ export class DictionaryService implements OnModuleInit {
       if (caseVariant) {
         const target = await this.prisma.dictionaryEntry.findFirst({ where: { word: caseVariant }, include });
         if (target && target.id !== entry.id) {
-          const merged = await this.getEntry(caseVariant, userId, timeZone, depth + 1);
+          const merged = await this.getEntry(caseVariant, userId, undefined, timeZone, depth + 1);
           return {
             ...merged,
             word,

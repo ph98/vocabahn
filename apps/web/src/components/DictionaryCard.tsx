@@ -22,6 +22,7 @@ import { prefersReducedMotion } from '../lib/motion';
 import { trackEvent } from '../lib/telemetry';
 import { ErrorStateForError } from './errors';
 import { EntryQuizSection } from './EntryQuiz';
+import { CEFRBadge } from './CEFRBadge';
 import { Tab, TabList, TabPanel } from './Tabs';
 import { UnsplashCredit } from './UnsplashCredit';
 
@@ -56,16 +57,18 @@ function getArticleColor(article: string) {
 
 function EntryDetail({
   word,
+  pos,
   onBack,
   onSelectWord,
 }: {
   word: string;
+  pos?: string;
   onBack: () => void;
-  onSelectWord: (word: string) => void;
+  onSelectWord: (word: string, pos?: string) => void;
 }) {
   const { data: entry, isPending, isError, error, refetch } = useQuery({
-    queryKey: ['dictionary-entry', word],
-    queryFn: () => fetchDictionaryEntry(word),
+    queryKey: ['dictionary-entry', word, pos],
+    queryFn: () => fetchDictionaryEntry(word, pos),
     // Poll while the background pipeline enriches the entry
     refetchInterval: (q) => {
       const status = q.state.data?.enrichmentStatus;
@@ -78,8 +81,8 @@ function EntryDetail({
   // than in `EntryBody`, which a review session renders once per card.
   const viewedWord = useRef<string | null>(null);
   useEffect(() => {
-    if (!entry || viewedWord.current === entry.word) return;
-    viewedWord.current = entry.word;
+    if (!entry || viewedWord.current === `${entry.word}-${entry.pos}`) return;
+    viewedWord.current = `${entry.word}-${entry.pos}`;
     trackEvent('word_view', { enrichment_status: entry.enrichmentStatus });
   }, [entry]);
 
@@ -130,7 +133,7 @@ function EntryDetail({
         />
       )}
       {entry && (
-        <EntryBody key={entry.word} entry={entry} onSelectWord={onSelectWord} showQuiz />
+        <EntryBody key={`${entry.word}-${entry.pos}`} entry={entry} onSelectWord={onSelectWord} showQuiz />
       )}
     </div>
   );
@@ -685,11 +688,11 @@ function FeedbackConfirmation({ show }: { show: boolean }) {
   );
 }
 
-function FeedbackWidget({ word }: { word: string }) {
+function FeedbackWidget({ word, pos }: { word: string; pos?: string }) {
   const queryClient = useQueryClient();
   const { data } = useQuery({
-    queryKey: ['entry-feedback', word],
-    queryFn: () => fetchFeedback(word),
+    queryKey: ['entry-feedback', word, pos],
+    queryFn: () => fetchFeedback(word, pos),
   });
 
   const [vote, setVote] = useState<FeedbackVote | null>(null);
@@ -708,8 +711,8 @@ function FeedbackWidget({ word }: { word: string }) {
   }, [data]);
 
   const mutation = useMutation({
-    mutationFn: (body: SubmitFeedbackBody) => submitFeedback(word, body),
-    onSuccess: (result) => queryClient.setQueryData(['entry-feedback', word], result),
+    mutationFn: (body: SubmitFeedbackBody) => submitFeedback(word, body, pos),
+    onSuccess: (result) => queryClient.setQueryData(['entry-feedback', word, pos], result),
   });
 
   const send = (overrides: Partial<SubmitFeedbackBody>) => {
@@ -830,7 +833,7 @@ export function EntryBody({
   showQuiz = false,
 }: {
   entry: DictionaryEntryDetail;
-  onSelectWord: (word: string) => void;
+  onSelectWord: (word: string, pos?: string) => void;
   /**
    * Off by default: the review session embeds this same body behind "Show
    * answer", and quizzing a word inside a card the learner is already grading
@@ -922,7 +925,7 @@ export function EntryBody({
           {entry.ipa && <span>{entry.ipa}</span>}
           {entry.hyphenation && <span lang="de">{entry.hyphenation}</span>}
           {entry.cefrLevel && (
-            <span className="rounded bg-surface-800 px-1.5 text-surface-300">{entry.cefrLevel}</span>
+            <CEFRBadge level={entry.cefrLevel} size="sm" />
           )}
           {entry.frequencyRank && <span>#{entry.frequencyRank} by frequency</span>}
         </p>
@@ -1071,6 +1074,7 @@ export function EntryBody({
         {activeTab === 'quiz' && (
           <EntryQuizSection
             word={entry.word}
+            pos={entry.pos}
             enrichmentStatus={entry.enrichmentStatus}
             onOpenOverview={() => setActive('overview')}
           />
@@ -1083,14 +1087,16 @@ export function EntryBody({
         )}
       </TabPanel>
 
-      <FeedbackWidget word={entry.word} />
+      <FeedbackWidget word={entry.word} pos={entry.pos} />
     </article>
   );
 }
 
-/** Entry detail page at /word/:word — shareable, deep-linkable. */
+/** Entry detail page at /word/:word (or /word/:word/:pos) — shareable, deep-linkable. */
 export function DictionaryEntryPage() {
-  const { word } = useParams<{ word: string }>();
+  const { word, pos: pathPos } = useParams<{ word: string; pos?: string }>();
+  const [searchParams] = useSearchParams();
+  const pos = pathPos ?? searchParams.get('pos') ?? undefined;
   const navigate = useNavigate();
   if (!word) return null;
 
@@ -1101,8 +1107,15 @@ export function DictionaryEntryPage() {
     >
       <EntryDetail
         word={decodeURIComponent(word)}
+        pos={pos ? decodeURIComponent(pos) : undefined}
         onBack={() => navigate('/')}
-        onSelectWord={(w) => navigate(`/word/${encodeURIComponent(w)}`)}
+        onSelectWord={(w, p) =>
+          navigate(
+            p
+              ? `/word/${encodeURIComponent(w)}?pos=${encodeURIComponent(p)}`
+              : `/word/${encodeURIComponent(w)}`,
+          )
+        }
       />
     </section>
   );
@@ -1172,7 +1185,11 @@ export function DictionaryCard() {
               <li key={`${r.word}-${r.pos}`}>
                 <button
                   type="button"
-                  onClick={() => navigate(`/word/${encodeURIComponent(r.word)}`)}
+                  onClick={() =>
+                    navigate(
+                      `/word/${encodeURIComponent(r.word)}${r.pos ? `?pos=${encodeURIComponent(r.pos)}` : ''}`,
+                    )
+                  }
                   className="flex min-h-11 w-full items-center justify-between gap-2 px-1 py-2 text-left transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >
                   <span className="min-w-0">

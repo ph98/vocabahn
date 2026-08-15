@@ -10,6 +10,10 @@ type MockPrisma = {
     findMany: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
     updateMany: ReturnType<typeof vi.fn>;
+    upsert: ReturnType<typeof vi.fn>;
+  };
+  dictionaryEntry: {
+    findMany: ReturnType<typeof vi.fn>;
   };
   knowledgeScore: {
     upsert: ReturnType<typeof vi.fn>;
@@ -36,6 +40,10 @@ describe('KnowledgeService', () => {
         findMany: vi.fn(),
         update: vi.fn(),
         updateMany: vi.fn(),
+        upsert: vi.fn(),
+      },
+      dictionaryEntry: {
+        findMany: vi.fn(),
       },
       knowledgeScore: {
         upsert: vi.fn(),
@@ -51,6 +59,8 @@ describe('KnowledgeService', () => {
     };
     service = new KnowledgeService(prismaMock as unknown as PrismaService);
   });
+
+
 
   describe('priorScore', () => {
     it('returns 0 if user level is unknown', () => {
@@ -232,4 +242,89 @@ describe('KnowledgeService', () => {
       });
     });
   });
+
+  describe('getDiagnosticProbe', () => {
+    it('returns a battery of probe items covering CEFR levels and pseudo-words', async () => {
+      prismaMock.dictionaryEntry.findMany.mockResolvedValue([
+        { id: 'entry-hallo', word: 'Hallo', cefrLevel: 'A1.1', translation: 'hello' },
+      ]);
+
+      const result = await service.getDiagnosticProbe();
+      expect(result.items.length).toBeGreaterThanOrEqual(30);
+      expect(result.items.some((item) => !item.isReal)).toBe(true);
+      expect(result.items.some((item) => item.word.toLowerCase() === 'hallo')).toBe(true);
+    });
+  });
+
+  describe('calibrateDiagnostic', () => {
+    it('throws BadRequestException if answers are empty', async () => {
+      await expect(service.calibrateDiagnostic('user-1', { answers: [] })).rejects.toThrow('Answers cannot be empty');
+    });
+
+    it('accurately estimates CEFR sub-level and graduates mastered vocabulary', async () => {
+      prismaMock.dictionaryEntry.findMany
+        .mockResolvedValueOnce([
+          { id: 'e-1', word: 'Hallo' },
+          { id: 'e-2', word: 'Tisch' },
+        ])
+        .mockResolvedValueOnce([
+          { id: 'frontier-1', word: 'auswirken', translation: 'have an effect', emoji: '⚡', cefrLevel: 'B1.2' },
+        ]);
+
+      prismaMock.user.update.mockResolvedValue({
+
+        id: 'user-1',
+        email: 'learner@example.com',
+        name: 'Learner',
+        avatarUrl: null,
+        timezone: null,
+        cefrLevel: 'B1.2',
+        interests: [],
+      });
+
+      // User knows all A1.1 to B1.2 words, does not know C-level or pseudo-words
+      const mockAnswers = [
+        // A1.1 to B1.2 -> known
+        { id: '1', word: 'Hallo', isReal: true, known: true },
+        { id: '2', word: 'trinken', isReal: true, known: true },
+        { id: '3', word: 'Tisch', isReal: true, known: true },
+        { id: '4', word: 'einkaufen', isReal: true, known: true },
+        { id: '5', word: 'Bahnhof', isReal: true, known: true },
+        { id: '6', word: 'bezahlen', isReal: true, known: true },
+        { id: '7', word: 'Erfahrung', isReal: true, known: true },
+        { id: '8', word: 'pünktlich', isReal: true, known: true },
+        { id: '9', word: 'empfehlen', isReal: true, known: true },
+        { id: '10', word: 'Zustand', isReal: true, known: true },
+        { id: '11', word: 'verhandeln', isReal: true, known: true },
+        { id: '12', word: 'unabhängig', isReal: true, known: true },
+        { id: '13', word: 'Maßnahme', isReal: true, known: true },
+        { id: '14', word: 'überzeugen', isReal: true, known: true },
+        { id: '15', word: 'verlässlich', isReal: true, known: true },
+        { id: '16', word: 'auswirken', isReal: true, known: true },
+        { id: '17', word: 'Anforderung', isReal: true, known: true },
+        { id: '18', word: 'bewältigen', isReal: true, known: true },
+        // Pseudo-words -> not known (honest answer)
+        { id: 'p1', word: 'knörig', isReal: false, known: false },
+        { id: 'p2', word: 'berumpfen', isReal: false, known: false },
+        { id: 'p3', word: 'frechtlich', isReal: false, known: false },
+        // Advanced C1/C2 -> not known
+        { id: '20', word: 'prägnant', isReal: true, known: false },
+        { id: '21', word: 'beschwichtigen', isReal: true, known: false },
+      ];
+
+      const result = await service.calibrateDiagnostic('user-1', { answers: mockAnswers });
+
+      expect(result.estimatedCefrLevel).toBe('B1.2');
+      expect(result.falseAlarmRate).toBe(0);
+      expect(result.confidenceScore).toBe(1);
+      expect(result.estimatedVocabSize).toBeGreaterThan(1500);
+      expect(result.breakdown.length).toBe(12);
+      expect(prismaMock.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { cefrLevel: 'B1.2' },
+        select: expect.any(Object),
+      });
+    });
+  });
 });
+

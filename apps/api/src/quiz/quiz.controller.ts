@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import {
   submitQuizAttemptBodySchema,
   submitQuizReportBodySchema,
@@ -22,8 +22,9 @@ export class QuizController {
   getQuiz(
     @Param('word') word: string,
     @CurrentUserId() userId: string,
+    @Query('pos') pos?: string,
   ): Promise<EntryQuizResponse> {
-    return this.quiz.getQuiz(word, userId);
+    return this.quiz.getQuiz(word, userId, pos);
   }
 
   @Post('quiz/:questionId/attempt')

@@ -44,6 +44,7 @@ export function StoryWord({
   text,
   open,
   onOpenChange,
+  onWordClick,
   marked,
   onToggleMark,
   markable,
@@ -54,6 +55,7 @@ export function StoryWord({
   text: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onWordClick?: (target: StoryTarget) => void;
   marked: boolean;
   onToggleMark: () => void;
   /** False once the story is finished: the answer is already recorded. */
@@ -226,12 +228,16 @@ export function StoryWord({
         }}
         onClick={() => {
           cancelTimer();
-          onOpenChange(!openBeforePress.current);
+          const next = !openBeforePress.current;
+          onOpenChange(next);
+          if (next && onWordClick) {
+            onWordClick(target);
+          }
         }}
-        className={`rounded underline decoration-dotted underline-offset-4 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+        className={`rounded px-1 py-0.5 underline decoration-dotted underline-offset-4 cursor-pointer transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
           marked
-            ? 'bg-accent-amber/20 text-accent-amber decoration-accent-amber'
-            : 'decoration-surface-500 hover:bg-surface-800'
+            ? 'bg-accent-amber/20 text-accent-amber decoration-accent-amber font-medium'
+            : 'decoration-surface-500 hover:bg-indigo-500/20 hover:text-indigo-200 hover:decoration-indigo-400 dark:hover:bg-indigo-500/25'
         }`}
       >
         {text}
@@ -299,15 +305,15 @@ export function StoryWord({
                   onClick={onToggleMark}
                   className={`${POPOVER_ACTION} ${
                     marked
-                      ? 'border-accent-amber/60 bg-accent-amber/20 text-accent-amber'
+                      ? 'border-accent-amber/60 bg-accent-amber/20 text-accent-amber font-medium'
                       : 'border-surface-700 text-surface-300 hover:bg-surface-800'
                   }`}
                 >
-                  Didn't land
+                  I don't know this word at all
                 </button>
               )}
               <Link
-                to={`/word/${encodeURIComponent(target.word)}`}
+                to={`/word/${encodeURIComponent(target.word)}${target.pos ? `?pos=${encodeURIComponent(target.pos)}` : ''}`}
                 className={`${POPOVER_ACTION} border-surface-700 text-accent-indigo hover:bg-surface-800`}
               >
                 Open in dictionary

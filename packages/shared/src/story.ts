@@ -130,3 +130,21 @@ export const storyQuotaSchema = z.object({
   cap: z.number(),
 });
 export type StoryQuota = z.infer<typeof storyQuotaSchema>;
+
+export const storyInteractActionSchema = z.enum(['CLICK_HARD', 'DONT_KNOW_AGAIN', 'RESET']);
+export type StoryInteractAction = z.infer<typeof storyInteractActionSchema>;
+
+export const storyInteractBodySchema = z.object({
+  entryId: z.string(),
+  action: storyInteractActionSchema,
+  latencyMs: z.number().optional(),
+});
+export type StoryInteractBody = z.infer<typeof storyInteractBodySchema>;
+
+export const storyInteractResponseSchema = z.object({
+  success: z.boolean(),
+  cardId: z.string().optional(),
+  rating: z.enum(['HARD', 'AGAIN']).optional(),
+});
+export type StoryInteractResponse = z.infer<typeof storyInteractResponseSchema>;
+

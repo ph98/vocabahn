@@ -280,16 +280,13 @@ is where the UTM parameters Unsplash requires are applied (`enrichment.md`).
 treats that as an ordinary state: nothing renders, and because the aspect ratio
 is fixed on the `<img>` itself, nothing below it moves when the file arrives.
 
-## The comprehension signal
+## Word-by-Word Interactions and FSRS Evaluation
 
-`StoryTarget.understood` is the record: `false` for a word the learner marked
-**Didn't land**, `true` for every other target in a completed story, `null`
-until completion. `respondedAt` timestamps it.
-
-**Nothing consumes this.** It feeds neither FSRS nor `KnowledgeScore`, and
-tapping a word changes no card's schedule. The rows exist so the signal can be
-designed from real data rather than speculation — see `docs/adr/0001`, which
-proposes an evidence ledger that does not exist.
+Every word in the story is matched to dictionary entries and rendered interactively:
+- **Hover highlighting**: Hovering over any word highlights it.
+- **Clicking a word (`CLICK_HARD`)**: When a learner clicks a word to inspect its dictionary popover, it indicates uncertainty and triggers a review evaluation marking the word as `ReviewRating.HARD` in FSRS, recording a `ReviewLog` and recomputing their knowledge score.
+- **"I don't know this word at all" (`DONT_KNOW_AGAIN`)**: Within the popover, clicking this button marks the word as unknown (`understood: false`) and updates the flashcard in FSRS with rating `ReviewRating.AGAIN`.
+- **`StoryTarget.understood`**: Stores the comprehension signal (`false` for unlearned words, `true` for understood words upon story completion).
 
 ## Quota
 

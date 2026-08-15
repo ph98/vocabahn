@@ -1,6 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ReviewRating, DictionaryEntry } from '@prisma/client';
-import type { AutoGraduation, KnownWord, User as SharedUser } from '@vocabahn/shared';
+import { ReviewRating, DictionaryEntry, Prisma } from '@prisma/client';
+
+import type {
+  AutoGraduation,
+  CalibrateDiagnosticBody,
+  CalibrateDiagnosticResponse,
+  DiagnosticProbeItem,
+  FrontierWord,
+  KnownWord,
+  LevelBreakdownItem,
+  User as SharedUser,
+} from '@vocabahn/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   AUTO_GRADUATE_MIN_REPS,
@@ -45,6 +55,77 @@ export interface NewCardCandidate {
     lexiconEntry: { frequencyRank: number | null };
   };
 }
+
+export interface BenchmarkProbe {
+  word: string;
+  cefrLevel: (typeof CEFR_LEVELS)[number] | null;
+  pos?: string;
+  translation?: string;
+  isReal: boolean;
+}
+
+export const BENCHMARK_PROBES: BenchmarkProbe[] = [
+  // A1.1
+  { word: 'Hallo', cefrLevel: 'A1.1', pos: 'noun', translation: 'hello', isReal: true },
+  { word: 'trinken', cefrLevel: 'A1.1', pos: 'verb', translation: 'to drink', isReal: true },
+  { word: 'Tisch', cefrLevel: 'A1.1', pos: 'noun', translation: 'table', isReal: true },
+  // A1.2
+  { word: 'einkaufen', cefrLevel: 'A1.2', pos: 'verb', translation: 'to shop / buy groceries', isReal: true },
+  { word: 'Bahnhof', cefrLevel: 'A1.2', pos: 'noun', translation: 'train station', isReal: true },
+  { word: 'bezahlen', cefrLevel: 'A1.2', pos: 'verb', translation: 'to pay', isReal: true },
+  // Pseudo-word 1
+  { word: 'knörig', cefrLevel: null, isReal: false },
+  // A2.1
+  { word: 'Erfahrung', cefrLevel: 'A2.1', pos: 'noun', translation: 'experience', isReal: true },
+  { word: 'pünktlich', cefrLevel: 'A2.1', pos: 'adj', translation: 'punctual / on time', isReal: true },
+  { word: 'empfehlen', cefrLevel: 'A2.1', pos: 'verb', translation: 'to recommend', isReal: true },
+  // A2.2
+  { word: 'Zustand', cefrLevel: 'A2.2', pos: 'noun', translation: 'condition / state', isReal: true },
+  { word: 'verhandeln', cefrLevel: 'A2.2', pos: 'verb', translation: 'to negotiate', isReal: true },
+  { word: 'unabhängig', cefrLevel: 'A2.2', pos: 'adj', translation: 'independent', isReal: true },
+  // Pseudo-word 2
+  { word: 'berumpfen', cefrLevel: null, isReal: false },
+  // B1.1
+  { word: 'Maßnahme', cefrLevel: 'B1.1', pos: 'noun', translation: 'measure / action', isReal: true },
+  { word: 'überzeugen', cefrLevel: 'B1.1', pos: 'verb', translation: 'to convince', isReal: true },
+  { word: 'verlässlich', cefrLevel: 'B1.1', pos: 'adj', translation: 'reliable', isReal: true },
+  // B1.2
+  { word: 'auswirken', cefrLevel: 'B1.2', pos: 'verb', translation: 'to have an effect', isReal: true },
+  { word: 'Anforderung', cefrLevel: 'B1.2', pos: 'noun', translation: 'requirement', isReal: true },
+  { word: 'bewältigen', cefrLevel: 'B1.2', pos: 'verb', translation: 'to overcome / manage', isReal: true },
+  // Pseudo-word 3
+  { word: 'frechtlich', cefrLevel: null, isReal: false },
+  // B2.1
+  { word: 'Einschränkung', cefrLevel: 'B2.1', pos: 'noun', translation: 'limitation / restriction', isReal: true },
+  { word: 'verblüffend', cefrLevel: 'B2.1', pos: 'adj', translation: 'astonishing / baffling', isReal: true },
+  { word: 'voraussetzen', cefrLevel: 'B2.1', pos: 'verb', translation: 'to presuppose / require', isReal: true },
+  // B2.2
+  { word: 'Aufschluss', cefrLevel: 'B2.2', pos: 'noun', translation: 'insight / information', isReal: true },
+  { word: 'beanstanden', cefrLevel: 'B2.2', pos: 'verb', translation: 'to object to / challenge', isReal: true },
+  { word: 'unumgänglich', cefrLevel: 'B2.2', pos: 'adj', translation: 'unavoidable / essential', isReal: true },
+  // Pseudo-word 4
+  { word: 'zupfenhaft', cefrLevel: null, isReal: false },
+  // C1.1
+  { word: 'prägnant', cefrLevel: 'C1.1', pos: 'adj', translation: 'concise / succinct', isReal: true },
+  { word: 'willkürlich', cefrLevel: 'C1.1', pos: 'adj', translation: 'arbitrary', isReal: true },
+  { word: 'verharmlosen', cefrLevel: 'C1.1', pos: 'verb', translation: 'to downplay / trivialize', isReal: true },
+  // C1.2
+  { word: 'versäumen', cefrLevel: 'C1.2', pos: 'verb', translation: 'to miss / neglect', isReal: true },
+  { word: 'anfechtbar', cefrLevel: 'C1.2', pos: 'adj', translation: 'contestable / voidable', isReal: true },
+  { word: 'unentbehrlich', cefrLevel: 'C1.2', pos: 'adj', translation: 'indispensable', isReal: true },
+  // Pseudo-word 5
+  { word: 'schlorren', cefrLevel: null, isReal: false },
+  // C2.1
+  { word: 'beschwichtigen', cefrLevel: 'C2.1', pos: 'verb', translation: 'to appease / soothe', isReal: true },
+  { word: 'Unbill', cefrLevel: 'C2.1', pos: 'noun', translation: 'injustice / hardship', isReal: true },
+  { word: 'stichhaltig', cefrLevel: 'C2.1', pos: 'adj', translation: 'sound / valid', isReal: true },
+  // C2.2
+  { word: 'Klaue', cefrLevel: 'C2.2', pos: 'noun', translation: 'claw / illegible scrawl', isReal: true },
+  { word: 'heischen', cefrLevel: 'C2.2', pos: 'verb', translation: 'to demand / crave', isReal: true },
+  { word: 'verfänglich', cefrLevel: 'C2.2', pos: 'adj', translation: 'tricky / insidious', isReal: true },
+  // Pseudo-word 6
+  { word: 'verkrangeln', cefrLevel: null, isReal: false },
+];
 
 @Injectable()
 export class KnowledgeService {
@@ -178,7 +259,6 @@ export class KnowledgeService {
     }));
   }
 
-  /** One-tap undo: returns the card to ACTIVE, due now, so it reappears in review. */
   /** Mark a word as USER_KNOWN by its dictionary entry ID; creates the card if needed. */
   async markKnown(userId: string, dictionaryEntryId: string): Promise<void> {
     await this.prisma.card.upsert({
@@ -202,8 +282,6 @@ export class KnowledgeService {
 
   /** Bulk mark words as USER_KNOWN */
   async bulkMarkKnown(userId: string, dictionaryEntryIds: string[]): Promise<void> {
-    // Due to Prisma limitations with bulk upserts on composite keys in sqlite/some engines,
-    // we use a transaction over individual upserts.
     const due = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
     const upserts = dictionaryEntryIds.map((dictionaryEntryId) =>
       this.prisma.card.upsert({
@@ -222,23 +300,237 @@ export class KnowledgeService {
           state: 'REVIEW',
         },
         update: { knownState: 'USER_KNOWN', due },
-      })
+      }),
     );
     await this.prisma.$transaction(upserts);
   }
 
-  /** Get highly frequent words the user has not started learning yet. */
-  async getSuggestions(userId: string, limit: number): Promise<DictionaryEntry[]> {
+  /** Get words the user has not started learning or marked known yet, with optional search and level filtering. */
+  async getSuggestions(
+    userId: string,
+    options: { limit?: number; offset?: number; cefrLevel?: string; search?: string } = {},
+  ): Promise<DictionaryEntry[]> {
+    const { limit = 50, offset = 0, cefrLevel, search } = options;
+
+    const where: Prisma.DictionaryEntryWhereInput = {
+      cards: { none: { userId, knownState: { in: ['AUTO_KNOWN', 'USER_KNOWN'] } } },
+    };
+
+
+    if (cefrLevel && cefrLevel.trim() !== '') {
+      if (cefrLevel.includes('.')) {
+        where.cefrLevel = cefrLevel;
+      } else {
+        where.cefrLevel = { startsWith: cefrLevel };
+      }
+    }
+
+    if (search && search.trim().length > 0) {
+      where.OR = [
+        { word: { contains: search.trim(), mode: 'insensitive' } },
+        { translation: { contains: search.trim(), mode: 'insensitive' } },
+      ];
+    }
+
     return this.prisma.dictionaryEntry.findMany({
-      where: {
-        lexiconEntry: { frequencyRank: { not: null } },
-        cards: { none: { userId } },
-      },
-      orderBy: { lexiconEntry: { frequencyRank: 'asc' } },
+      where,
+      orderBy: [
+        { cefrLevel: 'asc' },
+        { lexiconEntry: { frequencyRank: 'asc' } },
+      ],
+      skip: offset,
       take: limit,
-    }) as unknown as DictionaryEntry[]; // Return raw dictionary entries
+    }) as unknown as DictionaryEntry[];
   }
 
+  /** Retrieve the battery of diagnostic probe questions for CEFR level calibration. */
+  async getDiagnosticProbe(): Promise<{ items: DiagnosticProbeItem[] }> {
+    // Try to find matching DictionaryEntry records for real probe words
+    const realWords = BENCHMARK_PROBES.filter((p) => p.isReal).map((p) => p.word);
+    const dbEntries = await this.prisma.dictionaryEntry.findMany({
+      where: { word: { in: realWords, mode: 'insensitive' } },
+      select: { id: true, word: true, cefrLevel: true, translation: true },
+    });
+
+    const dbMap = new Map(dbEntries.map((e) => [e.word.toLowerCase(), e]));
+
+    const items: DiagnosticProbeItem[] = BENCHMARK_PROBES.map((probe, idx) => {
+      const dbMatch = probe.isReal ? dbMap.get(probe.word.toLowerCase()) : null;
+      return {
+        id: dbMatch?.id ?? `probe-${idx}-${probe.word.toLowerCase()}`,
+        word: probe.word,
+        cefrLevel: probe.cefrLevel,
+        pos: probe.pos ?? null,
+        translation: dbMatch?.translation ?? probe.translation ?? null,
+        isReal: probe.isReal,
+      };
+    });
+
+    return { items };
+  }
+
+  /**
+   * Evaluates user probe responses using psychometric Signal Detection Theory (LexTALE model),
+   * computes the exact continuous CEFR sub-level, estimates vocabulary size, and batch-graduates
+   * mastered baseline vocabulary.
+   */
+  async calibrateDiagnostic(userId: string, body: CalibrateDiagnosticBody): Promise<CalibrateDiagnosticResponse> {
+    const { answers } = body;
+    if (!answers || answers.length === 0) {
+      throw new BadRequestException('Answers cannot be empty');
+    }
+
+    // 1. Calculate false alarm rate on pseudo-words
+    const fakeAnswers = answers.filter((a) => !a.isReal);
+    const totalFakes = fakeAnswers.length;
+    const fakeHits = fakeAnswers.filter((a) => a.known).length;
+    const falseAlarmRate = totalFakes > 0 ? fakeHits / totalFakes : 0;
+
+    // 2. Evaluate performance per CEFR sub-level
+    const breakdown: LevelBreakdownItem[] = [];
+    const subLevelAccuracies: number[] = [];
+
+    for (let idx = 0; idx < CEFR_LEVELS.length; idx++) {
+      const level = CEFR_LEVELS[idx] ?? 'A1.1';
+      const probeWordsForLevel = BENCHMARK_PROBES.filter((p) => p.isReal && p.cefrLevel === level).map((p) =>
+        p.word.toLowerCase(),
+      );
+
+      const levelAnswers = answers.filter(
+        (a) => a.isReal && a.word && probeWordsForLevel.includes(a.word.toLowerCase()),
+      );
+
+      const count = levelAnswers.length > 0 ? levelAnswers.length : 1;
+      const knownCount = levelAnswers.filter((a) => a.known).length;
+      const rawAccuracy = knownCount / count;
+      // Damped false alarm correction
+      const correctedAccuracy = clamp01(rawAccuracy - falseAlarmRate * 0.75);
+      subLevelAccuracies.push(correctedAccuracy);
+
+      let status: 'MASTERED' | 'FRONTIER' | 'LEARNING' = 'LEARNING';
+      if (correctedAccuracy >= 0.7) {
+        status = 'MASTERED';
+      } else if (correctedAccuracy >= 0.35) {
+        status = 'FRONTIER';
+      }
+
+      breakdown.push({
+        cefrLevel: level,
+        accuracy: Math.round(correctedAccuracy * 100) / 100,
+        sampleCount: count,
+        status,
+      });
+    }
+
+    // 3. Determine the continuous estimated CEFR sub-level index
+    const totalScore = subLevelAccuracies.reduce((sum, acc) => sum + acc, 0);
+    let estimatedCefrIndex = Math.min(CEFR_LEVELS.length - 1, Math.max(0, Math.round(totalScore) - 1));
+    if (totalScore < 0.5) {
+      estimatedCefrIndex = 0; // A1.1
+    }
+    const estimatedCefrLevel = CEFR_LEVELS[estimatedCefrIndex] ?? 'A1.1';
+
+    // Set the user's CEFR level
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { cefrLevel: estimatedCefrLevel },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        avatarUrl: true,
+        timezone: true,
+        cefrLevel: true,
+        interests: true,
+      },
+    });
+
+    // 4. Calculate estimated vocabulary size
+    let estimatedVocabSize = 0;
+    for (let i = 0; i < CEFR_LEVELS.length; i++) {
+      const prevCeiling = i === 0 ? 0 : (CEFR_FREQUENCY_CEILING[i - 1] ?? 0);
+      const currCeiling = CEFR_FREQUENCY_CEILING[i] ?? (prevCeiling + 300);
+      const bandSize = currCeiling - prevCeiling;
+      const acc = subLevelAccuracies[i] ?? 0;
+      estimatedVocabSize += Math.round(bandSize * acc);
+    }
+    estimatedVocabSize = Math.max(150, Math.round(estimatedVocabSize / 50) * 50);
+
+
+    // 5. Batch graduate lower-level words (levels where status == 'MASTERED' and index <= estimatedCefrIndex)
+    const masteredLevels = breakdown
+      .slice(0, estimatedCefrIndex + 1)
+      .filter((b) => b.status === 'MASTERED')
+      .map((b) => b.cefrLevel);
+
+    let graduatedCount = 0;
+    let graduatedWords: string[] = [];
+
+    if (masteredLevels.length > 0) {
+      // Find candidate entries to auto-mark as USER_KNOWN
+      const candidateEntries = await this.prisma.dictionaryEntry.findMany({
+        where: {
+          cefrLevel: { in: masteredLevels },
+        },
+        select: { id: true, word: true },
+        take: 2500,
+      });
+
+      if (candidateEntries.length > 0) {
+        const entryIds = candidateEntries.map((e) => e.id);
+        const due = farFutureDate();
+
+        const upserts = entryIds.map((dictionaryEntryId) =>
+          this.prisma.card.upsert({
+            where: { userId_dictionaryEntryId: { userId, dictionaryEntryId } },
+            create: {
+              userId,
+              dictionaryEntryId,
+              knownState: 'USER_KNOWN',
+              due,
+              stability: 100,
+              difficulty: 1,
+              elapsedDays: 0,
+              scheduledDays: 365,
+              reps: 0,
+              lapses: 0,
+              state: 'REVIEW',
+            },
+            update: { knownState: 'USER_KNOWN', due },
+          }),
+        );
+
+        await this.prisma.$transaction(upserts);
+        graduatedCount = candidateEntries.length;
+        graduatedWords = candidateEntries.slice(0, 50).map((e) => e.word);
+      }
+    }
+
+    // 6. Fetch 8-12 frontier words around the estimated CEFR sub-level that are NOT known yet
+    const frontierEntries = (await this.prisma.dictionaryEntry.findMany({
+      where: {
+        cefrLevel: estimatedCefrLevel,
+        cards: { none: { userId, knownState: { in: ['AUTO_KNOWN', 'USER_KNOWN'] } } },
+      },
+      take: 12,
+      select: { id: true, word: true, translation: true, emoji: true, cefrLevel: true },
+    })) as unknown as FrontierWord[];
+
+    const confidenceScore = clamp01(1 - falseAlarmRate);
+
+    return {
+      user,
+      estimatedCefrLevel,
+      estimatedCefrIndex,
+      estimatedVocabSize,
+      confidenceScore: Math.round(confidenceScore * 100) / 100,
+      falseAlarmRate: Math.round(falseAlarmRate * 100) / 100,
+      graduatedCount,
+      graduatedWords,
+      frontierWords: frontierEntries,
+      breakdown,
+    };
+  }
 
   /** Undo multiple known words in an atomic batch transaction. */
   async bulkUndo(userId: string, cardIds: string[]): Promise<void> {
@@ -278,8 +570,6 @@ export class KnowledgeService {
 
     await this.prisma.$transaction([
       this.prisma.card.update({ where: { id: cardId }, data: { knownState: 'ACTIVE', due: new Date() } }),
-      // Pull the score back below the auto-graduation threshold so the very
-      // next review doesn't immediately re-graduate it.
       this.prisma.knowledgeScore.updateMany({
         where: { userId, dictionaryEntryId: card.dictionaryEntryId, score: { gte: AUTO_GRADUATE_THRESHOLD } },
         data: { score: AUTO_GRADUATE_THRESHOLD - 0.1 },
@@ -470,3 +760,4 @@ export class KnowledgeService {
     return { count: toGraduate.length, words: toGraduate.map((c) => c.dictionaryEntry.word) };
   }
 }
+
