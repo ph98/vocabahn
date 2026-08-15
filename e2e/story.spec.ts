@@ -190,7 +190,7 @@ test.describe('Micro-story', () => {
     await expect(popover.getByText('green')).toBeVisible();
     await expect(page.getByText('2 of your words are in here.')).toBeVisible();
 
-    await popover.getByRole('button', { name: "Didn't land" }).click();
+    await popover.getByRole('button', { name: "I don't know this word at all" }).click();
     await expect(page.getByText("1 marked as didn't land.")).toBeVisible();
 
     // Escape dismisses and hands focus back to the word.

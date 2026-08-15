@@ -70,15 +70,14 @@ test.describe('Dictionary search (authenticated)', () => {
   test('theme can be changed from the profile menu', async ({ page }) => {
     await page.goto('/');
 
-    // The toggle lives behind the profile menu and cycles system → light → dark.
+    // The theme picker lives inside the profile menu.
     await page.getByRole('button', { name: 'Profile navigation options' }).click();
-    const themeButton = page.getByRole('button', { name: /theme$/ });
-    const labelBefore = await themeButton.textContent();
+    const darkThemeButton = page.getByRole('menuitemradio', { name: /switch to dark theme/i });
+    await expect(darkThemeButton).toBeVisible();
 
-    await themeButton.click();
-
-    await page.getByRole('button', { name: 'Profile navigation options' }).click();
-    await expect(page.getByRole('button', { name: /theme$/ })).not.toHaveText(labelBefore ?? '');
+    await darkThemeButton.click();
+    await expect(darkThemeButton).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('html')).toHaveClass(/theme-dark/);
   });
 
   test('version number is visible in the footer', async ({ page }) => {

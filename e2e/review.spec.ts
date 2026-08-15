@@ -18,7 +18,7 @@ test.describe('Review session', () => {
     await page.route('**/api/v1/reviews/due**', (route) => route.fulfill(json({ cards: [] })));
 
     await page.goto('/review');
-    await expect(page.getByText(/all caught up/i)).toBeVisible({ timeout: 4000 });
+    await expect(page.getByRole('heading', { name: /all caught up/i })).toBeVisible({ timeout: 4000 });
   });
 
   test('shows a card and reveal button when a card is due', async ({ page }) => {
