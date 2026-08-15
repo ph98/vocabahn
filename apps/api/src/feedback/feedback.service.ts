@@ -23,11 +23,20 @@ export class FeedbackService {
     private readonly enrichment: EnrichmentService,
   ) {}
 
-  private async resolveEntryId(word: string): Promise<{ id: string; word: string }> {
+  private async resolveEntryId(word: string, pos?: string): Promise<{ id: string; word: string }> {
     const entry =
-      (await this.prisma.dictionaryEntry.findFirst({ where: { word }, select: { id: true, word: true } })) ??
       (await this.prisma.dictionaryEntry.findFirst({
-        where: { word: { equals: word, mode: 'insensitive' } },
+        where: {
+          word,
+          ...(pos ? { lexiconEntry: { pos } } : {}),
+        },
+        select: { id: true, word: true },
+      })) ??
+      (await this.prisma.dictionaryEntry.findFirst({
+        where: {
+          word: { equals: word, mode: 'insensitive' },
+          ...(pos ? { lexiconEntry: { pos } } : {}),
+        },
         select: { id: true, word: true },
       }));
     if (!entry) {
@@ -36,8 +45,8 @@ export class FeedbackService {
     return entry;
   }
 
-  async getFeedback(word: string, userId: string): Promise<EntryFeedback> {
-    const entry = await this.resolveEntryId(word);
+  async getFeedback(word: string, userId: string, pos?: string): Promise<EntryFeedback> {
+    const entry = await this.resolveEntryId(word, pos);
     const feedback = await this.prisma.entryFeedback.findUnique({
       where: { entryId_userId: { entryId: entry.id, userId } },
       select: { vote: true, issues: true, comment: true },
@@ -50,8 +59,9 @@ export class FeedbackService {
     userId: string,
     body: SubmitFeedbackBody,
     context: { userAgent?: string; locale?: string; path?: string },
+    pos?: string,
   ): Promise<EntryFeedback> {
-    const entry = await this.resolveEntryId(word);
+    const entry = await this.resolveEntryId(word, pos);
     const feedback = await this.prisma.entryFeedback.upsert({
       where: { entryId_userId: { entryId: entry.id, userId } },
       create: {

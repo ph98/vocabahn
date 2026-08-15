@@ -29,6 +29,7 @@ export const courseWordSchema = z.object({
   order: z.number(),
   dictionaryEntryId: z.string(),
   word: z.string(),
+  pos: z.string().optional(),
   translation: z.string().nullable(),
   emoji: z.string().nullable(),
   cefrLevel: z.string().nullable(),

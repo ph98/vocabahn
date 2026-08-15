@@ -82,12 +82,14 @@ describe('StoryProcessor', () => {
     storyProvider = { generate: vi.fn().mockResolvedValue(GENERATED) };
     tts = { synthesize: vi.fn().mockResolvedValue('/api/static/audio/story-story-1.mp3') };
     unsplash = { search: vi.fn().mockResolvedValue(PHOTO) };
+    const dictionary = { resolveWordsToEntries: vi.fn().mockResolvedValue(new Map()) };
 
     processor = new StoryProcessor(
       prisma as unknown as PrismaService,
       storyProvider as unknown as StoryProvider,
       tts as unknown as TtsProvider,
       unsplash as unknown as UnsplashProvider,
+      dictionary as never,
     );
   });
 

@@ -18,6 +18,7 @@ import {
   fetchMe,
   fetchStory,
   fetchStoryQuota,
+  interactStoryWord,
 } from '../api';
 import { useFadeIn } from '../lib/motion-gsap';
 import { segmentStory } from '../lib/story-text';
@@ -377,6 +378,19 @@ export function StoryPage() {
     },
   });
 
+  const interact = useMutation({
+    mutationFn: (vars: { entryId: string; action: 'CLICK_HARD' | 'DONT_KNOW_AGAIN' | 'RESET' }) =>
+      interactStoryWord(storyId!, vars.entryId, vars.action),
+    onSuccess: (_res, vars) => {
+      trackEvent('story_word_interact', { action: vars.action, entryId: vars.entryId });
+    },
+  });
+
+  const handleWordClick = (target: StoryTarget) => {
+    if (!storyId || isCompleted) return;
+    interact.mutate({ entryId: target.entryId, action: 'CLICK_HARD' });
+  };
+
   const storyRef = useRef<HTMLDivElement>(null);
   useFadeIn(storyRef, [story?.status]);
 
@@ -403,20 +417,20 @@ export function StoryPage() {
   const isCompleted = !!story?.completedAt;
 
   /**
-   * Records that a word didn't land. Deliberately separate from opening its
-   * popover: looking something up is curiosity, and `StoryTarget.understood` is
-   * the only comprehension signal the feature has, so a glance must not write
-   * to it. Only the toggle inside the popover reaches this.
+   * Records that a word didn't land / user doesn't know it.
    */
   const toggleMark = (target: StoryTarget) => {
+    if (!storyId || isCompleted) return;
     setNotUnderstood((prev) => {
       const next = new Set(prev);
       if (next.has(target.entryId)) {
         next.delete(target.entryId);
+        interact.mutate({ entryId: target.entryId, action: 'RESET' });
         setAnnouncement(`${target.word} unmarked.`);
       } else {
         next.add(target.entryId);
-        setAnnouncement(`${target.word} marked as didn't land. ${target.translation ?? ''}`);
+        interact.mutate({ entryId: target.entryId, action: 'DONT_KNOW_AGAIN' });
+        setAnnouncement(`${target.word} marked as not known. ${target.translation ?? ''}`);
       }
       return next;
     });
@@ -587,6 +601,7 @@ export function StoryPage() {
                       text={segment.text}
                       open={openWord === String(i)}
                       onOpenChange={(next) => setOpenWord(next ? String(i) : null)}
+                      onWordClick={handleWordClick}
                       marked={notUnderstood.has(segment.target.entryId)}
                       onToggleMark={() => toggleMark(segment.target!)}
                       markable={!isCompleted}
@@ -665,7 +680,7 @@ export function StoryPage() {
                         <li key={t.entryId}>
                           <Link
                             lang="de"
-                            to={`/word/${encodeURIComponent(t.word)}`}
+                            to={`/word/${encodeURIComponent(t.word)}${t.pos ? `?pos=${encodeURIComponent(t.pos)}` : ''}`}
                             className="inline-block rounded-lg bg-surface-800 px-3 py-1.5 text-sm underline underline-offset-4"
                           >
                             {t.word}

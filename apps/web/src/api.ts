@@ -1,11 +1,13 @@
 import {
   authConfigSchema,
+  calibrateDiagnosticResponseSchema,
   courseDetailSchema,
   courseListResponseSchema,
   dashboardResponseSchema,
   deckDetailSchema,
   deckListResponseSchema,
   deckSummarySchema,
+  diagnosticProbeResponseSchema,
   dictionaryEntryDetailSchema,
   dictionarySearchResponseSchema,
   dueCardsResponseSchema,
@@ -20,6 +22,7 @@ import {
   notificationSettingsSchema,
   quizAttemptResultSchema,
   quizReportSchema,
+  storyInteractResponseSchema,
   storyQuotaSchema,
   storyResponseSchema,
   submitReviewResponseSchema,
@@ -27,11 +30,16 @@ import {
   undoReviewResponseSchema,
   userSchema,
   type AutoGraduation,
+  type CalibrateDiagnosticBody,
+  type CalibrateDiagnosticResponse,
   type CreateDeckBody,
+  type DiagnosticProbeItem,
   type ImportWordsResponse,
   type NotificationSettings,
   type PushSubscriptionBody,
   type ReviewRating,
+  type StoryInteractAction,
+  type StoryInteractResponse,
   type SubmitFeedbackBody,
   type SubmitQuizAttemptBody,
   type SubmitQuizReportBody,
@@ -40,6 +48,7 @@ import {
   type UpdateNotificationSettingsBody,
   type User,
 } from '@vocabahn/shared';
+
 import axios, { isAxiosError } from 'axios';
 
 export const api = axios.create({ baseURL: '/api/v1' });
@@ -174,9 +183,18 @@ export async function searchDictionary(q: string) {
   return dictionarySearchResponseSchema.parse(data).results;
 }
 
-export async function fetchDictionaryEntry(word: string, timezone?: string | object) {
+export async function fetchDictionaryEntry(
+  word: string,
+  pos?: string,
+  timezone?: string | object,
+) {
   const tz = typeof timezone === 'string' ? timezone : Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const { data } = await api.get(`/dictionary/${encodeURIComponent(word)}`, { params: { timezone: tz } });
+  const { data } = await api.get(`/dictionary/${encodeURIComponent(word)}`, {
+    params: {
+      ...(pos ? { pos } : {}),
+      timezone: tz,
+    },
+  });
   return dictionaryEntryDetailSchema.parse(data);
 }
 
@@ -256,21 +274,27 @@ export async function fetchDashboard(timezone?: string | object) {
   return dashboardResponseSchema.parse(data);
 }
 
-export async function fetchFeedback(word: string) {
-  const { data } = await api.get(`/dictionary/${encodeURIComponent(word)}/feedback`);
+export async function fetchFeedback(word: string, pos?: string) {
+  const { data } = await api.get(`/dictionary/${encodeURIComponent(word)}/feedback`, {
+    params: pos ? { pos } : undefined,
+  });
   return entryFeedbackSchema.parse(data);
 }
 
-export async function submitFeedback(word: string, body: SubmitFeedbackBody) {
-  const { data } = await api.post(`/dictionary/${encodeURIComponent(word)}/feedback`, body);
+export async function submitFeedback(word: string, body: SubmitFeedbackBody, pos?: string) {
+  const { data } = await api.post(`/dictionary/${encodeURIComponent(word)}/feedback`, body, {
+    params: pos ? { pos } : undefined,
+  });
   return entryFeedbackSchema.parse(data);
 }
 
 // ── Per-word quiz ───────────────────────────────────────────────────────────
 
 /** Questions plus the entry's enrichment status, so the tab can show a pending state. */
-export async function fetchEntryQuiz(word: string) {
-  const { data } = await api.get(`/dictionary/${encodeURIComponent(word)}/quiz`);
+export async function fetchEntryQuiz(word: string, pos?: string) {
+  const { data } = await api.get(`/dictionary/${encodeURIComponent(word)}/quiz`, {
+    params: pos ? { pos } : undefined,
+  });
   return entryQuizResponseSchema.parse(data);
 }
 
@@ -338,14 +362,26 @@ export async function removeWordFromDeck(deckId: string, entryId: string) {
   await api.delete(`/decks/${encodeURIComponent(deckId)}/words/${encodeURIComponent(entryId)}`);
 }
 
-export async function fetchKnowledgeSuggestions(limit = 50) {
-  const { data } = await api.get(`/knowledge/suggestions?limit=${limit}`);
+export async function fetchDiagnosticProbe(): Promise<DiagnosticProbeItem[]> {
+  const { data } = await api.get('/knowledge/diagnostic-probe');
+  return diagnosticProbeResponseSchema.parse(data).items;
+}
+
+export async function calibrateDiagnostic(body: CalibrateDiagnosticBody): Promise<CalibrateDiagnosticResponse> {
+  const { data } = await api.post('/knowledge/calibrate-diagnostic', body);
+  return calibrateDiagnosticResponseSchema.parse(data);
+}
+
+export async function fetchKnowledgeSuggestions(options: { limit?: number; offset?: number; cefrLevel?: string; search?: string } | number = 50) {
+  const params = typeof options === 'number' ? { limit: options } : options;
+  const { data } = await api.get('/knowledge/suggestions', { params });
   return data;
 }
 
 export async function bulkMarkKnownWords(dictionaryEntryIds: string[]): Promise<void> {
   await api.post('/knowledge/bulk-mark-known', { dictionaryEntryIds });
 }
+
 
 // ── Micro-stories ───────────────────────────────────────────────────────────
 
@@ -378,6 +414,20 @@ export async function updateInterests(interests: string[]) {
 export async function fetchStory(id: string) {
   const { data } = await api.get(`/stories/${encodeURIComponent(id)}`);
   return storyResponseSchema.parse(data).story;
+}
+
+export async function interactStoryWord(
+  storyId: string,
+  entryId: string,
+  action: StoryInteractAction,
+  latencyMs?: number,
+): Promise<StoryInteractResponse> {
+  const { data } = await api.post(`/stories/${encodeURIComponent(storyId)}/interact`, {
+    entryId,
+    action,
+    latencyMs,
+  });
+  return storyInteractResponseSchema.parse(data);
 }
 
 export async function completeStory(id: string, notUnderstood: string[]) {

@@ -7,15 +7,25 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, ReviewRating } from '@prisma/client';
 import {
   STORY_TOPIC_SLUGS,
   type Story as SharedStory,
+  type StoryInteractBody,
+  type StoryInteractResponse,
   type StoryOrigin,
 } from '@vocabahn/shared';
 import { Queue } from 'bullmq';
 import type { Redis } from 'ioredis';
 import { getDateKey } from '../common/date-utils';
+import { DictionaryService } from '../dictionary/dictionary.service';
+import {
+  buildReviewLogSnapshot,
+  createScheduler,
+  fromFsrsCard,
+  ratingToFsrs,
+  toFsrsCard,
+} from '../fsrs/fsrs';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { REDIS } from '../redis/redis.module';
@@ -90,11 +100,13 @@ type StoryRow = Prisma.StoryGetPayload<{ include: typeof storyInclude }>;
 @Injectable()
 export class StoriesService {
   private readonly logger = new Logger(StoriesService.name);
+  private readonly scheduler = createScheduler();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly knowledge: KnowledgeService,
     private readonly sources: SourcesService,
+    private readonly dictionary: DictionaryService,
     @InjectQueue(STORY_QUEUE) private readonly queue: Queue<StoryJobData>,
     @Inject(REDIS) private readonly redis: Redis,
   ) {}
@@ -212,6 +224,11 @@ export class StoriesService {
     if (!story || story.userId !== userId) {
       throw new NotFoundException('Story not found');
     }
+    if (story.status === 'READY' && story.text) {
+      await this.ensureAllStoryTargets(story);
+      const reloaded = await this.loadStory(storyId);
+      return this.toStory(reloaded!);
+    }
     return this.toStory(story);
   }
 
@@ -249,6 +266,116 @@ export class StoriesService {
   }
 
   /**
+   * Records a word interaction from the story page.
+   * - CLICK_HARD: User clicked the word to view its dictionary popover (was unsure) -> evaluated as HARD in FSRS.
+   * - DONT_KNOW_AGAIN: User marked "I don't know this word at all" -> evaluated as AGAIN in FSRS & marked not understood.
+   * - RESET: Unmarks the word.
+   */
+  async interact(
+    userId: string,
+    storyId: string,
+    body: StoryInteractBody,
+  ): Promise<StoryInteractResponse> {
+    const story = await this.prisma.story.findUnique({
+      where: { id: storyId },
+      select: { id: true, userId: true },
+    });
+    if (!story || story.userId !== userId) {
+      throw new NotFoundException('Story not found');
+    }
+
+    const { entryId, action, latencyMs } = body;
+
+    if (action === 'RESET') {
+      await this.prisma.storyTarget.updateMany({
+        where: { storyId, dictionaryEntryId: entryId },
+        data: { understood: null, respondedAt: null },
+      });
+      return { success: true };
+    }
+
+    const rating: ReviewRating = action === 'DONT_KNOW_AGAIN' ? 'AGAIN' : 'HARD';
+
+    // 1. Find or create Card for (userId, entryId)
+    const card = await this.prisma.card.upsert({
+      where: { userId_dictionaryEntryId: { userId, dictionaryEntryId: entryId } },
+      create: {
+        userId,
+        dictionaryEntryId: entryId,
+        knownState: 'ACTIVE',
+        state: 'NEW',
+      },
+      update: {},
+    });
+
+    // 2. Compute next FSRS state
+    const now = new Date();
+    const { card: updated } = this.scheduler.next(toFsrsCard(card), now, ratingToFsrs(rating));
+
+    // 3. Update Card and record ReviewLog row in one transaction
+    const txOps: Prisma.PrismaPromise<unknown>[] = [
+      this.prisma.card.update({
+        where: { id: card.id },
+        data: fromFsrsCard(updated),
+      }),
+      this.prisma.reviewLog.create({
+        data: {
+          cardId: card.id,
+          userId,
+          rating,
+          latencyMs,
+          ...buildReviewLogSnapshot(updated, now),
+        },
+      }),
+    ];
+
+    if (action === 'DONT_KNOW_AGAIN') {
+      txOps.push(
+        this.prisma.storyTarget.updateMany({
+          where: { storyId, dictionaryEntryId: entryId },
+          data: { understood: false, respondedAt: now },
+        }),
+      );
+    }
+
+    await this.prisma.$transaction(txOps);
+
+    // 4. Recompute knowledge score and auto-graduation
+    await this.knowledge.recomputeAfterReview(userId, card.id);
+
+    return { success: true, cardId: card.id, rating: rating as 'HARD' | 'AGAIN' };
+  }
+
+  private async ensureAllStoryTargets(story: StoryRow): Promise<void> {
+    if (!story.text) return;
+    const words = [...new Set(story.text.match(/[\p{L}ÄÖÜäöüß-]+/gu) || [])];
+    const existingEntryIds = new Set(story.targets.map((t) => t.dictionaryEntryId));
+    const resolved = await this.dictionary.resolveWordsToEntries(words);
+
+    const toCreate: { dictionaryEntryId: string; surfaceForm: string }[] = [];
+    const seen = new Set(existingEntryIds);
+
+    for (const word of words) {
+      const match = resolved.get(word.toLowerCase()) ?? resolved.get(word);
+      if (match && !seen.has(match.id)) {
+        seen.add(match.id);
+        toCreate.push({ dictionaryEntryId: match.id, surfaceForm: word });
+      }
+    }
+
+    if (toCreate.length > 0) {
+      await this.prisma.storyTarget.createMany({
+        data: toCreate.map((t) => ({
+          storyId: story.id,
+          dictionaryEntryId: t.dictionaryEntryId,
+          surfaceForm: t.surfaceForm,
+        })),
+        skipDuplicates: true,
+      });
+    }
+  }
+
+  /**
    * The story the learner should land on: their most recent unfinished one.
    * This is what makes a scheduled story findable — it was written while they
    * were asleep, on a device that has never heard of it — and it incidentally
@@ -260,7 +387,13 @@ export class StoriesService {
       orderBy: { createdAt: 'desc' },
       include: storyInclude,
     });
-    return story ? this.toStory(story) : null;
+    if (!story) return null;
+    if (story.status === 'READY' && story.text) {
+      await this.ensureAllStoryTargets(story);
+      const reloaded = await this.loadStory(story.id);
+      return this.toStory(reloaded!);
+    }
+    return this.toStory(story);
   }
 
   /** Current story usage for today, without incrementing. */

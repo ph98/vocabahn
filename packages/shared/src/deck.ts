@@ -4,6 +4,7 @@ import { progressSchema } from './progress.js';
 export const deckWordSchema = z.object({
   dictionaryEntryId: z.string(),
   word: z.string(),
+  pos: z.string().optional(),
   translation: z.string().nullable(),
   emoji: z.string().nullable(),
   addedAt: z.string(),

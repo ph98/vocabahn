@@ -21,16 +21,18 @@ const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
  */
 export function EntryQuizSection({
   word,
+  pos,
   enrichmentStatus,
   onOpenOverview,
 }: {
   word: string;
+  pos?: string;
   enrichmentStatus: EnrichmentStatus;
   onOpenOverview: () => void;
 }) {
   const { data, isPending, isError } = useQuery({
-    queryKey: ['entry-quiz', word],
-    queryFn: () => fetchEntryQuiz(word),
+    queryKey: ['entry-quiz', word, pos],
+    queryFn: () => fetchEntryQuiz(word, pos),
     refetchInterval: (q) => {
       const status = q.state.data?.status;
       return status === 'PENDING' || status === 'ENRICHING' ? 4000 : false;

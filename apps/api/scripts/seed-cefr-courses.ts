@@ -110,7 +110,21 @@ async function main() {
       skipDuplicates: true,
     });
 
-    console.log(`  done: ${count} course words added to "${slug}"`);
+    const entryIds = deduplicated.map((e) => e.id);
+    const updatedEntries = await prisma.dictionaryEntry.updateMany({
+      where: {
+        id: { in: entryIds },
+        OR: [
+          { cefrLevel: null },
+          { cefrLevel: { not: { startsWith: level } } },
+        ],
+      },
+      data: {
+        cefrLevel: level,
+      },
+    });
+
+    console.log(`  done: ${count} course words added to "${slug}" (${updatedEntries.count} entry CEFR levels synchronized)`);
   }
 }
 

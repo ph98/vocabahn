@@ -170,14 +170,16 @@ and merged into one `AutoGraduation` summary:
 1. **Earned** — `ACTIVE`, `reps >= 3`, score `>= 0.85` → `AUTO_KNOWN`, due +180 d.
 2. **Level inference** — the last 100 review logs are bucketed by the entry's
    CEFR sub-level; any level with ≥ 5 samples averaging ≥ 0.7 raises the user's
-   inferred level. `User.cefrLevel` is written here and nowhere else.
+   inferred level. `User.cefrLevel` is written here and in direct calibration.
 3. **Filler sweep** — on a level *increase*, every `NEW`/`ACTIVE` card at least
    two sub-levels below the new level is marked `AUTO_KNOWN` in bulk.
 4. **High prior** — on a level *increase* (or on course enrollment when the level is known), `NEW`/`ACTIVE` cards whose prior alone reaches 0.9 (filtered in SQL by CEFR level and frequency rank) graduate without any review history.
+5. **Diagnostic Calibration** (`calibrateDiagnostic`) — 36-probe psychometric assessment with pseudo-word false alarm dampening across all 12 CEFR sub-levels. Accurately extrapolates receptive vocabulary size and batch graduates mastered lower-level words into `USER_KNOWN` state (due +365 d).
 
 Manual marking (`markKnown`, `bulkMarkKnown`) writes `USER_KNOWN` with due one
 year out. Undo returns the card to `ACTIVE`, due now, and **pulls the score down
 to 0.75** (threshold − 0.1) so the next review cannot instantly re-graduate it.
+
 
 **None of these routes touch the FSRS columns.** A word can be `AUTO_KNOWN`
 while `state` still reads `LEARNING`. Anything counting known words must read

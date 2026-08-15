@@ -11,6 +11,7 @@ vi.mock('../../api', () => ({
   fetchStory: vi.fn(),
   fetchLatestStory: vi.fn(),
   completeStory: vi.fn(),
+  interactStoryWord: vi.fn().mockResolvedValue({ success: true }),
   fetchStoryQuota: vi.fn().mockResolvedValue({ used: 1, cap: 10 }),
   fetchMe: vi.fn().mockResolvedValue({
     id: 'user-1',
@@ -31,6 +32,7 @@ const {
   fetchStory,
   fetchLatestStory,
   completeStory,
+  interactStoryWord,
   fetchStoryQuota,
   fetchDictionaryEntry,
 } = await import('../../api');
@@ -161,7 +163,7 @@ describe('StoryPage', () => {
 
     const { container } = renderWithProviders(<StoryPage />);
     fireEvent.click(await screen.findByRole('button', { name: 'grün' }));
-    fireEvent.click(await screen.findByRole('button', { name: "Didn't land" }));
+    fireEvent.click(await screen.findByRole('button', { name: "I don't know this word at all" }));
     fireEvent.click(screen.getByRole('button', { name: 'Finish reading' }));
 
     await waitFor(() => expect(completeStory).toHaveBeenCalledWith('story-1', ['e2']));
@@ -351,7 +353,7 @@ describe('StoryPage', () => {
       // straight into it rather than on to the next word.
       expect(screen.getByRole('button', { name: 'Pronounce Haus' })).toHaveFocus();
       await user.tab();
-      expect(screen.getByRole('button', { name: "Didn't land" })).toHaveFocus();
+      expect(screen.getByRole('button', { name: "I don't know this word at all" })).toHaveFocus();
       await user.tab();
       expect(screen.getByRole('link', { name: 'Open in dictionary' })).toHaveFocus();
     });
@@ -360,7 +362,7 @@ describe('StoryPage', () => {
       const { user, word } = await readStory();
       await user.click(word);
 
-      const mark = await screen.findByRole('button', { name: "Didn't land" });
+      const mark = await screen.findByRole('button', { name: "I don't know this word at all" });
       expect(mark).toHaveAttribute('aria-pressed', 'false');
       await user.click(mark);
 
@@ -379,7 +381,7 @@ describe('StoryPage', () => {
     it('keeps a marked word distinct in the text with the popover closed', async () => {
       const { user, word } = await readStory();
       await user.click(word);
-      await user.click(await screen.findByRole('button', { name: "Didn't land" }));
+      await user.click(await screen.findByRole('button', { name: "I don't know this word at all" }));
 
       await user.keyboard('{Escape}');
 
@@ -388,6 +390,24 @@ describe('StoryPage', () => {
       );
       expect(word).toHaveAccessibleDescription("Marked as didn't land");
       expect(word.className).toContain('text-accent-amber');
+    });
+
+    it('records click interaction (CLICK_HARD) when clicking a word', async () => {
+      const { user, word } = await readStory();
+      await user.click(word);
+      await waitFor(() =>
+        expect(interactStoryWord).toHaveBeenCalledWith('story-1', 'e2', 'CLICK_HARD'),
+      );
+    });
+
+    it('records DONT_KNOW_AGAIN interaction when marking a word unknown', async () => {
+      const { user, word } = await readStory();
+      await user.click(word);
+      const mark = await screen.findByRole('button', { name: "I don't know this word at all" });
+      await user.click(mark);
+      await waitFor(() =>
+        expect(interactStoryWord).toHaveBeenCalledWith('story-1', 'e2', 'DONT_KNOW_AGAIN'),
+      );
     });
 
     it('keeps only one popover open at a time', async () => {
@@ -432,7 +452,7 @@ describe('StoryPage', () => {
       expect(within(popover).getByText('green')).toBeInTheDocument();
       expect(within(popover).queryByRole('button', { name: /^Pronounce/ })).not.toBeInTheDocument();
       expect(within(popover).getByRole('link', { name: 'Open in dictionary' })).toBeInTheDocument();
-      expect(within(popover).getByRole('button', { name: "Didn't land" })).toBeInTheDocument();
+      expect(within(popover).getByRole('button', { name: "I don't know this word at all" })).toBeInTheDocument();
 
       expect(await a11y(container)).toHaveNoViolations();
     });
@@ -446,7 +466,7 @@ describe('StoryPage', () => {
       await user.click(word);
 
       const popover = await screen.findByRole('dialog', { name: 'About grün' });
-      expect(within(popover).queryByRole('button', { name: "Didn't land" })).not.toBeInTheDocument();
+      expect(within(popover).queryByRole('button', { name: "I don't know this word at all" })).not.toBeInTheDocument();
       expect(within(popover).getByRole('link', { name: 'Open in dictionary' })).toBeInTheDocument();
     });
   });

@@ -519,6 +519,7 @@ export default function App() {
                 <Route path="/dictionary" element={<DictionaryCard />} />
                 <Route path="/dashboard" element={<Navigate to="/" replace />} />
                 <Route path="/word/:word" element={<DictionaryEntryPage />} />
+                <Route path="/word/:word/:pos" element={<DictionaryEntryPage />} />
                 <Route path="/library" element={<LibraryPage />} />
                 <Route path="/courses" element={<Navigate to="/library" replace />} />
                 <Route path="/courses/:slug" element={<CourseDetailPage />} />

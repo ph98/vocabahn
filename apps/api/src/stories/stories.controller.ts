@@ -2,9 +2,12 @@ import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/co
 import {
   completeStoryBodySchema,
   createStoryBodySchema,
+  storyInteractBodySchema,
   type CompleteStoryBody,
   type CreateStoryBody,
   type LatestStoryResponse,
+  type StoryInteractBody,
+  type StoryInteractResponse,
   type StoryQuota,
   type StoryResponse,
 } from '@vocabahn/shared';
@@ -52,6 +55,15 @@ export class StoriesController {
     return { story: await this.stories.get(userId, id) };
   }
 
+  @Post(':id/interact')
+  async interact(
+    @CurrentUserId() userId: string,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(storyInteractBodySchema)) body: StoryInteractBody,
+  ): Promise<StoryInteractResponse> {
+    return this.stories.interact(userId, id, body);
+  }
+
   @Post(':id/complete')
   async complete(
     @CurrentUserId() userId: string,
@@ -61,3 +73,4 @@ export class StoriesController {
     return { story: await this.stories.complete(userId, id, body.notUnderstood) };
   }
 }
+

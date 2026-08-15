@@ -63,7 +63,16 @@ export class DecksService {
         user: { select: { name: true } },
         words: {
           orderBy: { addedAt: 'asc' },
-          include: { dictionaryEntry: { select: { word: true, translation: true, emoji: true } } },
+          include: {
+            dictionaryEntry: {
+              select: {
+                word: true,
+                translation: true,
+                emoji: true,
+                lexiconEntry: { select: { pos: true } },
+              },
+            },
+          },
         },
       },
     });
@@ -85,6 +94,7 @@ export class DecksService {
       words: deck.words.map((w) => ({
         dictionaryEntryId: w.dictionaryEntryId,
         word: w.dictionaryEntry.word,
+        pos: w.dictionaryEntry.lexiconEntry?.pos,
         translation: w.dictionaryEntry.translation ?? null,
         emoji: w.dictionaryEntry.emoji ?? null,
         addedAt: w.addedAt.toISOString(),

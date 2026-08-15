@@ -323,7 +323,7 @@ function CardBack({
 }: {
   entry: CardEntry;
   detail?: DictionaryEntryDetail;
-  onSelectWord: (word: string) => void;
+  onSelectWord: (word: string, pos?: string) => void;
 }) {
   if (detail) {
     return (
@@ -511,8 +511,8 @@ export function ReviewSession() {
   const card = queue?.[index];
 
   const { data: detail } = useQuery({
-    queryKey: ['dictionary-entry', card?.entry.word],
-    queryFn: () => fetchDictionaryEntry(card!.entry.word),
+    queryKey: ['dictionary-entry', card?.entry.word, card?.entry.pos],
+    queryFn: () => fetchDictionaryEntry(card!.entry.word, card!.entry.pos),
     enabled: !!card && revealed,
     // Poll while the background pipeline enriches the entry
     refetchInterval: (q) => {
@@ -1247,7 +1247,13 @@ export function ReviewSession() {
                     <CardBack
                       entry={entry}
                       detail={detail}
-                      onSelectWord={(w) => navigate(`/word/${encodeURIComponent(w)}`)}
+                      onSelectWord={(w: string, p?: string) => {
+                        void navigate(
+                          p
+                            ? `/word/${encodeURIComponent(w)}?pos=${encodeURIComponent(p)}`
+                            : `/word/${encodeURIComponent(w)}`,
+                        );
+                      }}
                     />
                   </motion.div>
                 )}

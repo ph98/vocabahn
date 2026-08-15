@@ -531,7 +531,7 @@ export function DeckDetailPage() {
               {w.emoji && <span className="shrink-0 text-2xl" aria-hidden="true">{w.emoji}</span>}
               <div className="min-w-0 flex-1">
                 <Link
-                  to={`/word/${encodeURIComponent(w.word)}`}
+                  to={`/word/${encodeURIComponent(w.word)}${w.pos ? `?pos=${encodeURIComponent(w.pos)}` : ''}`}
                   lang="de"
                   className="font-medium hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
                 >

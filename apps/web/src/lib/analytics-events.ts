@@ -137,6 +137,12 @@ export type AnalyticsEventMap = {
 
   /** Reserved for #80. */
   product_feedback_submit: NoEventParams;
+
+  /** Story word interaction during reading */
+  story_word_interact: {
+    action: 'CLICK_HARD' | 'DONT_KNOW_AGAIN' | 'RESET';
+    entryId: string;
+  };
 };
 
 /** An event that carries no parameters of its own. */
