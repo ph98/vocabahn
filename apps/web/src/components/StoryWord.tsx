@@ -253,13 +253,13 @@ export function StoryWord({
           // it is explicitly marked otherwise.
           lang="en"
           style={{ transform: `translateX(calc(-50% + ${shift}px))` }}
-          className={`absolute left-1/2 z-40 block w-64 max-w-[calc(100vw-1rem)] ${
+          className={`absolute left-1/2 z-40 block w-72 sm:w-80 max-w-[calc(100vw-1.5rem)] ${
             side === 'top' ? 'bottom-full mb-2' : 'top-full mt-2'
           }`}
         >
           {/* The outer span owns the positioning transform; this one owns the
               entrance animation, so the two never fight. */}
-          <span className="vb-word-popover block rounded-xl border border-surface-700 bg-surface-950 p-3 text-left text-surface-200 shadow-2xl">
+          <span className="vb-word-popover block overflow-hidden rounded-xl border border-surface-700 bg-surface-950 p-3 text-left text-surface-200 shadow-2xl">
             <span className="flex items-center gap-2">
               {target.emoji && <span aria-hidden="true">{target.emoji}</span>}
               <span lang="de" className="flex-1 font-medium">
@@ -281,9 +281,49 @@ export function StoryWord({
               </span>
             )}
 
-            {meaning && <span className="mt-2 block text-sm">{meaning}</span>}
+            {meaning && <span className="mt-2 block text-sm break-words">{meaning}</span>}
             {extraGloss && (
-              <span className="mt-0.5 block text-xs text-surface-400">{extraGloss}</span>
+              <span className="mt-0.5 block text-xs text-surface-400 break-words">{extraGloss}</span>
+            )}
+
+            {target.compound && (
+              <div className="mt-2.5 rounded-lg border border-surface-800 bg-surface-900/90 p-2.5 text-xs">
+                <span className="mb-1.5 block font-medium text-surface-400">
+                  🧩 Compound word
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5 text-surface-200">
+                  <Link
+                    to={`/word/${encodeURIComponent(target.compound.left.word)}${target.compound.left.pos ? `?pos=${encodeURIComponent(target.compound.left.pos)}` : ''}`}
+                    className="inline-flex max-w-full items-center rounded bg-surface-800 px-2 py-1 text-accent-indigo hover:bg-surface-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                  >
+                    <span lang="de" className="font-semibold shrink-0">{target.compound.left.word}</span>
+                    {(target.compound.left.translation || target.compound.left.gloss) && (
+                      <span className="ml-1 truncate text-[11px] text-surface-400">
+                        ({target.compound.left.translation || target.compound.left.gloss})
+                      </span>
+                    )}
+                  </Link>
+                  <span className="font-bold text-surface-500 shrink-0">
+                    {target.compound.fugenlaut ? `+ -${target.compound.fugenlaut}- +` : '+'}
+                  </span>
+                  <Link
+                    to={`/word/${encodeURIComponent(target.compound.right.word)}${target.compound.right.pos ? `?pos=${encodeURIComponent(target.compound.right.pos)}` : ''}`}
+                    className="inline-flex max-w-full items-center rounded bg-surface-800 px-2 py-1 text-accent-indigo hover:bg-surface-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                  >
+                    <span lang="de" className="font-semibold shrink-0">{target.compound.right.word}</span>
+                    {(target.compound.right.translation || target.compound.right.gloss) && (
+                      <span className="ml-1 truncate text-[11px] text-surface-400">
+                        ({target.compound.right.translation || target.compound.right.gloss})
+                      </span>
+                    )}
+                  </Link>
+                </div>
+                {target.compound.gender && (
+                  <p className="mt-1.5 text-[11px] leading-tight text-surface-400">
+                    Gender <span className="font-medium text-surface-300">{target.compound.gender === 'm' ? 'der (masculine)' : target.compound.gender === 'f' ? 'die (feminine)' : 'das (neuter)'}</span> inherited from <span lang="de">{target.compound.right.word}</span>
+                  </p>
+                )}
+              </div>
             )}
 
             {target.example && (

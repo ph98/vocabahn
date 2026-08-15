@@ -4,10 +4,12 @@ import {
   isPresetTopic,
   topicLabel,
   type Story,
+  type StoryQuizResultItem,
   type StoryTarget,
+  type SubmitStoryQuizAnswer,
 } from '@vocabahn/shared';
 import { isAxiosError } from 'axios';
-import { ExternalLink, Pause, Play } from 'lucide-react';
+import { ExternalLink, Pause, Play, Sparkles } from 'lucide-react';
 import { MotionConfig } from 'motion/react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -24,6 +26,7 @@ import { useFadeIn } from '../lib/motion-gsap';
 import { segmentStory } from '../lib/story-text';
 import { trackEvent } from '../lib/telemetry';
 import { IllustrationEmptyQueue } from './Illustrations';
+import { StoryQuizResultsView, StoryQuizStepper } from './StoryQuiz';
 import { StoryWord } from './StoryWord';
 import { UnsplashCredit } from './UnsplashCredit';
 
@@ -302,6 +305,9 @@ export function StoryPage() {
   const [openWord, setOpenWord] = useState<string | null>(null);
   const [showEnglish, setShowEnglish] = useState(false);
   const [announcement, setAnnouncement] = useState('');
+  const [isTakingQuiz, setIsTakingQuiz] = useState(false);
+  const [quizResults, setQuizResults] = useState<StoryQuizResultItem[] | null>(null);
+  const [quizScore, setQuizScore] = useState<{ correct: number; total: number } | null>(null);
   const markedNoteId = useId();
 
   const { data: user } = useQuery({
@@ -351,6 +357,9 @@ export function StoryPage() {
       setNotUnderstood(new Set());
       setOpenWord(null);
       setShowEnglish(false);
+      setIsTakingQuiz(false);
+      setQuizResults(null);
+      setQuizScore(null);
       queryClient.setQueryData(['story', created.id], created);
       void queryClient.invalidateQueries({ queryKey: ['story-quota'] });
       void queryClient.invalidateQueries({ queryKey: ['story-latest'] });
@@ -365,15 +374,22 @@ export function StoryPage() {
   });
 
   const finish = useMutation({
-    mutationFn: () => completeStory(storyId!, [...notUnderstood]),
-    onSuccess: (completed) => {
-      queryClient.setQueryData(['story', completed.id], completed);
+    mutationFn: (answers?: SubmitStoryQuizAnswer[]) =>
+      completeStory(storyId!, [...notUnderstood], answers ?? []),
+    onSuccess: (res) => {
+      queryClient.setQueryData(['story', res.story.id], res.story);
+      if (res.quizResults) setQuizResults(res.quizResults);
+      if (res.score) setQuizScore(res.score);
+      setIsTakingQuiz(false);
       // A completed story is no longer "waiting", so the cached answer is stale.
       void queryClient.invalidateQueries({ queryKey: ['story-latest'] });
+      void queryClient.invalidateQueries({ queryKey: ['due-cards'] });
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['known-words'] });
       trackEvent('story_complete', {
-        target_count: completed.targets.length,
+        target_count: res.story.targets.length,
         not_understood_count: notUnderstood.size,
-        topic: completed.topic ?? 'none',
+        topic: res.story.topic ?? 'none',
       });
     },
   });
@@ -444,6 +460,9 @@ export function StoryPage() {
     setNotUnderstood(new Set());
     setOpenWord(null);
     setShowEnglish(false);
+    setIsTakingQuiz(false);
+    setQuizResults(null);
+    setQuizScore(null);
   };
 
   const createError = generate.error;
@@ -561,93 +580,125 @@ export function StoryPage() {
 
         {story?.status === 'READY' && (
           <div ref={storyRef} className="space-y-4">
-            <article className="rounded-3xl border border-surface-800 bg-surface-900 p-6 shadow-xl sm:p-8">
-              {/* A story the scheduler wrote is framed as something that was
-                  waiting, not something the learner just triggered. */}
-              {story.origin === 'DAILY' && (
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-indigo-300">
-                  Today's read
-                </p>
-              )}
-
-              {story.title && (
-                <h3 lang="de" className="font-serif text-xl font-semibold">
-                  {story.title}
-                </h3>
-              )}
-
-              <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs uppercase tracking-wide text-surface-500">
-                {story.topic && <span>{topicLabel(story.topic)}</span>}
-                {story.topic && story.cefrLevel && <span aria-hidden="true">·</span>}
-                {story.cefrLevel && <span>Level {story.cefrLevel}</span>}
-              </p>
-
-              {/* Null for every story written before this existed, and for any
-                  whose lookup failed — a normal state, rendered as nothing. */}
-              {story.image && <StoryImage image={story.image} title={story.title} />}
-
-              {story.audioUrl && (
-                <div className="mt-4">
-                  <StoryAudio src={story.audioUrl} />
-                </div>
-              )}
-
-              <p lang="de" className="mt-4 text-lg leading-relaxed">
-                {segments.map((segment, i) =>
-                  segment.target ? (
-                    <StoryWord
-                      key={i}
-                      target={segment.target}
-                      text={segment.text}
-                      open={openWord === String(i)}
-                      onOpenChange={(next) => setOpenWord(next ? String(i) : null)}
-                      onWordClick={handleWordClick}
-                      marked={notUnderstood.has(segment.target.entryId)}
-                      onToggleMark={() => toggleMark(segment.target!)}
-                      markable={!isCompleted}
-                      markedNoteId={markedNoteId}
-                    />
-                  ) : (
-                    <span key={i}>{segment.text}</span>
-                  ),
+            {!isTakingQuiz && (
+              <article className="rounded-3xl border border-surface-800 bg-surface-900 p-6 shadow-xl sm:p-8">
+                {/* A story the scheduler wrote is framed as something that was
+                    waiting, not something the learner just triggered. */}
+                {story.origin === 'DAILY' && (
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-indigo-300">
+                    Today's read
+                  </p>
                 )}
-              </p>
-              {/* Described, not named: the word's accessible name has to stay
-                  the German surface form. One node, shared by every marked
-                  trigger, and outside the lang="de" paragraph. */}
-              <span id={markedNoteId} className="sr-only">
-                Marked as didn't land
-              </span>
 
-              {story.translation && (
-                <div className="mt-6 border-t border-surface-800 pt-4">
+                {story.title && (
+                  <h3 lang="de" className="font-serif text-xl font-semibold">
+                    {story.title}
+                  </h3>
+                )}
+
+                <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs uppercase tracking-wide text-surface-500">
+                  {story.topic && <span>{topicLabel(story.topic)}</span>}
+                  {story.topic && story.cefrLevel && <span aria-hidden="true">·</span>}
+                  {story.cefrLevel && <span>Level {story.cefrLevel}</span>}
+                </p>
+
+                {/* Null for every story written before this existed, and for any
+                    whose lookup failed — a normal state, rendered as nothing. */}
+                {story.image && <StoryImage image={story.image} title={story.title} />}
+
+                {story.audioUrl && (
+                  <div className="mt-4">
+                    <StoryAudio src={story.audioUrl} />
+                  </div>
+                )}
+
+                <p lang="de" className="mt-4 text-lg leading-relaxed">
+                  {segments.map((segment, i) =>
+                    segment.target ? (
+                      <StoryWord
+                        key={i}
+                        target={segment.target}
+                        text={segment.text}
+                        open={openWord === String(i)}
+                        onOpenChange={(next) => setOpenWord(next ? String(i) : null)}
+                        onWordClick={handleWordClick}
+                        marked={notUnderstood.has(segment.target.entryId)}
+                        onToggleMark={() => toggleMark(segment.target!)}
+                        markable={!isCompleted}
+                        markedNoteId={markedNoteId}
+                      />
+                    ) : (
+                      <span key={i}>{segment.text}</span>
+                    ),
+                  )}
+                </p>
+                {/* Described, not named: the word's accessible name has to stay
+                    the German surface form. One node, shared by every marked
+                    trigger, and outside the lang="de" paragraph. */}
+                <span id={markedNoteId} className="sr-only">
+                  Marked as didn't land
+                </span>
+
+                {story.translation && (
+                  <div className="mt-6 border-t border-surface-800 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowEnglish((v) => !v)}
+                      aria-expanded={showEnglish}
+                      className="text-sm font-medium text-accent-indigo underline underline-offset-4"
+                    >
+                      {showEnglish ? 'Hide English' : 'Show English'}
+                    </button>
+                    {showEnglish && (
+                      <p className="mt-3 leading-relaxed text-surface-300">{story.translation}</p>
+                    )}
+                  </div>
+                )}
+
+                {story.source && <SourceCredit source={story.source} />}
+              </article>
+            )}
+
+            {!isCompleted && isTakingQuiz && (
+              <StoryQuizStepper
+                questions={story.quiz ?? []}
+                onComplete={(answers) => finish.mutate(answers)}
+                onCancel={() => setIsTakingQuiz(false)}
+                isSubmitting={finish.isPending}
+              />
+            )}
+
+            {!isCompleted && !isTakingQuiz && (
+              <div className="flex flex-wrap items-center gap-3">
+                {story.quiz && story.quiz.length > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setIsTakingQuiz(true)}
+                      className={`inline-flex items-center gap-2 ${PRIMARY_BUTTON}`}
+                    >
+                      <Sparkles className="size-4" aria-hidden="true" />
+                      Take Story Quiz ({story.quiz.length} questions)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => finish.mutate(undefined)}
+                      disabled={finish.isPending}
+                      className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-xs text-surface-400 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    >
+                      {finish.isPending ? 'Saving…' : 'Skip quiz & finish'}
+                    </button>
+                  </>
+                ) : (
                   <button
                     type="button"
-                    onClick={() => setShowEnglish((v) => !v)}
-                    aria-expanded={showEnglish}
-                    className="text-sm font-medium text-accent-indigo underline underline-offset-4"
+                    onClick={() => finish.mutate(undefined)}
+                    disabled={finish.isPending}
+                    className={PRIMARY_BUTTON}
                   >
-                    {showEnglish ? 'Hide English' : 'Show English'}
+                    {finish.isPending ? 'Saving…' : 'Finish reading'}
                   </button>
-                  {showEnglish && (
-                    <p className="mt-3 leading-relaxed text-surface-300">{story.translation}</p>
-                  )}
-                </div>
-              )}
-
-              {story.source && <SourceCredit source={story.source} />}
-            </article>
-
-            {!isCompleted && (
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => finish.mutate()}
-                  disabled={finish.isPending}
-                  className={PRIMARY_BUTTON}
-                >
-                  {finish.isPending ? 'Saving…' : 'Finish reading'}
-                </button>
+                )}
                 <p className="text-sm text-surface-400">
                   {notUnderstood.size === 0
                     ? `${story.targets.length} of your words are in here.`
@@ -663,44 +714,14 @@ export function StoryPage() {
             )}
 
             {isCompleted && (
-              <div
-                role="status"
-                className="rounded-2xl border border-surface-800 bg-surface-900 p-5 shadow-lg shadow-black/20"
-              >
-                <p className="font-medium">
-                  {notUnderstood.size === 0
-                    ? `All ${story.targets.length} words landed.`
-                    : `${notUnderstood.size} of ${story.targets.length} words didn't land.`}
-                </p>
-                {notUnderstood.size > 0 && (
-                  <ul className="mt-3 flex flex-wrap gap-2">
-                    {story.targets
-                      .filter((t) => notUnderstood.has(t.entryId))
-                      .map((t) => (
-                        <li key={t.entryId}>
-                          <Link
-                            lang="de"
-                            to={`/word/${encodeURIComponent(t.word)}${t.pos ? `?pos=${encodeURIComponent(t.pos)}` : ''}`}
-                            className="inline-block rounded-lg bg-surface-800 px-3 py-1.5 text-sm underline underline-offset-4"
-                          >
-                            {t.word}
-                          </Link>
-                        </li>
-                      ))}
-                  </ul>
-                )}
-                {/* Back to the chooser rather than straight into another
-                    generation: the subject is most of why they'd read a second
-                    one, and rerolling it blind spends quota on a guess. */}
-                <button
-                  type="button"
-                  onClick={startOver}
-                  disabled={generate.isPending}
-                  className={`mt-4 ${SECONDARY_BUTTON}`}
-                >
-                  Read something else
-                </button>
-              </div>
+              <StoryQuizResultsView
+                score={quizScore ?? undefined}
+                quizResults={quizResults ?? undefined}
+                questions={story.quiz}
+                targets={story.targets}
+                notUnderstood={notUnderstood}
+                onStartOver={startOver}
+              />
             )}
           </div>
         )}

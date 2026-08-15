@@ -29,6 +29,28 @@ services:
       timeout: 3s
       retries: 10
 
+  directus:
+    image: directus/directus:11
+    ports:
+      - "8055:8055"
+    environment:
+      KEY: ${DIRECTUS_KEY:-vocabahn-local-secret-key-12345}
+      SECRET: ${DIRECTUS_SECRET:-vocabahn-local-system-secret-12345}
+      DB_CLIENT: pg
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: vocabahn
+      DB_USER: postgres
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_SEARCH_PATH: directus,public
+      ADMIN_EMAIL: ${DIRECTUS_ADMIN_EMAIL:-admin@vocabahn.com}
+      ADMIN_PASSWORD: ${DIRECTUS_ADMIN_PASSWORD:-adminpassword}
+      PUBLIC_URL: http://localhost:8055
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   db-data:
   redis-data:
+

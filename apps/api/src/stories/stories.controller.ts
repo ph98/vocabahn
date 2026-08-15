@@ -4,6 +4,7 @@ import {
   createStoryBodySchema,
   storyInteractBodySchema,
   type CompleteStoryBody,
+  type CompleteStoryResponse,
   type CreateStoryBody,
   type LatestStoryResponse,
   type StoryInteractBody,
@@ -69,8 +70,8 @@ export class StoriesController {
     @CurrentUserId() userId: string,
     @Param('id') id: string,
     @Body(new ZodValidationPipe(completeStoryBodySchema)) body: CompleteStoryBody,
-  ): Promise<StoryResponse> {
-    return { story: await this.stories.complete(userId, id, body.notUnderstood) };
+  ): Promise<CompleteStoryResponse> {
+    return this.stories.complete(userId, id, body);
   }
 }
 

@@ -11,6 +11,11 @@ type MockPrisma = {
   };
   lexiconEntry: {
     findMany: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+  };
+  wordForm: {
+    findMany: ReturnType<typeof vi.fn>;
+    findFirst: ReturnType<typeof vi.fn>;
   };
 };
 
@@ -31,7 +36,12 @@ describe('DictionaryService', () => {
         create: vi.fn(),
       },
       lexiconEntry: {
-        findMany: vi.fn(),
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn(),
+      },
+      wordForm: {
+        findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn().mockResolvedValue(null),
       },
     };
 
@@ -82,7 +92,7 @@ describe('DictionaryService', () => {
       expect(mockEnrichment.requestEnrichment).not.toHaveBeenCalled();
     });
 
-    it('returns null if no lexicon entry matches', async () => {
+    it('returns null if no lexicon entry matches and cannot be decomposed', async () => {
       mockPrisma.dictionaryEntry.findFirst.mockResolvedValue(null);
       mockPrisma.lexiconEntry.findMany.mockResolvedValue([]);
 
@@ -122,6 +132,51 @@ describe('DictionaryService', () => {
         data: { lexiconEntryId: 'lex-verb', word: 'weis' },
         select: { id: true, word: true },
       });
+    });
+
+    it('decomposes and promotes compound words when word is not in lexicon directly', async () => {
+      mockPrisma.dictionaryEntry.findFirst.mockResolvedValue(null);
+      mockPrisma.lexiconEntry.findMany
+        .mockResolvedValueOnce([]) // exact candidate check for Jugendhilfe
+        .mockResolvedValueOnce([
+          {
+            id: 'lex-jugend',
+            word: 'Jugend',
+            pos: 'noun',
+            gender: 'f',
+            senses: [{ glosses: ['youth'], tags: [] }],
+          },
+          {
+            id: 'lex-hilfe',
+            word: 'Hilfe',
+            pos: 'noun',
+            gender: 'f',
+            senses: [{ glosses: ['help'], tags: [] }],
+          },
+        ]); // decompounder candidate batch
+      mockPrisma.lexiconEntry.create.mockResolvedValue({
+        id: 'lex-compound-1',
+        word: 'Jugendhilfe',
+        pos: 'noun',
+        gender: 'f',
+      });
+      mockPrisma.dictionaryEntry.create.mockResolvedValue({
+        id: 'entry-compound-1',
+        word: 'Jugendhilfe',
+      });
+
+      const result = await service.findOrCreateEntry('Jugendhilfe');
+
+      expect(result).toEqual({ id: 'entry-compound-1', word: 'Jugendhilfe' });
+      expect(mockPrisma.lexiconEntry.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            word: 'Jugendhilfe',
+            pos: 'noun',
+            gender: 'f',
+          }),
+        }),
+      );
     });
   });
 

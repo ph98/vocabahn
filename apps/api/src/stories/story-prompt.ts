@@ -88,6 +88,7 @@ export function buildStoryPrompt(input: StoryPromptInput): string {
     '  including capitalisation and any umlauts. If you used a word more than',
     '  once, give the first occurrence. Omit any word you could not use. An',
     '  incorrect surfaceForm is worse than an omitted one.',
+    '- quiz: 3 to 4 multiple-choice questions testing the learner\'s understanding of the studied words in the story context. Each item must test one studied word you used in the text: `targetWord` (the exact studied headword), `prompt` (English question testing what the word means or how it functions in this specific story context), `answer` (correct meaning or answer, 2–6 words), `distractors` (exactly 3 plausible but incorrect English alternatives), `explanation` (1 short sentence explaining why the answer is correct according to the story).',
   );
 
   return lines.join('\n');

@@ -19,6 +19,34 @@ export const quotaQuerySchema = z.object({
 export type QuotaQuery = z.infer<typeof quotaQuerySchema>;
 
 
+export const compoundComponentSchema = z.object({
+  word: z.string(),
+  lemma: z.string(),
+  pos: z.string(),
+  gender: z.string().nullable(),
+  gloss: z.string().nullable(),
+  translation: z.string().nullable(),
+});
+
+export const compoundDecompositionSchema = z.object({
+  compound: z.string(),
+  left: compoundComponentSchema,
+  right: compoundComponentSchema,
+  fugenlaut: z.string().nullable(),
+  gender: z.string().nullable(),
+  pos: z.string(),
+  formOf: z
+    .object({
+      lemma: z.string(),
+      description: z.string(),
+    })
+    .nullable()
+    .optional(),
+});
+
+export type CompoundComponent = z.infer<typeof compoundComponentSchema>;
+export type CompoundDecomposition = z.infer<typeof compoundDecompositionSchema>;
+
 export const dictionarySearchResultSchema = z.object({
   word: z.string(),
   pos: z.string(),
@@ -28,6 +56,7 @@ export const dictionarySearchResultSchema = z.object({
   cefrLevel: z.string().nullable(),
   frequencyRank: z.number().nullable(),
   enrichmentStatus: enrichmentStatusSchema,
+  compound: compoundDecompositionSchema.nullable().optional(),
 });
 
 export const dictionarySearchResponseSchema = z.object({
@@ -192,6 +221,7 @@ export const dictionaryEntryDetailSchema = z.object({
       descriptions: z.array(z.string()),
     })
     .nullable(),
+  compound: compoundDecompositionSchema.nullable().optional(),
   imageCredit: z
     .object({ authorName: z.string(), authorUrl: z.string().nullable() })
     .nullable(),

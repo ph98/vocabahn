@@ -118,6 +118,8 @@ describe('StoriesService', () => {
         findFirst: vi.fn(),
         update: vi.fn(),
       },
+      storyQuizAttempt: { create: vi.fn().mockResolvedValue({}) },
+      storyQuizQuestion: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
       storyTarget: { updateMany: vi.fn(), createMany: vi.fn().mockResolvedValue({ count: 0 }) },
       $transaction: vi.fn().mockResolvedValue([]),
     };
@@ -182,6 +184,7 @@ describe('StoriesService', () => {
         targetRow('e1', 'Haus', 'house', { emoji: '🏠' }),
         targetRow('e2', 'grün', 'green'),
       ],
+      quizQuestions: [],
       ...overrides,
     };
   }
@@ -498,6 +501,7 @@ describe('StoriesService', () => {
         gloss: 'house',
         audioUrl: '/api/static/audio/e1.mp3',
         example: { de: 'Das Haus ist da.', en: 'The house is there.' },
+        compound: null,
         understood: null,
       });
     });
@@ -587,6 +591,92 @@ describe('StoriesService', () => {
       expect(prisma.storyTarget.updateMany).toHaveBeenCalledWith({
         where: { storyId: 'story-1', dictionaryEntryId: { notIn: [] } },
         data: { understood: true, respondedAt: expect.any(Date) },
+      });
+    });
+
+    it('evaluates quiz answers, records attempts, and schedules FSRS cards with GOOD/AGAIN', async () => {
+      const storyWithQuiz = readyStory({
+        quizQuestions: [
+          {
+            id: 'q1',
+            order: 0,
+            dictionaryEntryId: 'e1',
+            targetWord: 'Haus',
+            prompt: 'What does "Haus" mean in this story?',
+            options: ['house', 'tree', 'river', 'sky'],
+            correctIndex: 0,
+            explanation: 'Haus means house.',
+          },
+          {
+            id: 'q2',
+            order: 1,
+            dictionaryEntryId: 'e2',
+            targetWord: 'grün',
+            prompt: 'What color is "grün"?',
+            options: ['blue', 'green', 'red', 'yellow'],
+            correctIndex: 1,
+            explanation: 'Grün means green.',
+          },
+        ],
+      });
+
+      prisma.story.findUnique.mockResolvedValue(storyWithQuiz);
+
+      const result = await service.complete('user-1', 'story-1', {
+        notUnderstood: [],
+        quizAnswers: [
+          { questionId: 'q1', selectedIndex: 0, latencyMs: 1200 }, // correct
+          { questionId: 'q2', selectedIndex: 0, latencyMs: 2500 }, // wrong (selected blue instead of green)
+        ],
+      });
+
+      expect(result.score).toEqual({ correct: 1, total: 2 });
+      expect(result.quizResults).toHaveLength(2);
+      expect(result.quizResults![0]).toMatchObject({
+        questionId: 'q1',
+        word: 'Haus',
+        correct: true,
+      });
+      expect(result.quizResults![1]).toMatchObject({
+        questionId: 'q2',
+        word: 'grün',
+        correct: false,
+      });
+
+      // StoryQuizAttempt rows created
+      expect(prisma.storyQuizAttempt.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          questionId: 'q1',
+          userId: 'user-1',
+          selectedIndex: 0,
+          correct: true,
+          latencyMs: 1200,
+        }),
+      });
+      expect(prisma.storyQuizAttempt.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          questionId: 'q2',
+          userId: 'user-1',
+          selectedIndex: 0,
+          correct: false,
+          latencyMs: 2500,
+        }),
+      });
+
+      // ReviewLogs created with GOOD for q1 and AGAIN for q2
+      expect(prisma.reviewLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-1',
+          rating: 'GOOD',
+          latencyMs: 1200,
+        }),
+      });
+      expect(prisma.reviewLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-1',
+          rating: 'AGAIN',
+          latencyMs: 2500,
+        }),
       });
     });
   });

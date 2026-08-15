@@ -4,6 +4,7 @@ import {
   FEEDBACK_ISSUE_LABELS,
   type AdjectiveDeclension,
   type AdjectiveDeclensionTable,
+  type CompoundDecomposition,
   type ConjugationMood,
   type DictionaryEntryDetail,
   type FeedbackIssue,
@@ -532,6 +533,78 @@ function LearnerAidsSection({ entry }: { entry: DictionaryEntryDetail }) {
   );
 }
 
+/** Visual breakdown for German compound words (Komposita). */
+function CompoundBreakdownSection({
+  compound,
+  onSelectWord,
+}: {
+  compound: CompoundDecomposition;
+  onSelectWord: (word: string, pos?: string) => void;
+}) {
+  const leftMeaning = compound.left.translation || compound.left.gloss;
+  const rightMeaning = compound.right.translation || compound.right.gloss;
+  const genderLabel =
+    compound.gender === 'm'
+      ? 'der (masculine)'
+      : compound.gender === 'f'
+        ? 'die (feminine)'
+        : compound.gender === 'n'
+          ? 'das (neuter)'
+          : null;
+
+  return (
+    <section className="mb-4 rounded-2xl border border-surface-800/60 bg-surface-950/80 p-4">
+      <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-surface-500">
+        🧩 Compound Word Breakdown
+      </h4>
+      <div className="flex flex-wrap items-center gap-2 text-sm sm:text-base">
+        <button
+          type="button"
+          onClick={() => onSelectWord(compound.left.word, compound.left.pos)}
+          className="inline-flex max-w-full min-h-11 items-center rounded-xl border border-surface-700 bg-surface-900 px-3 py-1.5 transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          <span lang="de" className="font-semibold text-accent-indigo shrink-0">
+            {compound.left.word}
+          </span>
+          {leftMeaning && (
+            <span className="ml-1.5 truncate text-xs text-surface-400">({leftMeaning})</span>
+          )}
+        </button>
+
+        <span className="font-bold text-surface-500 shrink-0">
+          {compound.fugenlaut ? `+ -${compound.fugenlaut}- +` : '+'}
+        </span>
+
+        <button
+          type="button"
+          onClick={() => onSelectWord(compound.right.word, compound.right.pos)}
+          className="inline-flex max-w-full min-h-11 items-center rounded-xl border border-surface-700 bg-surface-900 px-3 py-1.5 transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        >
+          <span lang="de" className="font-semibold text-accent-indigo shrink-0">
+            {compound.right.word}
+          </span>
+          {rightMeaning && (
+            <span className="ml-1.5 truncate text-xs text-surface-400">({rightMeaning})</span>
+          )}
+        </button>
+      </div>
+
+      <div className="mt-3 space-y-1 text-xs text-surface-400">
+        {genderLabel && (
+          <p>
+            • Grammatical gender <span className="font-medium text-surface-200">{genderLabel}</span> is determined by the head word <span lang="de" className="font-medium text-surface-200">{compound.right.word}</span>.
+          </p>
+        )}
+        {compound.formOf && (
+          <p>
+            • Base lemma: <span lang="de" className="font-medium text-surface-200">{compound.formOf.lemma}</span> ({compound.formOf.description}).
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 /** Word family chips + pronunciation variants. */
 function FamilySection({
   entry,
@@ -1039,6 +1112,13 @@ export function EntryBody({
       <TabPanel id={panelId} labelledBy={`${baseId}-tab-${activeTab}`}>
         {activeTab === 'overview' && (
           <>
+            {entry.compound && (
+              <CompoundBreakdownSection
+                compound={entry.compound}
+                onSelectWord={onSelectWord}
+              />
+            )}
+
             {entry.usageNote && (
               <section className="mb-4 rounded-2xl border border-surface-800/60 bg-surface-950/80 p-4">
                 <h4 className="mb-0.5 text-xs font-medium uppercase tracking-wide text-surface-500">

@@ -41,6 +41,7 @@ model User {
   stories           Story[]
   quizAttempts      QuizAttempt[]
   quizReports       QuizQuestionReport[]
+  storyQuizAttempts StoryQuizAttempt[]
   pushSubscriptions PushSubscription[]
 
   @@index([reminderEnabled])
@@ -172,9 +173,10 @@ model DictionaryEntry {
   courseWords   CourseWord[]
   deckWords     UserDeckWord[]
   feedback      EntryFeedback[]
-  storyTargets  StoryTarget[]
-  quizQuestions EntryQuizQuestion[]
-  quizAttempts  QuizAttempt[]
+  storyTargets       StoryTarget[]
+  storyQuizQuestions StoryQuizQuestion[]
+  quizQuestions      EntryQuizQuestion[]
+  quizAttempts       QuizAttempt[]
 
   @@index([word])
   @@index([enrichmentStatus])
@@ -591,9 +593,11 @@ model Story {
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
 
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  sourceItem SourceItem?   @relation(fields: [sourceItemId], references: [id], onDelete: SetNull)
-  targets    StoryTarget[]
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceItem    SourceItem?         @relation(fields: [sourceItemId], references: [id], onDelete: SetNull)
+  targets       StoryTarget[]
+  quizQuestions StoryQuizQuestion[]
+  quizAttempts  StoryQuizAttempt[]
 
   @@index([userId, createdAt])
   // Drives "has this learner already read this article?"
@@ -644,6 +648,44 @@ model StoryTarget {
 
   @@unique([storyId, dictionaryEntryId])
   @@index([dictionaryEntryId])
+}
+
+model StoryQuizQuestion {
+  id                String   @id @default(cuid())
+  storyId           String
+  dictionaryEntryId String
+  targetWord        String?
+  order             Int      @default(0)
+  prompt            String
+  options           String[]
+  correctIndex      Int
+  explanation       String?
+  createdAt         DateTime @default(now())
+
+  story           Story              @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  dictionaryEntry DictionaryEntry    @relation(fields: [dictionaryEntryId], references: [id])
+  attempts        StoryQuizAttempt[]
+
+  @@index([storyId, order])
+  @@index([dictionaryEntryId])
+}
+
+model StoryQuizAttempt {
+  id            String   @id @default(cuid())
+  questionId    String
+  storyId       String
+  userId        String
+  selectedIndex Int
+  correct       Boolean
+  latencyMs     Int?
+  createdAt     DateTime @default(now())
+
+  question StoryQuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  story    Story             @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, storyId])
+  @@index([questionId])
 }
 
 // ── Email magic link OTPs ─────────────────────────────────────────────────────
