@@ -12,19 +12,19 @@ interface LevelStyle {
 }
 
 const DEFAULT_STYLE: LevelStyle = {
-  bg: 'bg-sky-500/15',
-  text: 'text-sky-400',
-  border: 'border-sky-500/40',
-  glow: 'shadow-sky-500/20',
+  bg: 'bg-sky-500/10 dark:bg-sky-500/15',
+  text: 'text-sky-700 dark:text-sky-400',
+  border: 'border-sky-500/30 dark:border-sky-500/40',
+  glow: 'shadow-sky-500/10 dark:shadow-sky-500/20',
 };
 
 const LEVEL_COLORS: Record<string, LevelStyle> = {
   A1: DEFAULT_STYLE,
-  A2: { bg: 'bg-cyan-500/15', text: 'text-cyan-400', border: 'border-cyan-500/40', glow: 'shadow-cyan-500/20' },
-  B1: { bg: 'bg-emerald-500/15', text: 'text-emerald-400', border: 'border-emerald-500/40', glow: 'shadow-emerald-500/20' },
-  B2: { bg: 'bg-amber-500/15', text: 'text-amber-400', border: 'border-amber-500/40', glow: 'shadow-amber-500/20' },
-  C1: { bg: 'bg-indigo-500/15', text: 'text-indigo-400', border: 'border-indigo-500/40', glow: 'shadow-indigo-500/20' },
-  C2: { bg: 'bg-rose-500/15', text: 'text-rose-400', border: 'border-rose-500/40', glow: 'shadow-rose-500/20' },
+  A2: { bg: 'bg-cyan-500/10 dark:bg-cyan-500/15', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-500/30 dark:border-cyan-500/40', glow: 'shadow-cyan-500/10 dark:shadow-cyan-500/20' },
+  B1: { bg: 'bg-emerald-500/10 dark:bg-emerald-500/15', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-500/30 dark:border-emerald-500/40', glow: 'shadow-emerald-500/10 dark:shadow-emerald-500/20' },
+  B2: { bg: 'bg-amber-500/10 dark:bg-amber-500/15', text: 'text-amber-800 dark:text-amber-400', border: 'border-amber-500/30 dark:border-amber-500/40', glow: 'shadow-amber-500/10 dark:shadow-amber-500/20' },
+  C1: { bg: 'bg-indigo-500/10 dark:bg-indigo-500/15', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-500/30 dark:border-indigo-500/40', glow: 'shadow-indigo-500/10 dark:shadow-indigo-500/20' },
+  C2: { bg: 'bg-rose-500/10 dark:bg-rose-500/15', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-500/30 dark:border-rose-500/40', glow: 'shadow-rose-500/10 dark:shadow-rose-500/20' },
 };
 
 const SIZE_CLASSES = {

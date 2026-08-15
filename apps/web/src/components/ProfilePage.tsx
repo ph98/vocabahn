@@ -201,11 +201,11 @@ export function InterestsSection({ interests }: { interests: string[] }) {
                 type="button"
                 onClick={handleClearAll}
                 disabled={save.isPending}
-                className="text-xs font-medium text-surface-400 hover:text-surface-200 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                className="text-xs font-medium text-surface-400 hover:text-surface-200 transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo"
               >
                 Clear all
               </button>
-              <span className="rounded-full bg-indigo-500/15 border border-indigo-500/30 px-3 py-1 text-xs font-semibold text-indigo-300">
+              <span className="rounded-full bg-indigo-500/15 border border-indigo-500/30 px-3 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
                 {selected.length} / 50 selected
               </span>
             </>
@@ -247,7 +247,7 @@ export function InterestsSection({ interests }: { interests: string[] }) {
             <button
               type="submit"
               disabled={!customInput.trim() || save.isPending || selected.length >= 50}
-              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-600/20 transition-all hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white disabled:opacity-40 active:scale-[0.98]"
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-md shadow-indigo-600/20 transition-all hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo disabled:opacity-40 active:scale-[0.98]"
             >
               <Plus aria-hidden className="size-4" />
               <span>Add</span>
@@ -270,7 +270,7 @@ export function InterestsSection({ interests }: { interests: string[] }) {
               {customTopics.map((topic) => (
                 <span
                   key={topic}
-                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/15 py-1 pl-3 pr-2 text-xs font-semibold text-indigo-200 shadow-sm"
+                  className="inline-flex items-center gap-2 rounded-xl border border-indigo-500/40 bg-indigo-500/15 py-1 pl-3 pr-2 text-xs font-semibold text-indigo-700 dark:text-indigo-200 shadow-sm"
                 >
                   <span aria-hidden="true">🏷️</span>
                   <span>{topic}</span>
@@ -279,7 +279,7 @@ export function InterestsSection({ interests }: { interests: string[] }) {
                     onClick={() => handleRemoveCustom(topic)}
                     disabled={save.isPending}
                     aria-label={`Remove topic ${topic}`}
-                    className="rounded p-0.5 text-indigo-300 hover:bg-indigo-500/30 hover:text-white transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-white"
+                    className="rounded p-0.5 text-indigo-500 dark:text-indigo-300 hover:bg-indigo-500/30 hover:text-surface-100 transition-colors focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent-indigo"
                   >
                     <X aria-hidden className="size-3.5" />
                   </button>
@@ -301,14 +301,14 @@ export function InterestsSection({ interests }: { interests: string[] }) {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search topics (e.g. history, space, cooking, football)…"
-              className="w-full rounded-xl border border-surface-700 bg-surface-950/60 py-2 pl-10 pr-9 text-xs sm:text-sm text-surface-200 placeholder:text-surface-500 focus:border-indigo-400 focus:bg-surface-900 focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-colors"
+              className="w-full rounded-xl border border-surface-700 bg-surface-900 py-2 pl-10 pr-9 text-xs sm:text-sm text-surface-100 placeholder:text-surface-500 focus:border-indigo-400 focus:bg-surface-900 focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-colors"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
                 aria-label="Clear topic search"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-surface-400 hover:text-surface-200 focus-visible:outline focus-visible:outline-1 focus-visible:outline-white"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-surface-400 hover:text-surface-200 focus-visible:outline focus-visible:outline-1 focus-visible:outline-accent-indigo"
               >
                 <X aria-hidden className="size-3.5" />
               </button>
@@ -327,7 +327,7 @@ export function InterestsSection({ interests }: { interests: string[] }) {
             role="tab"
             aria-selected={activeCategory === 'all'}
             onClick={() => setActiveCategory('all')}
-            className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${
+            className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo ${
               activeCategory === 'all'
                 ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20'
                 : 'text-surface-400 bg-surface-900/60 border border-surface-800 hover:bg-surface-800 hover:text-surface-200'
@@ -344,9 +344,9 @@ export function InterestsSection({ interests }: { interests: string[] }) {
                 role="tab"
                 aria-selected={isSelected}
                 onClick={() => setActiveCategory(cat.id)}
-                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo ${
                   isSelected
-                    ? 'bg-indigo-500/20 text-indigo-200 font-semibold ring-1 ring-indigo-500/40 border border-indigo-500/30'
+                    ? 'bg-indigo-500/20 text-indigo-700 dark:text-indigo-200 font-semibold ring-1 ring-indigo-500/40 border border-indigo-500/30'
                     : 'text-surface-400 bg-surface-900/60 border border-surface-800 hover:bg-surface-800 hover:text-surface-200'
                 }`}
               >
@@ -394,15 +394,15 @@ export function InterestsSection({ interests }: { interests: string[] }) {
                           type="button"
                           onClick={() => toggleTopic(topic.slug)}
                           aria-pressed={active}
-                          className={`group inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 active:scale-[0.98] ${
+                          className={`group inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-50 active:scale-[0.98] ${
                             active
-                              ? 'border-indigo-400/80 bg-indigo-500/20 text-indigo-100 shadow-sm shadow-indigo-500/15 ring-1 ring-indigo-500/40'
+                              ? 'border-indigo-500/60 bg-indigo-500/15 text-indigo-700 dark:text-indigo-100 shadow-sm shadow-indigo-500/15 ring-1 ring-indigo-500/40'
                               : 'border-surface-800 bg-surface-900/70 text-surface-300 hover:border-surface-700 hover:bg-surface-800 hover:text-surface-100'
                           }`}
                         >
                           <span aria-hidden="true" className="text-sm">{topic.emoji}</span>
                           <span>{topic.label}</span>
-                          {active && <Check aria-hidden className="size-3.5 text-indigo-300 ml-0.5" />}
+                          {active && <Check aria-hidden className="size-3.5 text-indigo-500 dark:text-indigo-300 ml-0.5" />}
                         </button>
                       );
                     })}
@@ -426,15 +426,15 @@ export function InterestsSection({ interests }: { interests: string[] }) {
                       type="button"
                       onClick={() => toggleTopic(topic.slug)}
                       aria-pressed={active}
-                      className={`group inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 active:scale-[0.98] ${
+                      className={`group inline-flex min-h-10 items-center gap-2 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-50 active:scale-[0.98] ${
                         active
-                          ? 'border-indigo-400/80 bg-indigo-500/20 text-indigo-100 shadow-sm shadow-indigo-500/15 ring-1 ring-indigo-500/40'
+                          ? 'border-indigo-500/60 bg-indigo-500/15 text-indigo-700 dark:text-indigo-100 shadow-sm shadow-indigo-500/15 ring-1 ring-indigo-500/40'
                           : 'border-surface-800 bg-surface-900/70 text-surface-300 hover:border-surface-700 hover:bg-surface-800 hover:text-surface-100'
                       }`}
                     >
                       <span aria-hidden="true" className="text-sm">{topic.emoji}</span>
                       <span>{topic.label}</span>
-                      {active && <Check aria-hidden className="size-3.5 text-indigo-300 ml-0.5" />}
+                      {active && <Check aria-hidden className="size-3.5 text-indigo-500 dark:text-indigo-300 ml-0.5" />}
                     </button>
                   );
                 })}
@@ -580,7 +580,7 @@ export function ProfilePage() {
                 type="button"
                 onClick={() => signOut.mutate()}
                 disabled={signOut.isPending}
-                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-surface-700 bg-surface-800/60 px-4 text-xs font-semibold text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"
+                className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-surface-700 bg-surface-800/60 px-4 text-xs font-semibold text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-50"
               >
                 <LogOut aria-hidden className="size-4" />
                 <span>Sign out</span>
@@ -602,7 +602,7 @@ export function ProfilePage() {
               controls="profile-panel-overview"
               selected={activeTab === 'overview'}
               onSelect={() => handleSelectTab('overview')}
-              className={`flex-1 min-h-11 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white shrink-0 ${
+              className={`flex-1 min-h-11 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo shrink-0 ${
                 activeTab === 'overview'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'text-surface-400 hover:bg-surface-800/60 hover:text-surface-200'
@@ -616,7 +616,7 @@ export function ProfilePage() {
               controls="profile-panel-interests"
               selected={activeTab === 'interests'}
               onSelect={() => handleSelectTab('interests')}
-              className={`flex-1 min-h-11 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white shrink-0 ${
+              className={`flex-1 min-h-11 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo shrink-0 ${
                 activeTab === 'interests'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'text-surface-400 hover:bg-surface-800/60 hover:text-surface-200'
@@ -628,7 +628,7 @@ export function ProfilePage() {
                 className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                   activeTab === 'interests'
                     ? 'bg-white/20 text-white'
-                    : 'bg-indigo-500/15 text-indigo-300'
+                    : 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
                 }`}
               >
                 {user.interests.length}
@@ -639,7 +639,7 @@ export function ProfilePage() {
               controls="profile-panel-preferences"
               selected={activeTab === 'preferences'}
               onSelect={() => handleSelectTab('preferences')}
-              className={`flex-1 min-h-11 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white shrink-0 ${
+              className={`flex-1 min-h-11 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-xs sm:text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo shrink-0 ${
                 activeTab === 'preferences'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
                   : 'text-surface-400 hover:bg-surface-800/60 hover:text-surface-200'
@@ -662,12 +662,12 @@ export function ProfilePage() {
                 <div className="rounded-3xl border border-surface-800/80 bg-gradient-to-br from-surface-900/90 via-surface-900/80 to-surface-950/90 p-6 sm:p-7 backdrop-blur-xl shadow-xl space-y-6">
                   <div className="flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-2.5">
-                      <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                      <div className="flex size-10 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 border border-indigo-500/30">
                         <Compass aria-hidden className="size-5" />
                       </div>
                       <div>
                         <h2 className="text-base font-bold text-surface-100">
-                          CEFR German Proficiency
+                           CEFR German Proficiency
                         </h2>
                         <p className="text-xs text-surface-400">
                           Goethe-Institut & Profile Deutsch 12-sublevel calibration
@@ -678,7 +678,7 @@ export function ProfilePage() {
                     <button
                       type="button"
                       onClick={() => setShowCalibration(!showCalibration)}
-                      className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-xs font-bold text-indigo-300 transition-colors hover:bg-indigo-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                      className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-indigo-500/40 bg-indigo-500/10 px-4 py-2 text-xs font-bold text-indigo-700 dark:text-indigo-300 transition-colors hover:bg-indigo-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo"
                     >
                       <Sparkles aria-hidden className="size-3.5" />
                       <span>{showCalibration ? 'Close Calibration' : user.cefrLevel ? 'Re-calibrate Level' : 'Calibrate Level'}</span>
@@ -943,7 +943,7 @@ export function ProfilePage() {
                       onClick={() => {
                         toast.info('Downloading offline dictionary pack…', { id: 'setting:offline-pack' });
                       }}
-                      className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-surface-700 bg-surface-800 px-4 py-2 text-xs font-bold text-surface-200 transition-colors hover:bg-surface-700 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white shrink-0"
+                      className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-surface-700 bg-surface-800 px-4 py-2 text-xs font-bold text-surface-200 transition-colors hover:bg-surface-700 hover:text-surface-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo shrink-0"
                     >
                       <Download aria-hidden className="size-4" />
                       <span>Download</span>

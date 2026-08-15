@@ -46,10 +46,36 @@ function drawRoundedRect(
  * Replaces 365 individual DOM nodes and multi-tween GSAP cascades with a single
  * hardware-accelerated 2D canvas draw pass and coordinate-based pointer picking.
  */
+function getIsDarkMode(): boolean {
+  if (typeof document === 'undefined') return true;
+  if (document.documentElement.classList.contains('theme-light')) return false;
+  if (document.documentElement.classList.contains('theme-dark')) return true;
+  if (typeof window !== 'undefined' && window.matchMedia) {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  }
+  return true;
+}
+
 export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [isDark, setIsDark] = useState(getIsDarkMode);
   const tooltip = useFollowTooltip<HeatmapData>();
+
+  useEffect(() => {
+    const update = () => setIsDark(getIsDarkMode());
+    
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    media.addEventListener('change', update);
+
+    return () => {
+      observer.disconnect();
+      media.removeEventListener('change', update);
+    };
+  }, []);
 
   const numCols = Math.max(1, Math.ceil(data.length / NUM_ROWS));
   const cssWidth = numCols * CELL_SIZE + (numCols - 1) * CELL_GAP;
@@ -89,49 +115,91 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       drawRoundedRect(ctx, x, y, CELL_SIZE, CELL_SIZE, CELL_RADIUS);
 
       if (intensity === 0) {
-        ctx.fillStyle = 'rgba(24, 24, 27, 0.65)';
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(63, 63, 70, 0.45)';
+        if (isDark) {
+          ctx.fillStyle = 'rgba(24, 24, 27, 0.65)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(63, 63, 70, 0.45)';
+        } else {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+        }
         ctx.lineWidth = 1;
         ctx.stroke();
       } else if (intensity === 1) {
         const grad = ctx.createLinearGradient(x, y, x + CELL_SIZE, y + CELL_SIZE);
-        grad.addColorStop(0, '#082f49');
-        grad.addColorStop(0.5, '#0e7490');
-        grad.addColorStop(1, '#0369a1');
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+        if (isDark) {
+          grad.addColorStop(0, '#082f49');
+          grad.addColorStop(0.5, '#0e7490');
+          grad.addColorStop(1, '#0369a1');
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+        } else {
+          grad.addColorStop(0, '#bae6fd');
+          grad.addColorStop(0.5, '#7dd3fc');
+          grad.addColorStop(1, '#38bdf8');
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(2, 132, 199, 0.4)';
+        }
         ctx.lineWidth = 1;
         ctx.stroke();
       } else if (intensity === 2) {
         const grad = ctx.createLinearGradient(x, y, x + CELL_SIZE, y + CELL_SIZE);
-        grad.addColorStop(0, '#1d4ed8');
-        grad.addColorStop(0.5, '#4338ca');
-        grad.addColorStop(1, '#6d28d9');
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(129, 140, 248, 0.55)';
+        if (isDark) {
+          grad.addColorStop(0, '#1d4ed8');
+          grad.addColorStop(0.5, '#4338ca');
+          grad.addColorStop(1, '#6d28d9');
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(129, 140, 248, 0.55)';
+        } else {
+          grad.addColorStop(0, '#93c5fd');
+          grad.addColorStop(0.5, '#818cf8');
+          grad.addColorStop(1, '#a78bfa');
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
+        }
         ctx.lineWidth = 1;
         ctx.stroke();
       } else if (intensity === 3) {
         const grad = ctx.createLinearGradient(x, y, x + CELL_SIZE, y + CELL_SIZE);
-        grad.addColorStop(0, '#6366f1');
-        grad.addColorStop(0.5, '#8b5cf6');
-        grad.addColorStop(1, '#c026d3');
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(196, 181, 253, 0.75)';
+        if (isDark) {
+          grad.addColorStop(0, '#6366f1');
+          grad.addColorStop(0.5, '#8b5cf6');
+          grad.addColorStop(1, '#c026d3');
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(196, 181, 253, 0.75)';
+        } else {
+          grad.addColorStop(0, '#6366f1');
+          grad.addColorStop(0.5, '#8b5cf6');
+          grad.addColorStop(1, '#a855f7');
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(139, 92, 246, 0.5)';
+        }
         ctx.lineWidth = 1;
         ctx.stroke();
       } else {
         const grad = ctx.createLinearGradient(x, y, x + CELL_SIZE, y + CELL_SIZE);
-        grad.addColorStop(0, '#a855f7');
-        grad.addColorStop(0.5, '#e879f9');
-        grad.addColorStop(1, '#f472b6');
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(251, 207, 232, 0.85)';
+        if (isDark) {
+          grad.addColorStop(0, '#a855f7');
+          grad.addColorStop(0.5, '#e879f9');
+          grad.addColorStop(1, '#f472b6');
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(251, 207, 232, 0.85)';
+        } else {
+          grad.addColorStop(0, '#4f46e5');
+          grad.addColorStop(0.5, '#7c3aed');
+          grad.addColorStop(1, '#c026d3');
+          ctx.fillStyle = grad;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(168, 85, 247, 0.6)';
+        }
         ctx.lineWidth = 1;
         ctx.stroke();
       }
@@ -139,7 +207,7 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
       // Highlight cell border on hover
       if (index === hoveredIndex) {
         ctx.save();
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.85)';
         ctx.lineWidth = 1.5;
         drawRoundedRect(ctx, x - 0.5, y - 0.5, CELL_SIZE + 1, CELL_SIZE + 1, CELL_RADIUS + 0.5);
         ctx.stroke();
@@ -148,7 +216,7 @@ export function ActivityHeatmap({ data }: ActivityHeatmapProps) {
     });
 
     ctx.restore();
-  }, [data, cssWidth, cssHeight, hoveredIndex]);
+  }, [data, cssWidth, cssHeight, hoveredIndex, isDark]);
 
   useEffect(() => {
     renderCanvas();

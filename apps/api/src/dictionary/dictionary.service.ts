@@ -1,8 +1,9 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
-import type {
-  CompoundDecomposition,
-  DictionaryEntryDetail,
-  DictionarySearchResult,
+import {
+  compoundDecompositionSchema,
+  type CompoundDecomposition,
+  type DictionaryEntryDetail,
+  type DictionarySearchResult,
 } from '@vocabahn/shared';
 import Fuse from 'fuse.js';
 import { EnrichmentService } from '../enrichment/enrichment.service';
@@ -633,7 +634,8 @@ export class DictionaryService implements OnModuleInit {
       raw?: unknown;
     };
   }): DictionarySearchResult {
-    const raw = e.lexiconEntry.raw as { compound?: CompoundDecomposition } | undefined;
+    const raw = e.lexiconEntry.raw as { isCompound?: boolean; compound?: CompoundDecomposition } | undefined;
+    const compoundParsed = compoundDecompositionSchema.safeParse(raw?.compound);
     return {
       word: e.word,
       pos: e.lexiconEntry.pos,
@@ -643,7 +645,7 @@ export class DictionaryService implements OnModuleInit {
       cefrLevel: e.cefrLevel,
       frequencyRank: e.lexiconEntry.frequencyRank,
       enrichmentStatus: e.enrichmentStatus,
-      compound: raw?.compound ?? null,
+      compound: compoundParsed.success ? compoundParsed.data : null,
     };
   }
 }

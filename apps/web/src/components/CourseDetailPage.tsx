@@ -53,7 +53,7 @@ export function CourseDetailPage() {
       <PullToRefresh onRefresh={refetch} />
       <Link
         to="/courses"
-        className="mb-4 inline-block min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="mb-4 inline-block min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-semibold text-surface-200 transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
       >
         ← Back to courses
       </Link>
@@ -71,7 +71,7 @@ export function CourseDetailPage() {
       )}
 
       {course && (
-        <div className="rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-lg shadow-black/20">
+        <div className="rounded-2xl border border-surface-800 bg-surface-900 p-6 shadow-xl">
           {!course.isComplete && (
             <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-accent-amber">
               <span className="font-semibold shrink-0">Incomplete Data / Beta:</span>
@@ -80,12 +80,12 @@ export function CourseDetailPage() {
           )}
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-medium">{course.title}</h2>
+              <h2 className="text-xl font-bold text-surface-100">{course.title}</h2>
               {course.description && <p className="mt-1 text-sm text-surface-400">{course.description}</p>}
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {!course.isComplete && (
-                <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-accent-amber">
+                <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-accent-amber">
                   Incomplete / Beta
                 </span>
               )}
@@ -104,7 +104,7 @@ export function CourseDetailPage() {
               <>
                 <Link
                   to={`/review?courseId=${course.id}`}
-                  className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
                 >
                   Start review
                 </Link>
@@ -112,7 +112,7 @@ export function CourseDetailPage() {
                   type="button"
                   onClick={() => unenroll.mutate()}
                   disabled={unenroll.isPending}
-                  className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-accent-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60"
+                  className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-semibold text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-accent-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-60"
                 >
                   {unenroll.isPending ? 'Unenrolling…' : 'Unenroll'}
                 </button>
@@ -122,7 +122,7 @@ export function CourseDetailPage() {
                 type="button"
                 onClick={() => enroll.mutate()}
                 disabled={enroll.isPending}
-                className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60"
+                className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-60"
               >
                 {enroll.isPending ? 'Enrolling…' : 'Enroll'}
               </button>

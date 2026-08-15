@@ -50,8 +50,7 @@ break the dictionary page.
 1. Status → `ENRICHING`.
 2. Seed from local data: Wiktextract glosses are already English, so the first
    three joined with `; ` become a provisional translation.
-3. **Gemini** (`gemini-flash-lite-latest`, or `gemini-2.5-flash` when
-   `betterModel`), temperature 0.4, `responseMimeType: application/json` with a
+3. **Gemini** (`gemini-3.7-flash`), temperature 0.4, `responseMimeType: application/json` with a
    strict `responseSchema`: translation, emoji, `cefrLevel` enumerated over the
    12 half sub-levels, one-sentence `usageNote`, 2–4 examples, 0–4 collocations,
    0–2 false friends, `register` from a 9-value enum, mnemonic, and exactly 3

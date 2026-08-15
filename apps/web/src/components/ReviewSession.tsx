@@ -80,13 +80,13 @@ function articleFor(gender: string | null | undefined): string | null {
 
 function getArticleBadgeStyle(art: string) {
   if (art.includes('der')) {
-    return 'border-sky-400/40 bg-sky-500/15 text-sky-400';
+    return 'border-sky-400/40 bg-sky-500/15 text-sky-700 dark:text-sky-400';
   }
   if (art.includes('die')) {
-    return 'border-rose-400/40 bg-rose-500/15 text-rose-400';
+    return 'border-rose-400/40 bg-rose-500/15 text-rose-700 dark:text-rose-400';
   }
   if (art.includes('das')) {
-    return 'border-emerald-400/40 bg-emerald-500/15 text-emerald-400';
+    return 'border-emerald-400/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400';
   }
   return 'border-surface-700 bg-surface-800/80 text-surface-300';
 }
@@ -148,7 +148,7 @@ function ShortcutsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             type="button"
             onClick={onClose}
             aria-label="Close shortcuts guide"
-            className="flex min-h-9 min-w-9 items-center justify-center rounded-xl border border-surface-700 text-surface-400 transition-colors hover:bg-surface-800 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            className="flex min-h-9 min-w-9 items-center justify-center rounded-xl border border-surface-700 text-surface-400 transition-colors hover:bg-surface-800 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo"
           >
             <X className="size-4" />
           </button>
@@ -246,7 +246,7 @@ function ShortcutsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
         <button
           type="button"
           onClick={onClose}
-          className="mt-6 min-h-11 w-full rounded-xl bg-surface-800 text-sm font-medium text-surface-200 transition-colors hover:bg-surface-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+          className="mt-6 min-h-11 w-full rounded-xl bg-surface-800 text-sm font-semibold text-surface-200 transition-colors hover:bg-surface-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo"
         >
           Got it
         </button>
@@ -469,14 +469,14 @@ function SessionSummary({
       <div className="mt-10 flex flex-col-reverse sm:flex-row items-center justify-center gap-3 shrink-0">
         <Link
           to={deckId ? `/decks/${deckId}` : courseId ? `/courses/${courseId}` : '/courses'}
-          className="min-h-12 w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-surface-700 px-5 py-3 text-sm font-medium text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-100 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-12 w-full sm:w-auto inline-flex items-center justify-center rounded-xl border border-surface-700 px-5 py-3 text-sm font-semibold text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-100 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
         >
           {deckId ? 'Back to deck' : courseId ? 'Back to course' : 'Back to courses'}
         </Link>
         <button
           type="button"
           onClick={onReviewMore}
-          className="min-h-12 w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-[background-color,transform] hover:bg-indigo-400 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-12 w-full sm:w-auto inline-flex items-center justify-center rounded-xl bg-indigo-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-[background-color,transform] hover:bg-indigo-400 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
         >
           Review more
         </button>
@@ -1014,7 +1014,7 @@ export function ReviewSession() {
                 onClick={() => setShowShortcuts(true)}
                 aria-label="Keyboard shortcuts"
                 title="Keyboard shortcuts (?)"
-                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-surface-700 bg-surface-900/60 text-surface-400 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                className="inline-flex min-h-10 min-w-10 items-center justify-center rounded-xl border border-surface-700 bg-surface-900/60 text-surface-400 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo"
               >
                 <Keyboard className="size-4" />
               </button>
@@ -1025,7 +1025,7 @@ export function ReviewSession() {
                   onClick={undoLastRating}
                   disabled={!canUndo}
                   aria-label="Undo last rating"
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-surface-700 bg-surface-900/60 px-3 py-1.5 text-sm font-medium text-surface-200 shadow-sm transition-all hover:border-surface-600 hover:bg-surface-800 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-surface-700 bg-surface-900/60 px-3 py-1.5 text-sm font-medium text-surface-200 shadow-sm transition-all hover:border-surface-600 hover:bg-surface-800 active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
                 >
                   <RotateCcw className="size-3.5 text-surface-400" />
                   <span>Undo</span>
@@ -1084,7 +1084,7 @@ export function ReviewSession() {
               <div className="flex items-center gap-2">
                 <Link
                   to="/known-words"
-                  className="content-center rounded-lg px-2 font-semibold underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="content-center rounded-lg px-2 font-semibold underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
                 >
                   Review / undo
                 </Link>
@@ -1092,7 +1092,7 @@ export function ReviewSession() {
                   type="button"
                   onClick={() => setAutoGraduatedCount(0)}
                   aria-label="Dismiss"
-                  className="flex size-7 items-center justify-center rounded-lg text-lg text-surface-400 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="flex size-7 items-center justify-center rounded-lg text-lg text-surface-400 hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
                 >
                   ×
                 </button>
@@ -1149,7 +1149,7 @@ export function ReviewSession() {
             <div className="mt-6">
               <Link
                 to={deckId ? `/decks/${deckId}` : courseId ? `/courses/${courseId}` : '/library'}
-                className="inline-flex min-h-12 items-center justify-center rounded-xl bg-surface-800 border border-surface-700 px-5 py-2.5 text-sm font-semibold text-surface-200 transition-colors hover:border-surface-600 hover:bg-surface-700 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                className="inline-flex min-h-12 items-center justify-center rounded-xl bg-surface-800 border border-surface-700 px-5 py-2.5 text-sm font-semibold text-surface-200 transition-colors hover:border-surface-600 hover:bg-surface-700 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
               >
                 {deckId ? 'Back to decks' : 'Back to courses'}
               </Link>
@@ -1283,7 +1283,7 @@ export function ReviewSession() {
                       onClick={reveal}
                       aria-label="Show answer"
                       whileTap={{ scale: 0.98 }}
-                      className="group flex min-h-13 sm:min-h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-xl shadow-indigo-500/25 transition-all hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                      className="group flex min-h-13 sm:min-h-14 w-full items-center justify-center gap-2.5 rounded-2xl bg-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-xl shadow-indigo-500/25 transition-all hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
                     >
                       <span>Show answer</span>
                       <kbd
@@ -1311,7 +1311,7 @@ export function ReviewSession() {
                           exit={{ opacity: 0 }}
                           transition={{ ...springSnappy, delay: i * 0.03 }}
                           whileTap={{ scale: 0.94 }}
-                          className={`group flex min-h-13 sm:min-h-14 flex-col items-center justify-center rounded-2xl border px-2 py-2 text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${RATING_COLORS[r]}`}
+                          className={`group flex min-h-13 sm:min-h-14 flex-col items-center justify-center rounded-2xl border px-2 py-2 text-sm font-semibold transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo ${RATING_COLORS[r]}`}
                         >
                           <span className="font-bold tracking-tight">{RATING_LABELS[r]}</span>
                           <div className="mt-0.5 flex items-center gap-1.5 opacity-75">

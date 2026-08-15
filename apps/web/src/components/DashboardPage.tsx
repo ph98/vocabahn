@@ -68,10 +68,10 @@ function TodaysReadCard() {
   return (
     <Link
       to="/story"
-      className="dashboard-card flex items-center justify-between gap-4 rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-surface-900/80 to-surface-950/80 p-5 shadow-lg backdrop-blur-md transition-colors hover:border-indigo-400/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+      className="dashboard-card flex items-center justify-between gap-4 rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 via-surface-900/80 to-surface-950/80 dark:from-indigo-950/40 p-5 shadow-lg backdrop-blur-md transition-colors hover:border-indigo-400/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
     >
       <div className="min-w-0 space-y-1">
-        <p className="text-xs font-bold uppercase tracking-wide text-indigo-300">
+        <p className="text-xs font-bold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">
           {story.origin === 'DAILY' ? "Today's read" : 'Continue reading'}
         </p>
         {waiting ? (
@@ -135,16 +135,16 @@ export function DashboardPage() {
       {data && (
         <div className="flex flex-col gap-5">
           {user && !user.cefrLevel && (
-            <div className="dashboard-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-950/40 via-surface-900/80 to-surface-950/80 p-5 backdrop-blur-md shadow-lg">
+            <div className="dashboard-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-3xl border border-indigo-500/30 bg-gradient-to-r from-indigo-500/10 via-surface-900/80 to-surface-950/80 dark:from-indigo-950/40 p-5 backdrop-blur-md shadow-lg">
               <div className="space-y-1">
-                <p className="text-sm font-bold text-indigo-300">Set your German CEFR Level</p>
-                <p className="text-xs text-surface-300">
+                <p className="text-sm font-bold text-indigo-700 dark:text-indigo-300">Set your German CEFR Level</p>
+                <p className="text-xs text-surface-400">
                   Calibrate card ordering and auto-graduate basic filler words by selecting your current level in profile settings.
                 </p>
               </div>
               <Link
                 to="/profile"
-                className="inline-flex items-center gap-1.5 shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-indigo-500"
+                className="inline-flex items-center gap-1.5 shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white transition-all hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
               >
                 Calibrate Level
                 <ChevronRight className="size-4" />
@@ -154,7 +154,7 @@ export function DashboardPage() {
 
           {/* Bento Box Grid for Statistics */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="dashboard-card relative overflow-hidden rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/90 via-surface-900/80 to-surface-950/90 backdrop-blur-md p-6 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.3)] sm:col-span-2 lg:col-span-2 flex flex-col justify-between">
+            <div className="dashboard-card relative overflow-hidden rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/90 via-surface-900/80 to-surface-950/90 backdrop-blur-md p-6 sm:p-8 shadow-xl sm:col-span-2 lg:col-span-2 flex flex-col justify-between">
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute -top-20 left-1/2 size-72 -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl"
@@ -179,7 +179,7 @@ export function DashboardPage() {
                 {data.stats.dueToday > 0 ? (
                   <Link
                     to="/review"
-                    className="group inline-flex min-h-12 items-center gap-3 rounded-2xl bg-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 transition-[background-color,transform] hover:bg-indigo-400 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    className="group inline-flex min-h-12 items-center gap-3 rounded-2xl bg-indigo-500 px-6 py-3 text-base font-semibold text-white shadow-lg shadow-indigo-500/25 transition-[background-color,transform] hover:bg-indigo-400 active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
                   >
                     Start review
                     <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-sm tabular-nums">
@@ -202,7 +202,7 @@ export function DashboardPage() {
             <StatCard label="New" value={data.stats.totalNew} icon={Sparkles} accent="text-accent-indigo" />
           </div>
 
-          <div className="dashboard-card relative overflow-hidden rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/90 to-surface-950/90 backdrop-blur-xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.25)] transition-all duration-500 hover:border-indigo-500/30">
+          <div className="dashboard-card relative overflow-hidden rounded-3xl border border-surface-800/60 bg-gradient-to-br from-surface-900/90 to-surface-950/90 backdrop-blur-xl p-6 shadow-xl transition-all duration-500 hover:border-indigo-500/30">
             <div className="absolute top-0 right-0 -mt-16 -mr-16 w-64 h-64 bg-indigo-500/10 blur-3xl rounded-full pointer-events-none" />
             <h3 className="mb-5 text-sm font-semibold uppercase tracking-widest text-surface-400 relative z-10">Activity</h3>
             
@@ -211,7 +211,7 @@ export function DashboardPage() {
             </div>
             
             <details className="mt-4 relative z-10 group">
-              <summary className="min-h-11 cursor-pointer content-center text-sm font-medium text-surface-400 transition-colors hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white list-none flex items-center gap-2">
+              <summary className="min-h-11 cursor-pointer content-center text-sm font-medium text-surface-400 transition-colors hover:text-surface-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo list-none flex items-center gap-2">
                 <span className="w-4 h-4 rounded-full bg-surface-800 flex items-center justify-center group-open:rotate-90 transition-transform">
                   <ChevronRight aria-hidden className="size-3" />
                 </span>

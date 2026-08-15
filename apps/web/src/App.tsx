@@ -198,7 +198,7 @@ function RouteAnnouncer({ mainRef }: { mainRef: RefObject<HTMLElement | null> })
 
 /** Shared styling for every footer link, so a new one cannot drift from the rest. */
 const footerLinkClass =
-  'hover:text-surface-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white transition-colors';
+  'hover:text-surface-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo transition-colors';
 
 /**
  * GitHub mark. lucide-react dropped its brand icons in v1, so this is inlined
@@ -224,7 +224,7 @@ function StatusLink() {
   const up = !isError && data?.services.database === 'up' && data?.services.redis === 'up';
 
   return (
-    <NavLink to="/status" aria-label="System status" className="flex items-center justify-center p-2 opacity-20 hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white rounded-full" title="System Status">
+    <NavLink to="/status" aria-label="System status" className="flex items-center justify-center p-2 opacity-20 hover:opacity-100 transition-opacity focus-visible:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo rounded-full" title="System Status">
       <span
         role="img"
         aria-label={up ? 'up' : 'down'}
@@ -441,7 +441,7 @@ export default function App() {
       <CookieConsentBanner />
       <a
         href="#main"
-        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-indigo-500 focus:px-4 focus:py-2.5 focus:text-sm focus:font-medium focus:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-xl focus:bg-indigo-500 focus:px-4 focus:py-2.5 focus:text-sm focus:font-medium focus:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
       >
         Skip to content
       </a>

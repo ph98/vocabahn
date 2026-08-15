@@ -47,7 +47,7 @@ export function CookieConsentBanner() {
             parties for advertising. Read our{' '}
             <Link
               to="/privacy"
-              className="font-medium text-accent-indigo underline underline-offset-2 hover:text-indigo-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="font-medium text-accent-indigo underline underline-offset-2 hover:text-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
             >
               Privacy Policy
             </Link>
@@ -58,14 +58,14 @@ export function CookieConsentBanner() {
           <button
             type="button"
             onClick={handleDecline}
-            className="min-h-10 rounded-xl border border-surface-700 bg-surface-800/80 px-3.5 text-xs font-medium text-surface-300 transition-colors hover:bg-surface-700 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="min-h-10 rounded-xl border border-surface-700 bg-surface-800/80 px-3.5 text-xs font-medium text-surface-300 transition-colors hover:bg-surface-700 hover:text-surface-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
           >
             Essential Only
           </button>
           <button
             type="button"
             onClick={handleAccept}
-            className="min-h-10 rounded-xl bg-indigo-500 px-4 text-xs font-semibold text-white shadow-md shadow-indigo-500/20 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="min-h-10 rounded-xl bg-indigo-500 px-4 text-xs font-semibold text-white shadow-md shadow-indigo-500/20 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
           >
             Accept All
           </button>

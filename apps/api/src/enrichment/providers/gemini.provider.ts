@@ -23,7 +23,7 @@ export interface GeminiEnrichment {
   model: string;
 }
 
-const MODEL = 'gemini-flash-lite-latest';
+const MODEL = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
 
 const REGISTERS = [
   'neutral',
@@ -139,7 +139,9 @@ export class GeminiProvider {
       '    shown after the learner answers.',
     ].join('\n');
 
-    const model = input.betterModel ? 'gemini-2.5-flash' : MODEL;
+    const model = input.betterModel
+      ? process.env.GEMINI_BETTER_MODEL || 'gemini-3.7-flash'
+      : MODEL;
     const res = await this.client.models.generateContent({
       model,
       contents: prompt,
