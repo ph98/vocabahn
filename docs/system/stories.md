@@ -286,6 +286,10 @@ Every word in the story is matched to dictionary entries and rendered interactiv
 - **Hover highlighting**: Hovering over any word highlights it.
 - **Clicking a word (`CLICK_HARD`)**: When a learner clicks a word to inspect its dictionary popover, it indicates uncertainty and triggers a review evaluation marking the word as `ReviewRating.HARD` in FSRS, recording a `ReviewLog` and recomputing their knowledge score.
 - **"I don't know this word at all" (`DONT_KNOW_AGAIN`)**: Within the popover, clicking this button marks the word as unknown (`understood: false`) and updates the flashcard in FSRS with rating `ReviewRating.AGAIN`.
+- **Story Validation Quiz**: Each generated story includes 3–4 context-aware multiple-choice quiz questions specifically targeting the studied words used in the story.
+  - While reading, the learner can tap "Take Story Quiz" to step through the interactive quiz questions.
+  - Submitting quiz answers (`POST /stories/:id/complete` with `quizAnswers`) grades the responses on the server.
+  - For each answered question, `StoryQuizAttempt` is stored, the corresponding `Card` is updated in FSRS with `ReviewRating.GOOD` (if answered correctly) or `ReviewRating.AGAIN` (if answered incorrectly), a `ReviewLog` snapshot is written, and the learner's knowledge score is recomputed.
 - **`StoryTarget.understood`**: Stores the comprehension signal (`false` for unlearned words, `true` for understood words upon story completion).
 
 ## Quota

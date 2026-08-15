@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { TtsProvider } from '../tts/tts.provider';
 import { StoryProvider } from './providers/story.provider';
 import { STORY_MIN_TARGETS, STORY_QUEUE, type StoryJobData } from './stories.constants';
+import { buildStoryQuizQuestions } from './story-quiz';
 import { validateTargets } from './story-targets';
 
 // Same rate limit as enrichment — both share the Gemini quota.
@@ -130,9 +131,26 @@ export class StoryProcessor extends WorkerHost {
       }
     }
 
+    const verifiedTargetsForQuiz = verified.map((v) => {
+      const ent = entries.find((e) => e.id === v.entryId);
+      return {
+        entryId: v.entryId,
+        word: ent?.word ?? v.surfaceForm,
+        surfaceForm: v.surfaceForm,
+        translation: ent?.translation ?? null,
+      };
+    });
+
+    const quizQuestionsToCreate = buildStoryQuizQuestions(
+      generated.quiz ?? [],
+      verifiedTargetsForQuiz,
+      entries,
+    );
+
     await this.prisma.$transaction([
-      // Drop the placeholders; keep verified words and all story words.
+      // Drop the placeholders; keep verified words, all story words, and quiz questions.
       this.prisma.storyTarget.deleteMany({ where: { storyId } }),
+      this.prisma.storyQuizQuestion.deleteMany({ where: { storyId } }),
       this.prisma.story.update({
         where: { id: storyId },
         data: {
@@ -166,6 +184,17 @@ export class StoryProcessor extends WorkerHost {
             create: finalTargets.map((t) => ({
               dictionaryEntryId: t.dictionaryEntryId,
               surfaceForm: t.surfaceForm,
+            })),
+          },
+          quizQuestions: {
+            create: quizQuestionsToCreate.map((q) => ({
+              dictionaryEntryId: q.dictionaryEntryId,
+              targetWord: q.targetWord,
+              order: q.order,
+              prompt: q.prompt,
+              options: q.options,
+              correctIndex: q.correctIndex,
+              explanation: q.explanation,
             })),
           },
         },

@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import type {
+  CompoundDecomposition,
   DictionaryEntryDetail,
   DictionarySearchResult,
 } from '@vocabahn/shared';
@@ -7,6 +8,7 @@ import Fuse from 'fuse.js';
 import { EnrichmentService } from '../enrichment/enrichment.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { buildAdjectiveDeclension, buildNounDeclension } from './declension';
+import { decomposeGermanWord } from './decompounder';
 import { buildPronunciation, buildTopics, buildWordFamily } from './lexicon-extras';
 import { buildVerbConjugation } from './verb-conjugation';
 
@@ -44,7 +46,7 @@ export class DictionaryService implements OnModuleInit {
         emoji: true,
         cefrLevel: true,
         enrichmentStatus: true,
-        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true } },
+        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true, raw: true } },
       },
     });
     this.fuse.setCollection(entries.map((e) => this.toSearchResult(e)));
@@ -62,7 +64,7 @@ export class DictionaryService implements OnModuleInit {
         emoji: true,
         cefrLevel: true,
         enrichmentStatus: true,
-        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true } },
+        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true, raw: true } },
       },
     });
     if (!entry) return;
@@ -163,7 +165,67 @@ export class DictionaryService implements OnModuleInit {
         }
         return null;
       } else {
-        return null;
+        const decomp = await decomposeGermanWord(this.prisma, trimmed);
+        if (decomp) {
+          try {
+            const gloss = `Compound ${decomp.pos}: ${decomp.left.word} (${decomp.left.translation || decomp.left.gloss || decomp.left.pos}) + ${decomp.right.word} (${decomp.right.translation || decomp.right.gloss || decomp.right.pos})`;
+            const lex = await this.prisma.lexiconEntry.create({
+              data: {
+                word: trimmed,
+                pos: decomp.pos,
+                gender: decomp.gender,
+                raw: { isCompound: true, compound: decomp },
+                senses: {
+                  create: [
+                    {
+                      order: 0,
+                      glosses: [gloss],
+                      tags: ['compound'],
+                      topics: [],
+                      synonyms: [],
+                      antonyms: [],
+                    },
+                  ],
+                },
+              },
+            });
+            const trans = `${decomp.left.translation || decomp.left.gloss || decomp.left.word} + ${decomp.right.translation || decomp.right.gloss || decomp.right.word}`;
+            entry = await this.prisma.dictionaryEntry.create({
+              data: {
+                lexiconEntryId: lex.id,
+                word: trimmed,
+                translation: trans,
+                emoji: '🧩',
+                usageNote: `Compound ${decomp.pos} formed from "${decomp.left.word}" and "${decomp.right.word}". The grammatical properties (gender, plural) are determined by "${decomp.right.word}".`,
+              },
+              select: { id: true, word: true },
+            });
+            this.fuse.add(
+              this.toSearchResult({
+                word: trimmed,
+                translation: trans,
+                emoji: '🧩',
+                cefrLevel: null,
+                enrichmentStatus: 'PENDING',
+                lexiconEntry: {
+                  pos: decomp.pos,
+                  gender: decomp.gender,
+                  frequencyRank: null,
+                  raw: { compound: decomp },
+                },
+              }),
+            );
+            this.logger.log(`promoted compound "${trimmed}" (${decomp.pos}) to active dictionary`);
+          } catch {
+            entry = await this.prisma.dictionaryEntry.findFirst({
+              where: { word: { equals: trimmed, mode: 'insensitive' } },
+              select: { id: true, word: true },
+            });
+            if (!entry) return null;
+          }
+        } else {
+          return null;
+        }
       }
     }
 
@@ -351,6 +413,10 @@ export class DictionaryService implements OnModuleInit {
         }
         throw new NotFoundException(`No entry for "${word}"`);
       } else {
+        const created = await this.findOrCreateEntry(word, pos);
+        if (created) {
+          return this.getEntry(created.word, userId, pos, timeZone, depth + 1);
+        }
         throw new NotFoundException(`No entry for "${word}"`);
       }
     }
@@ -430,6 +496,12 @@ export class DictionaryService implements OnModuleInit {
     }
 
     const lex = entry.lexiconEntry;
+    const raw = lex.raw as { isCompound?: boolean; compound?: CompoundDecomposition } | null;
+    let compound: CompoundDecomposition | null = raw?.compound ?? null;
+    if (!compound && entry.word.length >= 6) {
+      compound = await decomposeGermanWord(this.prisma, entry.word);
+    }
+
     return {
       id: entry.id,
       word: entry.word,
@@ -466,6 +538,7 @@ export class DictionaryService implements OnModuleInit {
       pronunciation: buildPronunciation(lex.raw),
       topics: buildTopics(lex.raw),
       formOf: null,
+      compound,
       imageCredit: entry.imageCredit && {
         authorName: entry.imageCredit.authorName,
         authorUrl: entry.imageCredit.authorUrl,
@@ -553,8 +626,14 @@ export class DictionaryService implements OnModuleInit {
     emoji: string | null;
     cefrLevel: string | null;
     enrichmentStatus: DictionarySearchResult['enrichmentStatus'];
-    lexiconEntry: { pos: string; gender: string | null; frequencyRank: number | null };
+    lexiconEntry: {
+      pos: string;
+      gender: string | null;
+      frequencyRank: number | null;
+      raw?: unknown;
+    };
   }): DictionarySearchResult {
+    const raw = e.lexiconEntry.raw as { compound?: CompoundDecomposition } | undefined;
     return {
       word: e.word,
       pos: e.lexiconEntry.pos,
@@ -564,6 +643,7 @@ export class DictionaryService implements OnModuleInit {
       cefrLevel: e.cefrLevel,
       frequencyRank: e.lexiconEntry.frequencyRank,
       enrichmentStatus: e.enrichmentStatus,
+      compound: raw?.compound ?? null,
     };
   }
 }

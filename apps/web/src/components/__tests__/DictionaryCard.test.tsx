@@ -150,6 +150,48 @@ describe('AudioButton', () => {
       expect(btn).toHaveAttribute('title', 'Audio unavailable');
     });
   });
+
+  it('renders compound word breakdown when entry.compound is present', async () => {
+    const onSelectWord = vi.fn();
+    const COMPOUND_ENTRY: DictionaryEntryDetail = {
+      ...ENTRY,
+      word: 'Jugendhilfe',
+      gender: 'f',
+      pos: 'noun',
+      compound: {
+        compound: 'Jugendhilfe',
+        left: {
+          word: 'Jugend',
+          lemma: 'Jugend',
+          pos: 'noun',
+          gender: 'f',
+          gloss: 'youth',
+          translation: 'youth',
+        },
+        right: {
+          word: 'Hilfe',
+          lemma: 'Hilfe',
+          pos: 'noun',
+          gender: 'f',
+          gloss: 'help',
+          translation: 'help',
+        },
+        fugenlaut: null,
+        gender: 'f',
+        pos: 'noun',
+      },
+    };
+
+    renderWithProviders(<EntryBody entry={COMPOUND_ENTRY} onSelectWord={onSelectWord} />);
+
+    await waitFor(() => expect(screen.getByText(/Compound Word Breakdown/i)).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /Jugend/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Hilfe/ })).toBeInTheDocument();
+    expect(screen.getByText(/die \(feminine\)/i)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Jugend/ }));
+    expect(onSelectWord).toHaveBeenCalledWith('Jugend', 'noun');
+  });
 });
 
 

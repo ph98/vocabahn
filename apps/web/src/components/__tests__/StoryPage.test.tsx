@@ -153,12 +153,14 @@ describe('StoryPage', () => {
     localStorage.setItem('vocabahn-story-id', 'story-1');
     vi.mocked(fetchStory).mockResolvedValue(READY);
     vi.mocked(completeStory).mockResolvedValue({
-      ...READY,
-      completedAt: '2026-01-01T00:05:00.000Z',
-      targets: [
-        { ...READY.targets[0]!, understood: true },
-        { ...READY.targets[1]!, understood: false },
-      ],
+      story: {
+        ...READY,
+        completedAt: '2026-01-01T00:05:00.000Z',
+        targets: [
+          { ...READY.targets[0]!, understood: true },
+          { ...READY.targets[1]!, understood: false },
+        ],
+      },
     });
 
     const { container } = renderWithProviders(<StoryPage />);
@@ -166,7 +168,7 @@ describe('StoryPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: "I don't know this word at all" }));
     fireEvent.click(screen.getByRole('button', { name: 'Finish reading' }));
 
-    await waitFor(() => expect(completeStory).toHaveBeenCalledWith('story-1', ['e2']));
+    await waitFor(() => expect(completeStory).toHaveBeenCalledWith('story-1', ['e2'], []));
     expect(await screen.findByText("1 of 2 words didn't land.")).toBeInTheDocument();
 
     expect(await a11y(container)).toHaveNoViolations();
@@ -678,8 +680,10 @@ describe('StoryPage', () => {
       localStorage.setItem('vocabahn-story-id', 'story-1');
       vi.mocked(fetchStory).mockResolvedValue(READY);
       vi.mocked(completeStory).mockResolvedValue({
-        ...READY,
-        completedAt: '2026-01-01T00:05:00.000Z',
+        story: {
+          ...READY,
+          completedAt: '2026-01-01T00:05:00.000Z',
+        },
       });
 
       renderWithProviders(<StoryPage />);
@@ -692,6 +696,109 @@ describe('StoryPage', () => {
         await screen.findByRole('button', { name: 'Find me something to read' }),
       ).toBeInTheDocument();
       expect(createStory).not.toHaveBeenCalled();
+    });
+
+    it('allows taking the story quiz and displays quiz score and breakdown', async () => {
+      const STORY_WITH_QUIZ: Story = {
+        ...READY,
+        quiz: [
+          {
+            id: 'q1',
+            order: 0,
+            entryId: 'e1',
+            targetWord: 'Haus',
+            prompt: 'In this story, what does "Haus" mean?',
+            options: ['house', 'tree', 'river', 'sky'],
+          },
+          {
+            id: 'q2',
+            order: 1,
+            entryId: 'e2',
+            targetWord: 'grün',
+            prompt: 'What color is described by "grün"?',
+            options: ['green', 'yellow', 'purple', 'black'],
+          },
+        ],
+      };
+
+      localStorage.setItem('vocabahn-story-id', 'story-1');
+      vi.mocked(fetchStory).mockResolvedValue(STORY_WITH_QUIZ);
+      vi.mocked(completeStory).mockResolvedValue({
+        story: {
+          ...STORY_WITH_QUIZ,
+          completedAt: '2026-01-01T00:05:00.000Z',
+          targets: [
+            { ...READY.targets[0]!, understood: true },
+            { ...READY.targets[1]!, understood: true },
+          ],
+        },
+        quizResults: [
+          {
+            questionId: 'q1',
+            entryId: 'e1',
+            word: 'Haus',
+            selectedIndex: 0,
+            correctIndex: 0,
+            correct: true,
+            explanation: 'Haus means house.',
+          },
+          {
+            questionId: 'q2',
+            entryId: 'e2',
+            word: 'grün',
+            selectedIndex: 0,
+            correctIndex: 0,
+            correct: true,
+            explanation: 'Grün means green.',
+          },
+        ],
+        score: {
+          correct: 2,
+          total: 2,
+        },
+      });
+
+      const { container } = renderWithProviders(<StoryPage />);
+
+      // Take quiz button is visible
+      const takeQuizBtn = await screen.findByRole('button', { name: /Take Story Quiz/ });
+      expect(takeQuizBtn).toBeInTheDocument();
+      fireEvent.click(takeQuizBtn);
+
+      // Question 1 of 2 is shown
+      expect(await screen.findByText('Question 1 of 2')).toBeInTheDocument();
+      expect(screen.getByText('In this story, what does "Haus" mean?')).toBeInTheDocument();
+
+      // Pick option 1 ('house')
+      fireEvent.click(screen.getByRole('button', { name: /house/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Next Question/ }));
+
+      // Question 2 of 2
+      expect(await screen.findByText('Question 2 of 2')).toBeInTheDocument();
+      expect(screen.getByText('What color is described by "grün"?')).toBeInTheDocument();
+
+      // Pick option 1 ('green')
+      fireEvent.click(screen.getByRole('button', { name: /green/ }));
+      fireEvent.click(screen.getByRole('button', { name: /Submit Quiz & Complete/ }));
+
+      // CompleteStory was called with quiz answers
+      await waitFor(() =>
+        expect(completeStory).toHaveBeenCalledWith(
+          'story-1',
+          [],
+          expect.arrayContaining([
+            expect.objectContaining({ questionId: 'q1', selectedIndex: 0 }),
+            expect.objectContaining({ questionId: 'q2', selectedIndex: 0 }),
+          ]),
+        ),
+      );
+
+      // Score and breakdown are displayed
+      expect(await screen.findByText('Outstanding Comprehension!')).toBeInTheDocument();
+      expect(screen.getAllByText('Haus').length).toBeGreaterThan(0);
+      expect(screen.getByText('Haus means house.')).toBeInTheDocument();
+
+      expect(await a11y(container)).toHaveNoViolations();
     });
   });
 });

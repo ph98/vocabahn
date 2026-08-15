@@ -10,10 +10,14 @@ import {
 import { Prisma, ReviewRating } from '@prisma/client';
 import {
   STORY_TOPIC_SLUGS,
+  type CompleteStoryBody,
+  type CompleteStoryResponse,
+  type CompoundDecomposition,
   type Story as SharedStory,
   type StoryInteractBody,
   type StoryInteractResponse,
   type StoryOrigin,
+  type StoryQuizResultItem,
 } from '@vocabahn/shared';
 import { Queue } from 'bullmq';
 import type { Redis } from 'ioredis';
@@ -82,6 +86,7 @@ const storyInclude = {
           lexiconEntry: {
             select: {
               pos: true,
+              raw: true,
               senses: {
                 select: { glosses: true },
                 orderBy: { order: 'asc' as const },
@@ -92,6 +97,9 @@ const storyInclude = {
         },
       },
     },
+  },
+  quizQuestions: {
+    orderBy: { order: 'asc' as const },
   },
 };
 
@@ -233,36 +241,154 @@ export class StoriesService {
   }
 
   /**
-   * Records comprehension: every target the learner tapped is `false`, the rest
-   * `true`. Idempotent — re-completing overwrites the previous answer.
+   * Records comprehension and grades story quiz answers.
+   * If quiz answers were submitted, each tested word updates the user's FSRS card,
+   * creates a ReviewLog, and recalculates the user's knowledge score.
    */
   async complete(
     userId: string,
     storyId: string,
-    notUnderstood: string[],
-  ): Promise<SharedStory> {
+    body: CompleteStoryBody | string[],
+  ): Promise<CompleteStoryResponse> {
     const story = await this.loadStory(storyId);
     if (!story || story.userId !== userId) {
       throw new NotFoundException('Story not found');
     }
 
-    const tapped = new Set(notUnderstood);
+    const notUnderstoodList = Array.isArray(body) ? body : (body?.notUnderstood ?? []);
+    const quizAnswers = Array.isArray(body) ? [] : (body?.quizAnswers ?? []);
+
+    const tapped = new Set(notUnderstoodList);
     const now = new Date();
 
-    await this.prisma.$transaction([
+    const questions = story.quizQuestions ?? [];
+    const quizResults: StoryQuizResultItem[] = [];
+    const txOps: Prisma.PrismaPromise<unknown>[] = [];
+    const evaluatedEntries = new Set<string>();
+
+    for (const answer of quizAnswers) {
+      const q = questions.find((item) => item.id === answer.questionId);
+      if (!q) continue;
+
+      const isCorrect = answer.selectedIndex === q.correctIndex;
+      evaluatedEntries.add(q.dictionaryEntryId);
+
+      const targetEntry = story.targets.find(
+        (t) => t.dictionaryEntryId === q.dictionaryEntryId,
+      )?.dictionaryEntry;
+
+      quizResults.push({
+        questionId: q.id,
+        entryId: q.dictionaryEntryId,
+        word: q.targetWord ?? targetEntry?.word ?? '',
+        selectedIndex: answer.selectedIndex,
+        correctIndex: q.correctIndex,
+        correct: isCorrect,
+        explanation: q.explanation,
+      });
+
+      txOps.push(
+        this.prisma.storyQuizAttempt.create({
+          data: {
+            questionId: q.id,
+            storyId,
+            userId,
+            selectedIndex: answer.selectedIndex,
+            correct: isCorrect,
+            latencyMs: answer.latencyMs,
+            createdAt: now,
+          },
+        }),
+      );
+
+      const rating: ReviewRating = isCorrect ? 'GOOD' : 'AGAIN';
+
+      // 1. Find or create Card for (userId, entryId)
+      const card = await this.prisma.card.upsert({
+        where: { userId_dictionaryEntryId: { userId, dictionaryEntryId: q.dictionaryEntryId } },
+        create: {
+          userId,
+          dictionaryEntryId: q.dictionaryEntryId,
+          knownState: 'ACTIVE',
+          state: 'NEW',
+        },
+        update: {},
+      });
+
+      // 2. Compute next FSRS state
+      const { card: updated } = this.scheduler.next(toFsrsCard(card), now, ratingToFsrs(rating));
+
+      // 3. Update Card, ReviewLog, StoryTarget
+      txOps.push(
+        this.prisma.card.update({
+          where: { id: card.id },
+          data: fromFsrsCard(updated),
+        }),
+        this.prisma.reviewLog.create({
+          data: {
+            cardId: card.id,
+            userId,
+            rating,
+            latencyMs: answer.latencyMs,
+            ...buildReviewLogSnapshot(updated, now),
+          },
+        }),
+        this.prisma.storyTarget.updateMany({
+          where: { storyId, dictionaryEntryId: q.dictionaryEntryId },
+          data: { understood: isCorrect, respondedAt: now },
+        }),
+      );
+    }
+
+    // Update remaining targets that weren't quizzed
+    const remainingNotUnderstood = [...tapped].filter((id) => !evaluatedEntries.has(id));
+    if (remainingNotUnderstood.length > 0) {
+      txOps.push(
+        this.prisma.storyTarget.updateMany({
+          where: { storyId, dictionaryEntryId: { in: remainingNotUnderstood } },
+          data: { understood: false, respondedAt: now },
+        }),
+      );
+    }
+
+    txOps.push(
       this.prisma.storyTarget.updateMany({
-        where: { storyId, dictionaryEntryId: { in: [...tapped] } },
-        data: { understood: false, respondedAt: now },
-      }),
-      this.prisma.storyTarget.updateMany({
-        where: { storyId, dictionaryEntryId: { notIn: [...tapped] } },
+        where: {
+          storyId,
+          dictionaryEntryId: { notIn: [...evaluatedEntries, ...remainingNotUnderstood] },
+        },
         data: { understood: true, respondedAt: now },
       }),
       this.prisma.story.update({ where: { id: storyId }, data: { completedAt: now } }),
-    ]);
+    );
 
-    const updated = await this.loadStory(storyId);
-    return this.toStory(updated!);
+    await this.prisma.$transaction(txOps);
+
+    // Recompute knowledge score and auto-graduation for evaluated cards
+    for (const entryId of evaluatedEntries) {
+      const card = await this.prisma.card.findUnique({
+        where: { userId_dictionaryEntryId: { userId, dictionaryEntryId: entryId } },
+        select: { id: true },
+      });
+      if (card) {
+        await this.knowledge.recomputeAfterReview(userId, card.id);
+      }
+    }
+
+    const updatedStory = await this.loadStory(storyId);
+    const correctCount = quizResults.filter((r) => r.correct).length;
+
+    return {
+      story: this.toStory(updatedStory!),
+      quizResults: quizResults.length > 0 ? quizResults : undefined,
+      score:
+        quizResults.length > 0
+          ? {
+              correct: correctCount,
+              total: quizResults.length,
+            }
+          : undefined,
+    };
   }
 
   /**
@@ -507,23 +633,39 @@ export class StoriesService {
         .filter((t) => t.surfaceForm !== '')
         .map((t) => {
           const entry = t.dictionaryEntry;
-          const example = entry.examples[0];
+          const example = entry?.examples?.[0];
+          const raw = entry?.lexiconEntry?.raw as { compound?: CompoundDecomposition } | undefined;
           return {
             entryId: t.dictionaryEntryId,
-            word: entry.word,
+            word: entry?.word ?? t.surfaceForm,
             surfaceForm: t.surfaceForm,
-            translation: entry.translation,
-            emoji: entry.emoji,
-            pos: entry.lexiconEntry.pos,
-            cefrLevel: entry.cefrLevel,
+            translation: entry?.translation ?? null,
+            emoji: entry?.emoji ?? null,
+            pos: entry?.lexiconEntry?.pos ?? 'noun',
+            cefrLevel: entry?.cefrLevel ?? null,
             // A sense can exist with no glosses; an empty string would render
             // as a blank line in the popover, so nothing is nothing.
-            gloss: entry.lexiconEntry.senses[0]?.glosses[0] ?? null,
-            audioUrl: entry.audioUrl,
+            gloss: entry?.lexiconEntry?.senses?.[0]?.glosses?.[0] ?? null,
+            audioUrl: entry?.audioUrl ?? null,
             example: example ? { de: example.de, en: example.en } : null,
+            compound: raw?.compound ?? null,
             understood: t.understood,
           };
         }),
+      quiz: (story.quizQuestions ?? []).map((q) => ({
+        id: q.id,
+        order: q.order,
+        entryId: q.dictionaryEntryId,
+        targetWord: q.targetWord,
+        prompt: q.prompt,
+        options: q.options,
+        ...(story.completedAt
+          ? {
+              correctIndex: q.correctIndex,
+              explanation: q.explanation,
+            }
+          : {}),
+      })),
     };
   }
 

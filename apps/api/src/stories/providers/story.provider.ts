@@ -2,6 +2,14 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { Injectable, Logger } from '@nestjs/common';
 import { buildStoryPrompt, type StoryPromptInput } from '../story-prompt';
 
+export interface RawStoryQuizQuestion {
+  targetWord: string;
+  prompt: string;
+  answer: string;
+  distractors: string[];
+  explanation?: string;
+}
+
 /** A generated micro-story plus the words it claims to have used. */
 export interface GeneratedStory {
   title: string | null;
@@ -16,6 +24,7 @@ export interface GeneratedStory {
   imageQuery: string | null;
   /** Claimed only — the caller must verify each surfaceForm occurs in `text`. */
   targets: { word: string; surfaceForm: string }[];
+  quiz: RawStoryQuizQuestion[];
 }
 
 // Narrative coherence across eight prescribed words is the whole product here,
@@ -74,8 +83,25 @@ export class StoryProvider {
                 required: ['word', 'surfaceForm'],
               },
             },
+            quiz: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  targetWord: { type: Type.STRING },
+                  prompt: { type: Type.STRING },
+                  answer: { type: Type.STRING },
+                  distractors: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING },
+                  },
+                  explanation: { type: Type.STRING },
+                },
+                required: ['targetWord', 'prompt', 'answer', 'distractors', 'explanation'],
+              },
+            },
           },
-          required: ['title', 'text', 'translation', 'imageQuery', 'targets'],
+          required: ['title', 'text', 'translation', 'imageQuery', 'targets', 'quiz'],
         },
       },
     });
@@ -91,6 +117,7 @@ export class StoryProvider {
       translation?: string;
       imageQuery?: string;
       targets?: { word?: string; surfaceForm?: string }[];
+      quiz?: RawStoryQuizQuestion[];
     };
 
     const text = parsed.text?.trim();
@@ -109,6 +136,25 @@ export class StoryProvider {
         )
         // Only the outer whitespace is trimmed; the surface form must stay verbatim.
         .map((t) => ({ word: t.word.trim(), surfaceForm: t.surfaceForm.trim() })),
+      quiz: (parsed.quiz ?? [])
+        .filter(
+          (q): q is RawStoryQuizQuestion =>
+            Boolean(
+              q?.targetWord &&
+                q?.prompt &&
+                q?.answer &&
+                Array.isArray(q?.distractors) &&
+                q.distractors.length >= 1,
+            ),
+        )
+        .map((q) => ({
+          targetWord: q.targetWord.trim(),
+          prompt: q.prompt.trim(),
+          answer: q.answer.trim(),
+          distractors: q.distractors.map((d) => String(d).trim()).filter(Boolean),
+          explanation: q.explanation ? q.explanation.trim() : undefined,
+        })),
     };
   }
 }
+

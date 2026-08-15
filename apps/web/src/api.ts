@@ -1,6 +1,7 @@
 import {
   authConfigSchema,
   calibrateDiagnosticResponseSchema,
+  completeStoryResponseSchema,
   courseDetailSchema,
   courseListResponseSchema,
   dashboardResponseSchema,
@@ -32,6 +33,7 @@ import {
   type AutoGraduation,
   type CalibrateDiagnosticBody,
   type CalibrateDiagnosticResponse,
+  type CompleteStoryResponse,
   type CreateDeckBody,
   type DiagnosticProbeItem,
   type ImportWordsResponse,
@@ -43,6 +45,7 @@ import {
   type SubmitFeedbackBody,
   type SubmitQuizAttemptBody,
   type SubmitQuizReportBody,
+  type SubmitStoryQuizAnswer,
   type SyncReviewItem,
   type UpdateDeckBody,
   type UpdateNotificationSettingsBody,
@@ -430,11 +433,16 @@ export async function interactStoryWord(
   return storyInteractResponseSchema.parse(data);
 }
 
-export async function completeStory(id: string, notUnderstood: string[]) {
+export async function completeStory(
+  id: string,
+  notUnderstood: string[] = [],
+  quizAnswers: SubmitStoryQuizAnswer[] = [],
+): Promise<CompleteStoryResponse> {
   const { data } = await api.post(`/stories/${encodeURIComponent(id)}/complete`, {
     notUnderstood,
+    quizAnswers,
   });
-  return storyResponseSchema.parse(data).story;
+  return completeStoryResponseSchema.parse(data);
 }
 
 export async function fetchStoryQuota() {

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { compoundDecompositionSchema } from './dictionary.js';
 
 // A micro-story is generated from words the learner is currently studying,
 // retold from a real German news item on a topic the learner chose.
@@ -46,6 +47,7 @@ export const storyTargetSchema = z.object({
   // Pronunciation of the headword; null until enrichment synthesizes it
   audioUrl: z.string().nullable(),
   example: storyTargetExampleSchema.nullable(),
+  compound: compoundDecompositionSchema.nullable().optional(),
   // null until the story is completed; false = the learner tapped it
   understood: z.boolean().nullable(),
 });
@@ -69,6 +71,19 @@ export type StorySource = z.infer<typeof storySourceSchema>;
 // that errored or matched nothing all land here. Attribution travels with the
 // URL because Unsplash's terms require crediting the photographer wherever the
 // photo is shown.
+export const storyQuizQuestionSchema = z.object({
+  id: z.string(),
+  order: z.number(),
+  entryId: z.string(),
+  targetWord: z.string().nullable().optional(),
+  prompt: z.string(),
+  options: z.array(z.string()),
+  // Nullable/omitted until answered or when story is completed
+  correctIndex: z.number().int().optional(),
+  explanation: z.string().nullable().optional(),
+});
+export type StoryQuizQuestion = z.infer<typeof storyQuizQuestionSchema>;
+
 export const storyImageSchema = z.object({
   url: z.string(),
   authorName: z.string(),
@@ -98,6 +113,7 @@ export const storySchema = z.object({
   completedAt: z.string().nullable(),
   createdAt: z.string(),
   targets: z.array(storyTargetSchema),
+  quiz: z.array(storyQuizQuestionSchema).optional(),
 });
 export type Story = z.infer<typeof storySchema>;
 
@@ -119,11 +135,42 @@ export const createStoryBodySchema = z.object({
 });
 export type CreateStoryBody = z.infer<typeof createStoryBodySchema>;
 
+export const submitStoryQuizAnswerSchema = z.object({
+  questionId: z.string(),
+  selectedIndex: z.number().int().min(0).max(10),
+  latencyMs: z.number().int().optional(),
+});
+export type SubmitStoryQuizAnswer = z.infer<typeof submitStoryQuizAnswerSchema>;
+
+export const storyQuizResultItemSchema = z.object({
+  questionId: z.string(),
+  entryId: z.string(),
+  word: z.string(),
+  selectedIndex: z.number(),
+  correctIndex: z.number(),
+  correct: z.boolean(),
+  explanation: z.string().nullable(),
+});
+export type StoryQuizResultItem = z.infer<typeof storyQuizResultItemSchema>;
+
 // Entry ids the learner tapped; every other target counts as understood.
 export const completeStoryBodySchema = z.object({
-  notUnderstood: z.array(z.string()).max(50),
+  notUnderstood: z.array(z.string()).max(50).optional().default([]),
+  quizAnswers: z.array(submitStoryQuizAnswerSchema).optional().default([]),
 });
 export type CompleteStoryBody = z.infer<typeof completeStoryBodySchema>;
+
+export const completeStoryResponseSchema = z.object({
+  story: storySchema,
+  quizResults: z.array(storyQuizResultItemSchema).optional(),
+  score: z
+    .object({
+      correct: z.number(),
+      total: z.number(),
+    })
+    .optional(),
+});
+export type CompleteStoryResponse = z.infer<typeof completeStoryResponseSchema>;
 
 export const storyQuotaSchema = z.object({
   used: z.number(),
@@ -147,4 +194,5 @@ export const storyInteractResponseSchema = z.object({
   rating: z.enum(['HARD', 'AGAIN']).optional(),
 });
 export type StoryInteractResponse = z.infer<typeof storyInteractResponseSchema>;
+
 

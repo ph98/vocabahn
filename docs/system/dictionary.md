@@ -46,7 +46,14 @@ API. Recursion is bounded by `depth < 2`.
    headword, the primary entry becomes primary and sibling senses are folded in.
    This prevents rare substantivized nouns from shadowing common conjunctions/interjections
    and keeps `Du`/`du` properly merged.
-5. **Enrichment trigger** — see `enrichment.md`.
+5. **German compound word (Komposita) decomposition.** If the word is not found in
+   the lexicon as a lemma or inflected form, `decomposeGermanWord` in `decompounder.ts`
+   attempts to split the word into its constituents (accounting for Fugenlaute `-s-`,
+   `-es-`, `-en-`, `-n-`, `-e-`, `-er-`). When valid constituent words match in the
+   lexicon, a `LexiconEntry` and `PENDING` `DictionaryEntry` stub are created with the
+   compound structure (`left`, `right`, `fugenlaut`, `gender`, `pos`), and the headword's
+   gender/POS is inherited from the right-hand head word.
+6. **Enrichment trigger** — see `enrichment.md`.
 
 ## Search
 

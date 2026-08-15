@@ -40,6 +40,7 @@ describe('StoryProcessor', () => {
   let prisma: {
     story: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
     storyTarget: { deleteMany: ReturnType<typeof vi.fn> };
+    storyQuizQuestion: { deleteMany: ReturnType<typeof vi.fn> };
     $transaction: ReturnType<typeof vi.fn>;
   };
   let storyProvider: { generate: ReturnType<typeof vi.fn> };
@@ -77,6 +78,7 @@ describe('StoryProcessor', () => {
         update: vi.fn().mockImplementation((args: unknown) => Promise.resolve(args)),
       },
       storyTarget: { deleteMany: vi.fn() },
+      storyQuizQuestion: { deleteMany: vi.fn() },
       $transaction: vi.fn().mockResolvedValue([]),
     };
     storyProvider = { generate: vi.fn().mockResolvedValue(GENERATED) };
