@@ -485,6 +485,7 @@ export default function App() {
               <Route path="/auth/verify" element={<AuthVerifyPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/api/*" element={<Navigate to="/" replace />} />
               <Route path="*" element={<LandingPage />} />
             </Routes>
           </RouteBoundary>
@@ -535,6 +536,7 @@ export default function App() {
                 <Route path="/terms" element={<TermsPage />} />
                 <Route path="/privacy" element={<PrivacyPage />} />
                 <Route path="/auth/verify" element={<AuthVerifyPage />} />
+                <Route path="/api/*" element={<Navigate to="/" replace />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </RouteBoundary>
