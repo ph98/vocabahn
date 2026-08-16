@@ -45,7 +45,7 @@ import {
 import { CurrentUserId, JwtAuthGuard } from './jwt-auth.guard';
 
 // Stricter throttle tier for auth endpoints
-@Throttle({ default: { limit: 10, ttl: 60_000 } })
+@Throttle({ default: { limit: 30, ttl: 60_000 } })
 @Controller('auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
