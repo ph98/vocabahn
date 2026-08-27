@@ -49,10 +49,19 @@ The article is picked when the row is created, not in the processor, so a retry
 re-reads the same article instead of silently swapping it under a learner
 mid-generation.
 
-## Grounding
+No article is picked at all when the learner wrote their own idea into
+`Story.prompt`: retelling an unrelated headline would ignore what they actually
+asked for, so a prompted story is always fiction.
 
-`buildStoryPrompt` (`story-prompt.ts`, pure and unit-tested) has three shapes:
+## Grounding and Continuity
 
+`buildStoryPrompt` (`story-prompt.ts`, pure and unit-tested) supports four shapes:
+
+- **With a user prompt** (`Story.prompt`, up to 500 chars) — center the story on
+  the learner's requested scenario, plot idea, or characters (e.g. "A detective
+  in Berlin looking for a lost cat"), still at the target CEFR level and still
+  using the studied words. It outranks the other three shapes, and a story that
+  has one never has a source.
 - **With a source** — retell this item. The fact rules are stated to outrank
   every other instruction: use only what the headline and summary state, add no
   names, numbers, dates, causes or consequences that are not there, write
@@ -63,7 +72,13 @@ mid-generation.
   teams or companies in the news.
 - **With neither** — the original untethered story.
 
-A sourced story also runs at `temperature: 0.4` rather than 0.8. Inventing is a
+**Narrative Continuity**: The processor queries up to 3 recent ready stories for
+the learner and supplies their titles, topics, prompts, and short excerpts to the
+prompt. Gemini is instructed to weave subtle callbacks (recurring characters,
+familiar places, or thematic motifs) to create an evolving world, while keeping
+each new story fully self-contained.
+
+A sourced story runs at `temperature: 0.4` rather than 0.8. Inventing is a
 creative task; retelling is closer to extraction, and every degree of freedom
 there is a degree of freedom to invent a fact.
 

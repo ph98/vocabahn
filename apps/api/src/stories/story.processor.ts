@@ -65,11 +65,44 @@ export class StoryProcessor extends WorkerHost {
       this.logger.warn(`story ${storyId}: dropping the source on the final attempt`);
     }
 
+    // Fetch recent ready stories for this learner to provide gentle continuity
+    const previousStoriesRows = await this.prisma.story.findMany({
+      where: {
+        userId: story.userId,
+        id: { not: storyId },
+        status: 'READY',
+        text: { not: null },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 3,
+      select: {
+        title: true,
+        topic: true,
+        prompt: true,
+        text: true,
+      },
+    });
+
+    const previousStories = previousStoriesRows.map((p) => {
+      const cleanText = (p.text ?? '').replace(/\s+/g, ' ').trim();
+      const firstSentence = cleanText.split(/(?<=[.!?])\s+/)[0] ?? cleanText;
+      const summary =
+        firstSentence.length > 120 ? `${firstSentence.slice(0, 117)}...` : firstSentence;
+      return {
+        title: p.title,
+        topic: p.topic ? topicLabel(p.topic) : null,
+        prompt: p.prompt,
+        summary,
+      };
+    });
+
     // A real API failure throws → the job retries with backoff.
     const generated = await this.storyProvider.generate({
       words: entries.map((e) => ({ word: e.word, translation: e.translation })),
       cefrLevel: story.cefrLevel ?? 'A2.1',
       topic: topicLabel(story.topic),
+      userPrompt: story.prompt,
+      previousStories: previousStories.length > 0 ? previousStories : undefined,
       source: useSource
         ? {
             title: story.sourceTitle!,

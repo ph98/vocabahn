@@ -174,6 +174,8 @@ describe('StoriesService', () => {
       userId: 'user-1',
       status: 'READY',
       cefrLevel: 'B1.1',
+      topic: null,
+      prompt: null,
       title: 'Der Tag',
       text: 'Das Haus ist grün.',
       translation: 'The house is green.',
@@ -202,6 +204,34 @@ describe('StoriesService', () => {
 
       await expect(service.create('user-1')).rejects.toThrow(BadRequestException);
       expect(queue.add).not.toHaveBeenCalled();
+    });
+
+    it('stores a custom user prompt when provided', async () => {
+      respondWith(prisma.card.findMany, {
+        due: [entryCard('e1', 'Katze', 'A1.1', 100), entryCard('e2', 'suchen', 'A2.1', 200, 'verb')],
+      });
+      prisma.story.create.mockResolvedValue(
+        readyStory({ status: 'PENDING', prompt: 'A detective story in Berlin' }),
+      );
+
+      const story = await service.create(
+        'user-1',
+        'Europe/Berlin',
+        'culture',
+        'ON_DEMAND',
+        'A detective story in Berlin',
+      );
+
+      expect(prisma.story.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            userId: 'user-1',
+            prompt: 'A detective story in Berlin',
+            sourceItemId: null,
+          }),
+        }),
+      );
+      expect(story.prompt).toBe('A detective story in Berlin');
     });
 
     it('takes due cards first and enqueues one job for the new story', async () => {

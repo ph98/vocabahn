@@ -41,13 +41,17 @@ export class DictionaryService implements OnModuleInit {
 
   async rebuildIndex() {
     const entries = await this.prisma.dictionaryEntry.findMany({
+      // `raw` is deliberately absent: it is the full Wiktionary payload, and
+      // pulling it for every entry to build the index costs hundreds of MB.
+      // Search results don't render the compound breakdown — the word page
+      // fetches the entry itself for that.
       select: {
         word: true,
         translation: true,
         emoji: true,
         cefrLevel: true,
         enrichmentStatus: true,
-        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true, raw: true } },
+        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true } },
       },
     });
     this.fuse.setCollection(entries.map((e) => this.toSearchResult(e)));
@@ -65,7 +69,7 @@ export class DictionaryService implements OnModuleInit {
         emoji: true,
         cefrLevel: true,
         enrichmentStatus: true,
-        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true, raw: true } },
+        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true } },
       },
     });
     if (!entry) return;

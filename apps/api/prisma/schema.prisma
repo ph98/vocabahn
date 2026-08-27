@@ -565,6 +565,8 @@ model Story {
   // before topics existed, and for the "any topic" fallback when a learner has
   // no interests and no feed item could be found.
   topic           String?
+  // Custom prompt/description provided by the learner (optional)
+  prompt          String?
   // The real article this was retold from, when there was one. The relation is
   // for analytics and per-user dedup; the three snapshot fields below are what
   // the UI renders, so attribution survives SourceItem pruning.

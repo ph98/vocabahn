@@ -65,14 +65,34 @@ async function main() {
     const bar = '█'.repeat(dict ? Math.round((c / dict) * 20) : 0);
     console.log(`    ${s.padEnd(12)} ${n(c)}  ${pct.padStart(4)} \x1b[33m${bar}\x1b[0m`);
   }
-  const [examples, images, audio] = await Promise.all([
+  const [examples, images, audio, withLevel] = await Promise.all([
     prisma.dictionaryExample.count(),
     prisma.dictionaryEntry.count({ where: { imageUrl: { not: null } } }),
     prisma.dictionaryEntry.count({ where: { audioUrl: { not: null } } }),
+    prisma.dictionaryEntry.count({ where: { cefrLevel: { not: null } } }),
   ]);
   row('· example sentences', examples);
   row('· with image', images);
   row('· with audio', audio);
+  row('· with CEFR level', withLevel, dict ? `${Math.round((withLevel / dict) * 100)}%` : '');
+
+  const byCefr = await prisma.dictionaryEntry.groupBy({
+    by: ['cefrLevel'],
+    _count: { _all: true },
+    where: { cefrLevel: { not: null } },
+  });
+  if (byCefr.length) {
+    const mainCounts: Record<string, number> = {};
+    for (const item of byCefr) {
+      const mainLevel = (item.cefrLevel || '').slice(0, 2);
+      mainCounts[mainLevel] = (mainCounts[mainLevel] || 0) + item._count._all;
+    }
+    console.log('  by CEFR level:');
+    for (const lvl of ['A1', 'A2', 'B1', 'B2', 'C1', 'C2']) {
+      const c = mainCounts[lvl] ?? 0;
+      console.log(`    ${lvl.padEnd(12)} ${n(c)}`);
+    }
+  }
 
   // ── Users & study loop ───────────────────────────────────────────────────
   const [users, cards, reviews, courses, courseWords] = await Promise.all([

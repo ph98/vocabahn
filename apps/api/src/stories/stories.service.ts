@@ -132,6 +132,7 @@ export class StoriesService {
     timeZone = 'UTC',
     requestedTopic?: string,
     origin: StoryOrigin = 'ON_DEMAND',
+    prompt?: string,
   ): Promise<SharedStory> {
     if (origin === 'ON_DEMAND') {
       const quota = await this.getQuota(userId, timeZone);
@@ -155,10 +156,13 @@ export class StoriesService {
       );
     }
 
+    const userPrompt = prompt?.trim() || null;
     const topic = this.resolveTopic(requestedTopic, user?.interests ?? []);
     // Picked at creation, not in the processor, so a retry re-reads the same
     // article rather than silently swapping it under a learner mid-generation.
-    const sourceItem = topic ? await this.sources.pickForUser(userId, topic) : null;
+    // A learner-written idea outranks the news: retelling an unrelated article
+    // would ignore what they actually asked for, so no source is picked at all.
+    const sourceItem = topic && !userPrompt ? await this.sources.pickForUser(userId, topic) : null;
 
     // The selected words are pinned as targets up front, with a placeholder
     // surfaceForm. The processor rewrites them once the text exists and each
@@ -169,6 +173,7 @@ export class StoriesService {
         cefrLevel,
         origin,
         topic,
+        prompt: userPrompt,
         stage: 'WRITING',
         sourceItemId: sourceItem?.id ?? null,
         // Snapshotted so attribution outlives the source item's retention.
@@ -599,6 +604,7 @@ export class StoriesService {
       stage: story.status === 'PENDING' || story.status === 'GENERATING' ? story.stage : null,
       origin: story.origin,
       topic: story.topic,
+      prompt: story.prompt,
       // A story either has full attribution or none — a link without a title
       // would render as a bare URL, so the whole block is gated on the URL.
       source:
