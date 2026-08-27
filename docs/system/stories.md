@@ -428,6 +428,28 @@ the audio with no timing data at all: the player advances on `ended` and
 highlights the next turn, because the turn *is* the unit of playback. A turn
 that fails to synthesize is skipped by the audio and still readable.
 
+**Unlocked, not given.** Episodes stay locked until the learner has
+`PODCAST_UNLOCK_KNOWN_WORDS` (300) banked words, counted from `AUTO_KNOWN` and
+`USER_KNOWN` cards. The threshold is pedagogical rather than arbitrary: five
+minutes of German with nothing to read along to only works once enough of it is
+automatic, and a learner who bounces off an episode concludes the feature is
+broken rather than early. `getPodcastAccess` returns the count and the target so
+the chooser can render the distance as progress — the lock reads as a goal, not
+a wall — and `create` enforces it server-side, because hiding the button is a
+presentation choice and the gate is a rule.
+
+**Format scoping.** `latest()` takes a format, so a half-listened episode and a
+half-read story never compete for the one "continue where you left off" slot,
+and the dashboard's "Today's read" card asks for `TEXT` explicitly. Anything
+else querying `Story` and meaning "story" needs the same filter.
+
+**Recovery.** `static/audio` is container-local, so a redeploy wipes it and the
+static-audio controller re-synthesizes from the database on a miss. Podcast
+turns are keyed `story-<id>-s<n>` and are matched *before* the plain story
+pattern, which would otherwise read the whole tail as a story id and 404 — which
+would leave every episode permanently silent while stories healed. The recovered
+turn is re-synthesized with its own speaker's voice.
+
 **Cost.** Text-to-speech is billed per character and an episode is roughly six
 times a story's narration, which makes the engine the dominant cost of the
 feature rather than a detail. Podcasts therefore default to Google's neural

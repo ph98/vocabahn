@@ -70,6 +70,19 @@ export const PODCAST_KNOWN_WORD_SAMPLE = Number(process.env.PODCAST_KNOWN_WORD_S
 export const PODCAST_DAILY_CAP = Number(process.env.PODCAST_DAILY_CAP ?? 2);
 
 /**
+ * Known words a learner needs before episodes unlock.
+ *
+ * Not an arbitrary gate. Five minutes of German with no text in front of you is
+ * only followable once enough of it is already automatic; below roughly an
+ * A1-complete vocabulary an episode is noise, and a learner who bounces off it
+ * concludes the feature is broken rather than early. Counting `AUTO_KNOWN` and
+ * `USER_KNOWN` cards makes the requirement something the learner is already
+ * working towards every day, and the progress is shown rather than hidden so
+ * the lock reads as a goal instead of a wall.
+ */
+export const PODCAST_UNLOCK_KNOWN_WORDS = Number(process.env.PODCAST_UNLOCK_KNOWN_WORDS ?? 300);
+
+/**
  * Below this many turns the model has not written a conversation, whatever it
  * returned. The job throws so BullMQ regenerates.
  */

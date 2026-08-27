@@ -4,13 +4,14 @@ import {
   isPresetTopic,
   topicLabel,
   type Story,
+  type PodcastAccess,
   type StoryFormat,
   type StoryQuizResultItem,
   type StoryTarget,
   type SubmitStoryQuizAnswer,
 } from '@vocabahn/shared';
 import { isAxiosError } from 'axios';
-import { ExternalLink, Headphones, Pause, Play, Sparkles } from 'lucide-react';
+import { ExternalLink, Headphones, Lock, Pause, Play, Sparkles } from 'lucide-react';
 import { MotionConfig } from 'motion/react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -19,6 +20,7 @@ import {
   createStory,
   fetchLatestStory,
   fetchMe,
+  fetchPodcastAccess,
   fetchStory,
   fetchStoryQuota,
   interactStoryWord,
@@ -292,6 +294,61 @@ function TopicPicker({
   );
 }
 
+/**
+ * What a learner sees when episodes are still locked.
+ *
+ * Deliberately shows the number rather than just refusing: the requirement is
+ * something they are already moving towards every time they study, so the panel
+ * is framed as a distance, not a denial. The bar is the same shape as the rest
+ * of the app's progress so it reads as a goal they recognise.
+ */
+function PodcastLockedPanel({ access }: { access: PodcastAccess }) {
+  const remaining = Math.max(0, access.required - access.knownWords);
+  const pct = Math.min(100, Math.round((access.knownWords / access.required) * 100));
+
+  return (
+    <div className="mt-6 rounded-2xl border border-surface-800 bg-surface-950 p-5 text-left">
+      <div className="flex items-center gap-2">
+        <Lock className="size-4 shrink-0 text-surface-400" aria-hidden="true" />
+        <p className="text-sm font-medium text-surface-200">
+          {remaining} more known {remaining === 1 ? 'word' : 'words'} to unlock episodes
+        </p>
+      </div>
+
+      <p className="mt-2 text-sm text-surface-400">
+        An episode is five minutes of German with nothing to read along to. That only
+        works once enough words are automatic — so it opens at {access.required}.
+      </p>
+
+      <div className="mt-4">
+        <div
+          className="h-2 overflow-hidden rounded-full bg-surface-800"
+          role="progressbar"
+          aria-valuenow={access.knownWords}
+          aria-valuemin={0}
+          aria-valuemax={access.required}
+          aria-label="Progress towards unlocking episodes"
+        >
+          <div
+            className="h-full rounded-full bg-indigo-500 transition-[width] duration-500"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <p className="mt-2 text-xs tabular-nums text-surface-500">
+          {access.knownWords} of {access.required} words known
+        </p>
+      </div>
+
+      <Link
+        to="/review"
+        className="mt-4 inline-flex text-sm font-medium text-accent-indigo underline underline-offset-4"
+      >
+        Keep reviewing
+      </Link>
+    </div>
+  );
+}
+
 export function StoryPage() {
   const queryClient = useQueryClient();
   const [localId, setLocalId] = useState<string | null>(() =>
@@ -321,6 +378,13 @@ export function StoryPage() {
     queryFn: fetchMe,
   });
 
+  const { data: podcastAccess } = useQuery({
+    queryKey: ['podcast-access'],
+    queryFn: fetchPodcastAccess,
+    staleTime: 60_000,
+  });
+  const podcastLocked = podcastAccess ? !podcastAccess.unlocked : false;
+
   const { data: quota } = useQuery({
     queryKey: ['story-quota', format],
     queryFn: () => fetchStoryQuota(format),
@@ -330,8 +394,8 @@ export function StoryPage() {
   // What the scheduler left overnight. Also carries an unfinished story across
   // devices, which the localStorage id alone never could.
   const { data: latest, isPending: isLoadingLatest } = useQuery({
-    queryKey: ['story-latest'],
-    queryFn: fetchLatestStory,
+    queryKey: ['story-latest', format],
+    queryFn: () => fetchLatestStory(format),
   });
 
   const storyId = choosing ? null : (localId ?? latest?.id ?? null);
@@ -585,12 +649,21 @@ export function StoryPage() {
                       : 'text-surface-400 hover:text-surface-200'
                   }`}
                 >
-                  {option === 'PODCAST' && <Headphones className="size-4" aria-hidden="true" />}
+                  {option === 'PODCAST' &&
+                    (podcastLocked ? (
+                      <Lock className="size-4" aria-hidden="true" />
+                    ) : (
+                      <Headphones className="size-4" aria-hidden="true" />
+                    ))}
                   {option === 'TEXT' ? 'Read' : 'Listen'}
                 </button>
               ))}
             </div>
 
+            {format === 'PODCAST' && podcastLocked && podcastAccess ? (
+              <PodcastLockedPanel access={podcastAccess} />
+            ) : (
+            <>
             <div className="mt-6 text-left">
               <div className="flex items-center justify-between mb-2">
                 <label
@@ -649,6 +722,8 @@ export function StoryPage() {
                       ? `Read about ${topicLabel(topic)?.toLowerCase()}`
                       : 'Find me something to read'}
             </button>
+            </>
+            )}
           </div>
         )}
 

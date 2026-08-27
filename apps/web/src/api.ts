@@ -21,6 +21,7 @@ import {
   knownWordsResponseSchema,
   latestStoryResponseSchema,
   notificationSettingsSchema,
+  podcastAccessSchema,
   quizAttemptResultSchema,
   quizReportSchema,
   storyInteractResponseSchema,
@@ -411,8 +412,8 @@ export async function createStory(
  * The learner's most recent unfinished story, or null. This is how a story the
  * scheduler wrote overnight is found on a device that never saw it created.
  */
-export async function fetchLatestStory() {
-  const { data } = await api.get('/stories/latest');
+export async function fetchLatestStory(format: StoryFormat = 'TEXT') {
+  const { data } = await api.get('/stories/latest', { params: { format } });
   return latestStoryResponseSchema.parse(data).story;
 }
 
@@ -450,6 +451,12 @@ export async function completeStory(
     quizAnswers,
   });
   return completeStoryResponseSchema.parse(data);
+}
+
+/** Whether episodes are unlocked yet, and the progress towards it. */
+export async function fetchPodcastAccess() {
+  const { data } = await api.get('/stories/podcast-access');
+  return podcastAccessSchema.parse(data);
 }
 
 export async function fetchStoryQuota(format: StoryFormat = 'TEXT') {

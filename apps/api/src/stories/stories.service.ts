@@ -16,6 +16,7 @@ import {
   type CompoundDecomposition,
   type Story as SharedStory,
   type StoryInteractBody,
+  type PodcastAccess,
   type StoryInteractResponse,
   type StoryFormat,
   type StoryOrigin,
@@ -41,6 +42,7 @@ import {
   PODCAST_KNOWN_WORD_SAMPLE,
   PODCAST_NEW_WORD_COUNT,
   PODCAST_REVIEW_WORD_COUNT,
+  PODCAST_UNLOCK_KNOWN_WORDS,
   STORY_CONTENT_POS,
   STORY_DAILY_CAP,
   STORY_FALLBACK_LEVEL,
@@ -143,6 +145,17 @@ export class StoriesService {
     prompt?: string,
     format: StoryFormat = 'TEXT',
   ): Promise<SharedStory> {
+    if (format === 'PODCAST') {
+      // Enforced here, not only in the UI: hiding the button is a presentation
+      // choice, and this is the rule.
+      const access = await this.getPodcastAccess(userId);
+      if (!access.unlocked) {
+        throw new ForbiddenException(
+          `Episodes unlock at ${access.required} known words — you have ${access.knownWords}.`,
+        );
+      }
+    }
+
     if (origin === 'ON_DEMAND') {
       const quota = await this.getQuota(userId, timeZone, format);
       if (quota.used >= quota.cap) {
@@ -532,9 +545,13 @@ export class StoriesService {
    * were asleep, on a device that has never heard of it — and it incidentally
    * carries an unfinished story across browsers.
    */
-  async latest(userId: string): Promise<SharedStory | null> {
+  async latest(userId: string, format: StoryFormat = 'TEXT'): Promise<SharedStory | null> {
+    // Scoped by format so a half-listened episode and a half-read story do not
+    // compete for the one "continue where you left off" slot — and so the
+    // dashboard, which asks for a story, is never handed an episode to label
+    // "Today's read".
     const story = await this.prisma.story.findFirst({
-      where: { userId, completedAt: null, status: { not: 'FAILED' } },
+      where: { userId, format, completedAt: null, status: { not: 'FAILED' } },
       orderBy: { createdAt: 'desc' },
       include: storyInclude,
     });
@@ -545,6 +562,26 @@ export class StoriesService {
       return this.toStory(reloaded!);
     }
     return this.toStory(story);
+  }
+
+  /**
+   * How close the learner is to unlocking podcast episodes.
+   *
+   * Counted from banked cards rather than reviews done, because that is the
+   * thing an episode actually depends on: five minutes of German with no text
+   * in front of you is only followable once enough of it is automatic. Exposed
+   * even once unlocked so the client can render the progress rather than infer
+   * it from a bare boolean.
+   */
+  async getPodcastAccess(userId: string): Promise<PodcastAccess> {
+    const knownWords = await this.prisma.card.count({
+      where: { userId, knownState: { in: ['AUTO_KNOWN', 'USER_KNOWN'] } },
+    });
+    return {
+      unlocked: knownWords >= PODCAST_UNLOCK_KNOWN_WORDS,
+      knownWords,
+      required: PODCAST_UNLOCK_KNOWN_WORDS,
+    };
   }
 
   /**

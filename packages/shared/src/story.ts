@@ -217,6 +217,17 @@ export const completeStoryResponseSchema = z.object({
 });
 export type CompleteStoryResponse = z.infer<typeof completeStoryResponseSchema>;
 
+/**
+ * Whether podcast episodes are available to this learner yet, and how far off
+ * they are if not. Sent even once unlocked so the client never has to guess.
+ */
+export const podcastAccessSchema = z.object({
+  unlocked: z.boolean(),
+  knownWords: z.number(),
+  required: z.number(),
+});
+export type PodcastAccess = z.infer<typeof podcastAccessSchema>;
+
 export const storyQuotaSchema = z.object({
   used: z.number(),
   cap: z.number(),

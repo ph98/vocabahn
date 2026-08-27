@@ -9,6 +9,7 @@ import {
   type LatestStoryResponse,
   type StoryInteractBody,
   type StoryInteractResponse,
+  type PodcastAccess,
   type StoryQuota,
   type StoryResponse,
 } from '@vocabahn/shared';
@@ -32,14 +33,25 @@ export class StoriesController {
     return this.stories.getQuota(userId, timezone, format === 'PODCAST' ? 'PODCAST' : 'TEXT');
   }
 
+  // Declared before `:id`, like `quota`.
+  @Get('podcast-access')
+  getPodcastAccess(@CurrentUserId() userId: string): Promise<PodcastAccess> {
+    return this.stories.getPodcastAccess(userId);
+  }
+
   /**
    * The learner's most recent unfinished story, or null. This is how a story
    * written overnight by the scheduler is found — the client that would have
    * remembered its id was closed at the time.
    */
   @Get('latest')
-  async latest(@CurrentUserId() userId: string): Promise<LatestStoryResponse> {
-    return { story: await this.stories.latest(userId) };
+  async latest(
+    @CurrentUserId() userId: string,
+    @Query('format') format?: string,
+  ): Promise<LatestStoryResponse> {
+    return {
+      story: await this.stories.latest(userId, format === 'PODCAST' ? 'PODCAST' : 'TEXT'),
+    };
   }
 
   @Post()
