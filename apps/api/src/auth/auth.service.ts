@@ -11,7 +11,7 @@ import { STORY_TOPIC_SLUGS, type User } from '@vocabahn/shared';
 import { OAuth2Client } from 'google-auth-library';
 import { PrismaService } from '../prisma/prisma.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
-import { cefrIndex } from '../knowledge/constants';
+import { CEFR_SOURCE_MANUAL, cefrIndex } from '../knowledge/constants';
 import { ACCESS_TTL_MS, REFRESH_TTL_MS } from './cookies';
 import { EmailService } from './email.service';
 
@@ -126,6 +126,17 @@ export class AuthService {
     };
   }
 
+  /** Verifies an access token and returns the user if valid. */
+  async verifyAccessToken(accessToken: string): Promise<User | null> {
+    try {
+      const payload = await this.jwt.verifyAsync<JwtPayload>(accessToken);
+      if (payload.type !== 'access') return null;
+      return this.getUserById(payload.sub);
+    } catch {
+      return null;
+    }
+  }
+
   /** Verify a refresh token and rotate the pair. */
   async refresh(refreshToken: string): Promise<{
     accessToken: string;
@@ -200,7 +211,13 @@ export class AuthService {
   async updateCefrLevel(userId: string, cefrLevel: string | null): Promise<User> {
     const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: { cefrLevel },
+      // Stamped as the learner's own so review-performance inference cannot
+      // quietly overwrite the level they just picked (see `learning.md`).
+      data: {
+        cefrLevel,
+        cefrLevelSource: cefrLevel === null ? null : CEFR_SOURCE_MANUAL,
+        cefrLevelSetAt: cefrLevel === null ? null : new Date(),
+      },
     });
     if (cefrLevel) {
       const levelIdx = cefrIndex(cefrLevel);

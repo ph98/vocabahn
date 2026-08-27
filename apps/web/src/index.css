@@ -43,24 +43,25 @@
 @theme {
   /* Awwwards Premium Surface Palette */
   /* Light mode uses elegant warm off-whites, Dark mode uses deep rich blacks */
-  --color-surface-950: light-dark(#FCFBF9, #0C0C0E); /* Main Background */
+  --color-surface-950: light-dark(#FBFBFA, #0C0C0E); /* Main Background */
   --color-surface-900: light-dark(#FFFFFF, #161619); /* Elevated Cards */
-  --color-surface-800: light-dark(#F3F2EE, #202024); /* Borders, Input Backgrounds */
-  --color-surface-700: light-dark(#E5E4E0, #2C2C32); /* Stronger Borders */
-  --color-surface-600: light-dark(#D4D2CD, #3F3F46); /* Subtle Text / Icons */
-  --color-surface-500: light-dark(#A19F9A, #52525B); /* Muted Text */
-  --color-surface-400: light-dark(#706F6A, #71717A); /* Secondary Text */
-  --color-surface-300: light-dark(#51504C, #A1A1AA); /* Prominent Text */
-  --color-surface-200: light-dark(#373633, #D4D4D8); /* Heavy Accents */
-  --color-surface-100: light-dark(#1A1918, #F4F4F5); /* Primary Text */
+  --color-surface-850: light-dark(#F7F6F2, #1B1B1F); /* Subtle Card Hover */
+  --color-surface-800: light-dark(#EFECE5, #202024); /* Borders, Input Backgrounds */
+  --color-surface-700: light-dark(#DFDBD0, #2C2C32); /* Stronger Borders */
+  --color-surface-600: light-dark(#C2BEB2, #3F3F46); /* Subtle Icons / Separators */
+  --color-surface-500: light-dark(#88847A, #52525B); /* Muted Text */
+  --color-surface-400: light-dark(#615D54, #71717A); /* Secondary Text */
+  --color-surface-300: light-dark(#434039, #A1A1AA); /* Prominent Text */
+  --color-surface-200: light-dark(#272520, #D4D4D8); /* Heavy Accents */
+  --color-surface-100: light-dark(#141311, #F4F4F5); /* Primary Text */
   --color-surface-50: light-dark(#000000, #FFFFFF);
 
-  /* Vibrant Accents matched to new logo (#0088B0 cyan/teal) */
-  --color-accent-red: light-dark(#EF4444, #F87171);
-  --color-accent-indigo: light-dark(#0088B0, #38BDF8);
+  /* Vibrant Accents with high contrast in both light and dark mode */
+  --color-accent-red: light-dark(#DC2626, #F87171);
+  --color-accent-indigo: light-dark(#0284C7, #38BDF8);
   --color-accent-amber: light-dark(#D97706, #FBBF24);
   --color-accent-emerald: light-dark(#059669, #34D399);
-  --color-accent-sky: light-dark(#0088B0, #38BDF8);
+  --color-accent-sky: light-dark(#0284C7, #38BDF8);
   --color-brand: light-dark(#0088B0, #00A3D4);
 
   --font-sans: 'Plus Jakarta Sans', sans-serif;
@@ -140,7 +141,7 @@ body {
   transition: background-color 0.3s ease-in-out, color 0.3s ease-in-out;
   /* Subtle background texture */
   background-image: light-dark(
-    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.04'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.025'/%3E%3C/svg%3E"),
     url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E")
   );
   background-attachment: fixed;
@@ -404,5 +405,10 @@ body:has(.vb-toast) .vb-feedback-trigger {
 
 .vb-card-scroll::-webkit-scrollbar-thumb:hover {
   background-color: var(--color-surface-600);
+}
+
+/* Accessibility: Ensure focus indicators are high-contrast in both light and dark themes */
+:focus-visible {
+  outline-color: var(--color-accent-indigo);
 }
 

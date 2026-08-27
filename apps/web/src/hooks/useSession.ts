@@ -166,9 +166,13 @@ export function useSession(): Session {
 
   if (failure && !signedOut) {
     // A 429 is the throttler pacing us, not an outage, and must never take a
-    // signed-in user out of the app. The query is already backing off.
+    // signed-in user out of the app or present as an unreachable backend crash.
     const throttled = failure instanceof ApiUnavailableError && failure.status === 429;
-    if (!(throttled && user)) return { ...base, status: 'unreachable' };
+    if (throttled) {
+      if (user) return { ...base, status: 'authenticated' };
+      return { ...base, status: 'loading' };
+    }
+    return { ...base, status: 'unreachable' };
   }
 
   if (user) return { ...base, status: 'authenticated' };

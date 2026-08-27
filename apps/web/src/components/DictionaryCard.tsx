@@ -50,9 +50,9 @@ function useDebounced(value: string, ms: number): string {
 }
 
 function getArticleColor(article: string) {
-  if (article.includes('der')) return 'text-sky-400';
-  if (article.includes('die')) return 'text-rose-400';
-  if (article.includes('das')) return 'text-emerald-400';
+  if (article.includes('der')) return 'text-sky-700 dark:text-sky-400';
+  if (article.includes('die')) return 'text-rose-700 dark:text-rose-400';
+  if (article.includes('das')) return 'text-emerald-700 dark:text-emerald-400';
   return 'text-surface-400';
 }
 

@@ -22,6 +22,19 @@ const NEIGHBOUR_LEVEL_SPREAD = 1;
 const NEIGHBOUR_RANK_FACTOR = 3;
 
 // Global rate limit protects the free-tier external APIs.
+/**
+ * Which CEFR level an enrichment run should leave on the entry.
+ *
+ * An existing level always wins. The levels already on entries come from the
+ * curated CEFR wordlist and the course sync; a per-word AI guess is a far
+ * weaker signal, and letting it overwrite them is how "Ich" and "Haben" came to
+ * be tagged B2.1. Those tags then fed the learner-level inference and pinned
+ * A2 learners at B2 — see `learning.md`. The AI only fills a blank.
+ */
+export function resolveCefrLevel(existing: string | null, proposed: string | null | undefined): string | null {
+  return existing ?? proposed ?? null;
+}
+
 @Processor(ENRICHMENT_QUEUE, {
   concurrency: 2,
   limiter: { max: 5, duration: 1_000 },
@@ -88,7 +101,10 @@ export class EnrichmentProcessor extends WorkerHost {
     if (ai) {
       translation = ai.translation ?? translation;
       emoji = ai.emoji ?? emoji;
-      cefrLevel = ai.cefrLevel ?? cefrLevel;
+      if (cefrLevel !== null && ai.cefrLevel && ai.cefrLevel !== cefrLevel) {
+        this.logger.debug(`"${entry.word}": keeping ${cefrLevel}, AI proposed ${ai.cefrLevel}`);
+      }
+      cefrLevel = resolveCefrLevel(cefrLevel, ai.cefrLevel);
       usageNote = ai.usageNote ?? usageNote;
       examples = ai.examples;
       collocations = ai.collocations;

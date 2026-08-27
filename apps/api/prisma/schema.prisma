@@ -16,8 +16,16 @@ model User {
   name      String?
   avatarUrl String?
   timezone  String?
-  // Inferred CEFR level for the knowledge model; null until inferred
+  // Effective CEFR level for the knowledge model; null until set or inferred.
   cefrLevel String?
+  // Who last wrote `cefrLevel`: MANUAL (the learner picked it), CALIBRATED (the
+  // diagnostic probe set it), or INFERRED (review performance). A learner-set
+  // level is protected from the inference for a grace window — see
+  // `maybeUpdateCefrLevel`, and `learning.md` for why.
+  cefrLevelSource String?
+  // When `cefrLevel` was last written. The grace window is counted in reviews
+  // completed after this instant, so it cannot be waited out.
+  cefrLevelSetAt  DateTime?
   // Topic slugs from STORY_TOPICS the learner wants to read about. Empty means
   // no preference stated, which the story picker reads as "any topic".
   interests String[] @default([])

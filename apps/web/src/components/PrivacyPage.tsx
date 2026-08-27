@@ -70,8 +70,8 @@ export function PrivacyPage() {
                 onClick={() => handleToggleConsent(false)}
                 className={`min-h-10 rounded-xl px-3.5 text-xs font-medium transition-colors ${
                   consent === 'denied'
-                    ? 'bg-surface-700 text-white font-semibold'
-                    : 'border border-surface-700 bg-surface-800/60 text-surface-400 hover:text-white'
+                    ? 'bg-surface-700 text-surface-100 font-semibold shadow-sm'
+                    : 'border border-surface-700 bg-surface-800/60 text-surface-400 hover:text-surface-100 hover:bg-surface-700'
                 }`}
               >
                 Deny
@@ -82,7 +82,7 @@ export function PrivacyPage() {
                 className={`min-h-10 rounded-xl px-4 text-xs font-semibold transition-colors ${
                   consent === 'granted'
                     ? 'bg-indigo-500 text-white shadow-md shadow-indigo-500/30'
-                    : 'border border-surface-700 bg-surface-800/60 text-surface-300 hover:text-white'
+                    : 'border border-surface-700 bg-surface-800/60 text-surface-300 hover:text-surface-100 hover:bg-surface-700'
                 }`}
               >
                 Grant Consent

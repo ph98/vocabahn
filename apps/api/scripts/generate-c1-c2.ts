@@ -63,7 +63,7 @@ ${words.join(', ')}`;
   while (retries > 0) {
     try {
       const res = await client.models.generateContent({
-        model: 'gemini-flash-lite-latest',
+        model: process.env.GEMINI_MODEL || 'gemini-3.7-flash',
         contents: prompt,
         config: {
           responseMimeType: 'application/json',

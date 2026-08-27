@@ -169,12 +169,46 @@ and merged into one `AutoGraduation` summary:
 
 1. **Earned** — `ACTIVE`, `reps >= 3`, score `>= 0.85` → `AUTO_KNOWN`, due +180 d.
 2. **Level inference** — the last 100 review logs are bucketed by the entry's
-   CEFR sub-level; any level with ≥ 5 samples averaging ≥ 0.7 raises the user's
-   inferred level. `User.cefrLevel` is written here and in direct calibration.
+   CEFR sub-level; a level with ≥ 5 samples averaging ≥ 0.7 counts as passed.
+   The user's level becomes the highest passed level, subject to the two rules
+   in **Whose level is it** below. `User.cefrLevel` is written here, in direct
+   calibration, and when the learner sets it themselves.
 3. **Filler sweep** — on a level *increase*, every `NEW`/`ACTIVE` card at least
    two sub-levels below the new level is marked `AUTO_KNOWN` in bulk.
 4. **High prior** — on a level *increase* (or on course enrollment when the level is known), `NEW`/`ACTIVE` cards whose prior alone reaches 0.9 (filtered in SQL by CEFR level and frequency rank) graduate without any review history.
 5. **Diagnostic Calibration** (`calibrateDiagnostic`) — 36-probe psychometric assessment with pseudo-word false alarm dampening across all 12 CEFR sub-levels. Accurately extrapolates receptive vocabulary size and batch graduates mastered lower-level words into `USER_KNOWN` state (due +365 d).
+
+### Whose level is it
+
+Two rules constrain the inference, both of them scar tissue. Enrichment used to
+let a per-word AI guess overwrite a curated level, which left `Ich`, `Haben`,
+`Als` and `Auch` tagged B2.1–C2.2. Learners rated those EASY — they are trivial
+— and the inference read nine such reviews as B2 competence and pinned an A2
+learner at B2.1. Because it took the *maximum* passed level and seeded from the
+current one, it could only ever ratchet up: correcting the level by hand was
+undone by the next review.
+
+- **The ladder** (`inferCefrIndexFromBuckets`). A level only counts once every
+  level *below* it that has ≥ 5 samples is also passing. The lowest failing
+  level caps the result. A learner failing A2 cannot be inferred to B2 no matter
+  how a handful of mis-tagged words went. The level may now move **down** as
+  well as up, but only on a fuller sample (`LEVEL_DEMOTION_MIN_SAMPLES`, 15) —
+  a bad run of five reviews should not cost a level.
+- **The learner's own word wins.** `User.cefrLevelSource` records who last wrote
+  the level — `MANUAL`, `CALIBRATED`, or `INFERRED` — and `cefrLevelSetAt` when.
+  A `MANUAL` or `CALIBRATED` level is untouchable until the learner has
+  completed `MANUAL_LEVEL_GRACE_REVIEWS` (100) reviews *after* setting it. The
+  window is counted in reviews rather than days so it cannot be waited out, and
+  a learner who keeps correcting the level keeps winning. Rows written before
+  this existed have a NULL source and are unprotected, which is the old
+  behaviour.
+
+The upstream half of the fix is in enrichment: `resolveCefrLevel` lets the AI
+fill a blank level but never replace one already on the entry. Entries
+mis-levelled before that are repaired by `pnpm --filter @vocabahn/api
+repair:cefr-levels`, which treats `data/german_cefr_wordlist.json` as the
+authority and, with `--demotions-only`, touches just the entries tagged above
+what the wordlist says.
 
 Manual marking (`markKnown`, `bulkMarkKnown`) writes `USER_KNOWN` with due one
 year out. Undo returns the card to `ACTIVE`, due now, and **pulls the score down

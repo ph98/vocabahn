@@ -31,9 +31,9 @@ export function LandingPage() {
     <div className="relative w-full min-h-[85vh] rounded-[2.5rem] border border-surface-800/60 bg-surface-900/60 shadow-2xl backdrop-blur-3xl overflow-hidden flex flex-col lg:flex-row">
       
       {/* Dynamic Morphing Mesh Background Gradients */}
-      <div className="absolute inset-0 z-0 opacity-60 pointer-events-none mix-blend-screen overflow-hidden" aria-hidden="true">
-        <div className="absolute top-[-15%] left-[-15%] w-[70%] h-[70%] bg-gradient-to-br from-accent-indigo/40 via-indigo-600/30 to-purple-600/20 blur-[100px] animate-[morph-mesh_14s_ease-in-out_infinite] motion-reduce:animate-none" />
-        <div className="absolute bottom-[-15%] right-[20%] w-[60%] h-[60%] bg-gradient-to-tl from-accent-emerald/30 via-teal-500/25 to-blue-500/20 blur-[120px] animate-[morph-mesh_18s_ease-in-out_infinite_reverse] motion-reduce:animate-none" />
+      <div className="absolute inset-0 z-0 opacity-40 dark:opacity-60 pointer-events-none overflow-hidden" aria-hidden="true">
+        <div className="absolute top-[-15%] left-[-15%] w-[70%] h-[70%] bg-gradient-to-br from-accent-indigo/25 via-indigo-500/20 to-purple-500/15 dark:from-accent-indigo/40 dark:via-indigo-600/30 dark:to-purple-600/20 blur-[100px] animate-[morph-mesh_14s_ease-in-out_infinite] motion-reduce:animate-none" />
+        <div className="absolute bottom-[-15%] right-[20%] w-[60%] h-[60%] bg-gradient-to-tl from-accent-emerald/25 via-teal-500/20 to-blue-500/15 dark:from-accent-emerald/30 dark:via-teal-500/25 dark:to-blue-500/20 blur-[120px] animate-[morph-mesh_18s_ease-in-out_infinite_reverse] motion-reduce:animate-none" />
       </div>
 
       {/* Left Side: Hero & Features */}
@@ -41,6 +41,8 @@ export function LandingPage() {
         <div className="max-w-3xl">
           <div className="vb-rise-in flex items-center gap-6 mb-8">
             <picture>
+              <source media="(prefers-color-scheme: dark)" srcSet="/logo-dark.svg" type="image/svg+xml" />
+              <source media="(prefers-color-scheme: light)" srcSet="/logo-light.svg" type="image/svg+xml" />
               <source srcSet="/logo-dark.svg" type="image/svg+xml" />
               {/* Intrinsic size from the file (800×240) so the row reserves its
                   height before the image lands and nothing below it jumps. */}
@@ -137,7 +139,7 @@ export function LandingPage() {
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
               />
             </div>
-            <h2 className="text-2xl font-black tracking-tight text-white">Join Vocabahn</h2>
+            <h2 className="text-2xl font-black tracking-tight text-surface-100">Join Vocabahn</h2>
             <p className="mt-2 text-surface-400 text-sm">Start your German learning journey today</p>
           </div>
           

@@ -46,7 +46,7 @@ function CourseCard({ course }: { course: CourseSummary }) {
       <div className="mt-4 flex gap-2">
         <Link
           to={`/courses/${course.slug}`}
-          className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-semibold text-surface-200 transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
         >
           View words
         </Link>
@@ -54,7 +54,7 @@ function CourseCard({ course }: { course: CourseSummary }) {
           <>
             <Link
               to={`/review?courseId=${course.id}`}
-              className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
             >
               Review
             </Link>
@@ -62,7 +62,7 @@ function CourseCard({ course }: { course: CourseSummary }) {
               type="button"
               onClick={() => unenroll.mutate()}
               disabled={unenroll.isPending}
-              className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-accent-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60"
+              className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-semibold text-surface-300 transition-colors hover:border-surface-600 hover:bg-surface-800 hover:text-accent-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-60"
             >
               {unenroll.isPending ? 'Unenrolling…' : 'Unenroll'}
             </button>
@@ -72,7 +72,7 @@ function CourseCard({ course }: { course: CourseSummary }) {
             type="button"
             onClick={() => enroll.mutate()}
             disabled={enroll.isPending}
-            className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60"
+            className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-60"
           >
             {enroll.isPending ? 'Enrolling…' : 'Enroll'}
           </button>

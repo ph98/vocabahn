@@ -70,9 +70,9 @@ export function CEFRCalibrationCard({ user, onDismiss, compact = false }: CEFRCa
 
   if (graduationInfo) {
     return (
-      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/40 bg-gradient-to-br from-emerald-950/60 via-surface-900/90 to-surface-950/90 p-6 shadow-2xl backdrop-blur-xl">
+      <div className="relative overflow-hidden rounded-3xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 via-surface-900/90 to-surface-950/90 dark:from-emerald-950/60 p-6 shadow-2xl backdrop-blur-xl">
         <div className="flex flex-col items-center text-center gap-3">
-          <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40">
+          <div className="flex size-12 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/40">
             <Award className="size-6" />
           </div>
           <h3 className="text-xl font-bold text-surface-100">German Level Calibrated!</h3>
@@ -80,8 +80,8 @@ export function CEFRCalibrationCard({ user, onDismiss, compact = false }: CEFRCa
             Your level is now set to <CEFRBadge level={user.cefrLevel || selectedSubLevel} size="sm" className="ml-1" />.
           </p>
           {graduationInfo.count > 0 ? (
-            <p className="text-xs text-emerald-300/90 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2 mt-1">
-              ✨ Auto-marked <span className="font-bold text-white">{graduationInfo.count}</span> lower-level filler words as known so you skip what you already master!
+            <p className="text-xs text-emerald-700 dark:text-emerald-300/90 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-2 mt-1">
+              ✨ Auto-marked <span className="font-bold text-surface-100">{graduationInfo.count}</span> lower-level filler words as known so you skip what you already master!
             </p>
           ) : (
             <p className="text-xs text-surface-400">
@@ -104,13 +104,13 @@ export function CEFRCalibrationCard({ user, onDismiss, compact = false }: CEFRCa
   }
 
   return (
-    <div className={`relative overflow-hidden rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-surface-900/95 via-indigo-950/20 to-surface-950/95 shadow-2xl backdrop-blur-xl ${compact ? 'p-5' : 'p-6 sm:p-7'}`}>
+    <div className={`relative overflow-hidden rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-surface-900/95 via-indigo-500/10 to-surface-950/95 dark:via-indigo-950/20 shadow-2xl backdrop-blur-xl ${compact ? 'p-5' : 'p-6 sm:p-7'}`}>
       <div aria-hidden="true" className="pointer-events-none absolute -top-24 -right-24 size-64 rounded-full bg-indigo-500/10 blur-3xl" />
       
       <div className="relative z-10 space-y-5">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-xs font-semibold text-indigo-300">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-xs font-semibold text-indigo-600 dark:text-indigo-300">
               <Compass aria-hidden className="size-3.5" />
               Initial Calibration
             </div>

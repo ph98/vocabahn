@@ -81,10 +81,10 @@ export function DailyReminderSection() {
                   type="button"
                   onClick={() => (enabled ? disable() : enable())}
                   disabled={isSaving}
-                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-4 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50 ${
+                  className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl border px-4 text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-50 ${
                     enabled
                       ? 'border-surface-700 text-surface-300 hover:bg-surface-800'
-                      : 'border-indigo-500/40 bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/20'
+                      : 'border-indigo-500/40 bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20'
                   }`}
                 >
                   {enabled ? (
@@ -114,7 +114,7 @@ export function DailyReminderSection() {
                       const next = event.target.value;
                       if (next && next !== settings.reminderTime) setTime(next);
                     }}
-                    className="min-h-11 rounded-xl border border-surface-700 bg-surface-950/50 px-3 text-sm text-white focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+                    className="min-h-11 rounded-xl border border-surface-700 bg-surface-900 px-3 text-sm text-surface-100 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
                   />
                   <span className="text-xs text-surface-500">
                     {settings.timezone ?? 'UTC'}

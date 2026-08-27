@@ -31,7 +31,7 @@ Run with `pnpm --filter @vocabahn/api <script>`; each loads the root `.env`.
 - `sync:course-levels` — automatically updates and synchronizes `DictionaryEntry.cefrLevel` to match the course to which each word belongs.
 - `seed:course`, `seed:decks` — single course / sample decks.
 - `stats` — snapshot of how data is flowing through the pipeline.
-- `generate:c1-c2` — batch LLM classifier for CEFR levels using Gemini Flash Lite. Supports `START_INDEX`, `END_INDEX`, `BATCH_SIZE` env vars and `--stats` flag.
+- `generate:c1-c2` — batch LLM classifier for CEFR levels using Gemini 3.7 Flash. Supports `START_INDEX`, `END_INDEX`, `BATCH_SIZE` env vars and `--stats` flag.
 
 ## Courses
 

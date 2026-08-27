@@ -49,7 +49,7 @@ export function useGoogleOneTap({ clientId: customClientId, onSuccess, onError }
     }
 
     const initOneTap = () => {
-      if (isInitialized.current || !window.google) return;
+      if (isInitialized.current || !window.google?.accounts?.id) return;
 
       window.google.accounts.id.initialize({
         client_id: clientId,
@@ -60,12 +60,22 @@ export function useGoogleOneTap({ clientId: customClientId, onSuccess, onError }
             handlers.current.onError?.();
           }
         },
-        use_fedcm_for_prompt: true, // Use modern FedCM API if available
+        auto_select: false,
+        cancel_on_tap_outside: false,
+        itp_support: true,
       });
 
-      window.google.accounts.id.prompt((notification: { isNotDisplayed: () => boolean; isSkippedMoment: () => boolean }) => {
-        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-          // You could handle prompt failure or skipping here
+      window.google.accounts.id.prompt((notification: {
+        isNotDisplayed?: () => boolean;
+        isSkippedMoment?: () => boolean;
+        isDismissedMoment?: () => boolean;
+        getNotDisplayedReason?: () => string;
+        getSkippedReason?: () => string;
+        getDismissedReason?: () => string;
+        getMomentType?: () => string;
+      }) => {
+        if (notification?.isNotDisplayed?.() || notification?.isSkippedMoment?.()) {
+          // One Tap suppressed or skipped
         }
       });
 
@@ -73,13 +83,25 @@ export function useGoogleOneTap({ clientId: customClientId, onSuccess, onError }
     };
 
     // If already loaded, initialize immediately
-    if (window.google) {
+    if (window.google?.accounts?.id) {
       initOneTap();
       return;
     }
 
     let script: HTMLScriptElement | null = null;
     const cancel = onIdle(() => {
+      const existingScript = document.querySelector<HTMLScriptElement>(
+        `script[src="https://accounts.google.com/gsi/client"]`,
+      );
+      if (existingScript) {
+        if (window.google?.accounts?.id) {
+          initOneTap();
+        } else {
+          existingScript.addEventListener('load', initOneTap, { once: true });
+        }
+        return;
+      }
+
       script = document.createElement('script');
       script.src = 'https://accounts.google.com/gsi/client';
       script.async = true;

@@ -152,7 +152,7 @@ export const storyQuizResultItemSchema = z.object({
   selectedIndex: z.number(),
   correctIndex: z.number(),
   correct: z.boolean(),
-  explanation: z.string().nullable(),
+  explanation: z.string().nullable().optional(),
 });
 export type StoryQuizResultItem = z.infer<typeof storyQuizResultItemSchema>;
 

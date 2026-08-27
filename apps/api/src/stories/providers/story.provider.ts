@@ -27,10 +27,12 @@ export interface GeneratedStory {
   quiz: RawStoryQuizQuestion[];
 }
 
-// Narrative coherence across eight prescribed words is the whole product here,
-// so this uses the full model rather than enrichment's flash-lite. It is one
-// call per story, not one per word.
-const MODEL = 'gemini-2.5-flash';
+// Narrative coherence across eight prescribed words is the whole product here.
+// Uses Gemini 3.7 Flash for fast, coherent story and quiz generation.
+const MODEL =
+  process.env.GEMINI_STORY_MODEL ||
+  process.env.GEMINI_MODEL ||
+  'gemini-3.7-flash';
 
 @Injectable()
 export class StoryProvider {
