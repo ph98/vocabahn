@@ -18,9 +18,15 @@ import {
   AUTO_GRADUATE_THRESHOLD,
   CEFR_FREQUENCY_CEILING,
   CEFR_LEVELS,
+  CEFR_SOURCE_CALIBRATED,
+  CEFR_SOURCE_INFERRED,
+  CEFR_SOURCE_MANUAL,
+  LEARNER_SET_CEFR_SOURCES,
+  LEVEL_DEMOTION_MIN_SAMPLES,
   LEVEL_INFERENCE_LOOKBACK,
   LEVEL_INFERENCE_MIN_AVG,
   LEVEL_INFERENCE_MIN_SAMPLES,
+  MANUAL_LEVEL_GRACE_REVIEWS,
   PERFORMANCE_HISTORY_LIMIT,
   cefrIndex,
   clamp01,
@@ -34,6 +40,49 @@ function mergeGraduations(...graduations: (AutoGraduation | null)[]): AutoGradua
     count: present.reduce((sum, g) => sum + g.count, 0),
     words: present.flatMap((g) => g.words),
   };
+}
+
+/**
+ * The highest CEFR index the recent-review buckets support, or null when they
+ * support nothing.
+ *
+ * Evidence at a level is only credited once every level *below* it that has
+ * enough samples is also passing: competence is a ladder, and a learner who is
+ * failing A2 has not demonstrated B2 no matter how well a few B2-tagged words
+ * went. The first failing level therefore caps the result rather than being
+ * averaged away.
+ *
+ * Demotion needs a fuller sample than promotion (`LEVEL_DEMOTION_MIN_SAMPLES`):
+ * a bad run of five reviews should not cost a level.
+ */
+export function inferCefrIndexFromBuckets(
+  perLevel: ReadonlyMap<number, { sum: number; count: number }>,
+  currentIndex: number | null,
+): number | null {
+  const levels = [...perLevel.entries()].sort((a, b) => a[0] - b[0]);
+
+  let cap = Infinity;
+  let capCount = 0;
+  let best: number | null = null;
+
+  for (const [index, bucket] of levels) {
+    if (index >= cap) break;
+    if (bucket.count < LEVEL_INFERENCE_MIN_SAMPLES) continue;
+    if (bucket.sum / bucket.count >= LEVEL_INFERENCE_MIN_AVG) {
+      best = index;
+    } else {
+      // The lowest level with real evidence against it closes the ladder;
+      // nothing above it can be credited.
+      cap = index;
+      capCount = bucket.count;
+    }
+  }
+
+  if (best === null) return null;
+  if (currentIndex === null || best > currentIndex) return best;
+  if (best === currentIndex) return currentIndex;
+  // Below the current level: only act on a sample big enough to mean it.
+  return capCount >= LEVEL_DEMOTION_MIN_SAMPLES ? best : currentIndex;
 }
 
 const RATING_VALUES: Record<ReviewRating, number> = {
@@ -433,7 +482,11 @@ export class KnowledgeService {
     // Set the user's CEFR level
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: { cefrLevel: estimatedCefrLevel },
+      data: {
+        cefrLevel: estimatedCefrLevel,
+        cefrLevelSource: CEFR_SOURCE_CALIBRATED,
+        cefrLevelSetAt: new Date(),
+      },
       select: {
         id: true,
         email: true,
@@ -615,7 +668,13 @@ export class KnowledgeService {
 
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
-      data: { cefrLevel: targetLevel },
+      // Stamped as the learner's own: the inference leaves it alone until they
+      // have reviewed enough afterwards to genuinely disagree.
+      data: {
+        cefrLevel: targetLevel,
+        cefrLevelSource: targetLevel === null ? null : CEFR_SOURCE_MANUAL,
+        cefrLevelSetAt: targetLevel === null ? null : new Date(),
+      },
       select: {
         id: true,
         email: true,
@@ -638,16 +697,53 @@ export class KnowledgeService {
   }
 
   /**
+   * True while a level the learner set or measured themselves is still off
+   * limits to the inference. The window is counted in reviews completed since
+   * they set it, so it closes through study rather than through time — and a
+   * learner who keeps correcting the level keeps winning.
+   */
+  private async isLearnerSetLevelProtected(
+    userId: string,
+    user: { cefrLevel: string | null; cefrLevelSource: string | null; cefrLevelSetAt: Date | null } | null,
+  ): Promise<boolean> {
+    if (!user?.cefrLevel || !user.cefrLevelSource) return false;
+    if (!LEARNER_SET_CEFR_SOURCES.includes(user.cefrLevelSource)) return false;
+    if (!user.cefrLevelSetAt) return true;
+
+    const reviewsSince = await this.prisma.reviewLog.count({
+      where: { userId, reviewedAt: { gt: user.cefrLevelSetAt } },
+    });
+    return reviewsSince < MANUAL_LEVEL_GRACE_REVIEWS;
+  }
+
+  /**
    * Re-estimates the user's effective CEFR level from recent review
    * performance and persists it if it changed. Returns the current (possibly
    * updated) level index, whether the level changed, plus any batch graduation
    * of "filler" words triggered by a level increase.
+   *
+   * Two rules keep this honest, both learned from a real regression where a
+   * handful of trivial words mis-tagged `B2.1` by enrichment ("Ich", "Haben")
+   * read as B2 competence and pinned an A2 learner at B2.1:
+   *
+   * - **The ladder.** A level only counts if every level *below* it that has
+   *   enough evidence is also passing. Doing well on a few mis-tagged words
+   *   can no longer vault a learner over the levels they are still failing.
+   * - **The learner's own word wins.** A level the learner set or measured is
+   *   left alone until they have reviewed enough afterwards to genuinely
+   *   disagree with it.
    */
   private async maybeUpdateCefrLevel(
     userId: string,
   ): Promise<{ index: number | null; levelChanged: boolean; graduation: AutoGraduation | null }> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { cefrLevel: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { cefrLevel: true, cefrLevelSource: true, cefrLevelSetAt: true },
+    });
     const currentIndex = cefrIndex(user?.cefrLevel);
+    const unchanged = { index: currentIndex, levelChanged: false, graduation: null };
+
+    if (await this.isLearnerSetLevelProtected(userId, user)) return unchanged;
 
     const logs = await this.prisma.reviewLog.findMany({
       where: { userId },
@@ -655,7 +751,7 @@ export class KnowledgeService {
       take: LEVEL_INFERENCE_LOOKBACK,
       select: { rating: true, card: { select: { dictionaryEntry: { select: { cefrLevel: true } } } } },
     });
-    if (logs.length < LEVEL_INFERENCE_MIN_SAMPLES) return { index: currentIndex, levelChanged: false, graduation: null };
+    if (logs.length < LEVEL_INFERENCE_MIN_SAMPLES) return unchanged;
 
     const perLevel = new Map<number, { sum: number; count: number }>();
     for (const log of logs) {
@@ -667,17 +763,17 @@ export class KnowledgeService {
       perLevel.set(index, bucket);
     }
 
-    let inferredIndex = currentIndex ?? -1;
-    for (const [index, bucket] of perLevel) {
-      if (bucket.count >= LEVEL_INFERENCE_MIN_SAMPLES && bucket.sum / bucket.count >= LEVEL_INFERENCE_MIN_AVG) {
-        inferredIndex = Math.max(inferredIndex, index);
-      }
-    }
+    const inferredIndex = inferCefrIndexFromBuckets(perLevel, currentIndex);
+    if (inferredIndex === null || inferredIndex === currentIndex) return unchanged;
 
-    const levelChanged = inferredIndex >= 0 && inferredIndex !== (currentIndex ?? -1);
-    if (!levelChanged) return { index: currentIndex, levelChanged: false, graduation: null };
-
-    await this.prisma.user.update({ where: { id: userId }, data: { cefrLevel: CEFR_LEVELS[inferredIndex] } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        cefrLevel: CEFR_LEVELS[inferredIndex],
+        cefrLevelSource: CEFR_SOURCE_INFERRED,
+        cefrLevelSetAt: new Date(),
+      },
+    });
 
     const graduation =
       currentIndex === null || inferredIndex > currentIndex
