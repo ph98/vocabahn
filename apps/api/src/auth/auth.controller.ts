@@ -35,6 +35,7 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { AuthService } from './auth.service';
 import {
+  ACCESS_COOKIE,
   clearAuthCookies,
   clearOauthStateCookie,
   OAUTH_STATE_COOKIE,
@@ -45,7 +46,7 @@ import {
 import { CurrentUserId, JwtAuthGuard } from './jwt-auth.guard';
 
 // Stricter throttle tier for auth endpoints
-@Throttle({ default: { limit: 10, ttl: 60_000 } })
+@Throttle({ default: { limit: 30, ttl: 60_000 } })
 @Controller('auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
@@ -70,7 +71,17 @@ export class AuthController {
 
   /** Start the Google OAuth code flow (web). */
   @Get('google')
-  startGoogleFlow(@Res() res: Response) {
+  async startGoogleFlow(@Req() req: Request, @Res() res: Response) {
+    const cookies = (req.cookies as Record<string, string> | undefined) ?? {};
+    const accessToken = cookies[ACCESS_COOKIE];
+    if (accessToken) {
+      const user = await this.auth.verifyAccessToken(accessToken);
+      if (user) {
+        res.redirect(this.frontendUrl);
+        return;
+      }
+    }
+
     const state = randomUUID();
     setOauthStateCookie(res, state);
     res.redirect(this.auth.buildAuthUrl(state));
