@@ -100,6 +100,8 @@ export const storySchema = z.object({
   origin: storyOriginSchema,
   // Topic slug from STORY_TOPICS; null for stories written before topics existed
   topic: z.string().nullable(),
+  // User-provided prompt/description for what kind of story they want
+  prompt: z.string().nullable().optional(),
   source: storySourceSchema.nullable(),
   cefrLevel: z.string().nullable(),
   title: z.string().nullable(),
@@ -132,6 +134,7 @@ export const createStoryBodySchema = z.object({
   timezone: z.string().optional(),
   // Omitted means "surprise me": the server picks from the learner's interests.
   topic: z.string().optional(),
+  prompt: z.string().max(500).optional(),
 });
 export type CreateStoryBody = z.infer<typeof createStoryBodySchema>;
 

@@ -49,6 +49,7 @@ const READY: Story = {
   stage: null,
   origin: 'ON_DEMAND',
   topic: 'football',
+  prompt: null,
   source: {
     title: 'PSG schafft den Supercup-Doppelpack',
     url: 'https://www.kicker.de/psg-1242244/artikel',
@@ -473,7 +474,7 @@ describe('StoryPage', () => {
     });
   });
 
-  describe('topics', () => {
+  describe('topics and custom prompt', () => {
     it('sends the chosen subject to the server', async () => {
       vi.mocked(createStory).mockResolvedValue({ ...READY, status: 'PENDING', text: null });
       vi.mocked(fetchStory).mockResolvedValue({ ...READY, status: 'PENDING', text: null });
@@ -485,7 +486,9 @@ describe('StoryPage', () => {
       // are about to get before spending one of their ten.
       fireEvent.click(screen.getByRole('button', { name: 'Read about technology' }));
 
-      await waitFor(() => expect(createStory).toHaveBeenCalledWith('technology'));
+      await waitFor(() =>
+        expect(createStory).toHaveBeenCalledWith({ topic: 'technology', prompt: undefined }),
+      );
     });
 
     it('asks for no particular subject by default', async () => {
@@ -495,8 +498,50 @@ describe('StoryPage', () => {
       renderWithProviders(<StoryPage />);
       fireEvent.click(await screen.findByRole('button', { name: 'Find me something to read' }));
 
-      // undefined, not null — the server reads "absent" as "use my interests".
-      await waitFor(() => expect(createStory).toHaveBeenCalledWith(undefined));
+      await waitFor(() =>
+        expect(createStory).toHaveBeenCalledWith({ topic: undefined, prompt: undefined }),
+      );
+    });
+
+    it('allows entering a custom story prompt and sends it to the server', async () => {
+      vi.mocked(createStory).mockResolvedValue({ ...READY, status: 'PENDING', text: null });
+      vi.mocked(fetchStory).mockResolvedValue({ ...READY, status: 'PENDING', text: null });
+
+      renderWithProviders(<StoryPage />);
+      const textarea = await screen.findByRole('textbox', {
+        name: /Describe your story idea/i,
+      });
+
+      fireEvent.change(textarea, {
+        target: { value: 'A detective in Berlin searching for a mysterious book' },
+      });
+
+      const button = screen.getByRole('button', { name: 'Write story from idea' });
+      expect(button).toBeInTheDocument();
+      fireEvent.click(button);
+
+      await waitFor(() =>
+        expect(createStory).toHaveBeenCalledWith({
+          topic: undefined,
+          prompt: 'A detective in Berlin searching for a mysterious book',
+        }),
+      );
+    });
+
+    it('renders the custom prompt idea badge when a story was prompted', async () => {
+      localStorage.setItem('vocabahn-story-id', 'story-1');
+      vi.mocked(fetchStory).mockResolvedValue({
+        ...READY,
+        prompt: 'A detective in Berlin searching for a mysterious book',
+      });
+
+      renderWithProviders(<StoryPage />);
+
+      expect(
+        await screen.findByText(
+          'Idea: “A detective in Berlin searching for a mysterious book”',
+        ),
+      ).toBeInTheDocument();
     });
 
     it('shows the subject alongside the level', async () => {

@@ -299,6 +299,7 @@ export function StoryPage() {
   // the server's "most recent unfinished story" doesn't pull them back into it.
   const [choosing, setChoosing] = useState(false);
   const [topic, setTopic] = useState<string | null>(null);
+  const [customPrompt, setCustomPrompt] = useState('');
   const [notUnderstood, setNotUnderstood] = useState<Set<string>>(new Set());
   // Which occurrence has its popover open — a word appearing twice is two
   // triggers sharing one target, and only one popover is ever open.
@@ -349,7 +350,13 @@ export function StoryPage() {
   });
 
   const generate = useMutation({
-    mutationFn: (chosen: string | null) => createStory(chosen ?? undefined),
+    mutationFn: (vars: { topic?: string | null; prompt?: string }) =>
+      createStory({
+        topic: vars.topic ?? undefined,
+        // An empty or whitespace-only box means "no idea given", not an empty
+        // prompt — the server reads absent as "write from the topic instead".
+        prompt: vars.prompt?.trim() || undefined,
+      }),
     onSuccess: (created) => {
       localStorage.setItem(STORY_ID_KEY, created.id);
       setLocalId(created.id);
@@ -457,6 +464,7 @@ export function StoryPage() {
     localStorage.removeItem(STORY_ID_KEY);
     setLocalId(null);
     setChoosing(true);
+    setCustomPrompt('');
     setNotUnderstood(new Set());
     setOpenWord(null);
     setShowEnglish(false);
@@ -510,36 +518,66 @@ export function StoryPage() {
           </p>
         )}
 
-        {/* Nothing waiting: let the learner pick what today's read is about.
+        {/* Nothing waiting: let the learner describe what they want or pick a topic.
             Held back until /latest has answered, so a story written overnight
             isn't hidden behind a chooser for a frame. */}
         {!storyId && !noWords && !isLoadingLatest && (
-          <div className="rounded-3xl border border-surface-800 bg-surface-900 p-8 text-center shadow-xl">
-            <p className="text-lg font-medium">Read today's news in German</p>
+          <div className="rounded-3xl border border-surface-800 bg-surface-900 p-6 sm:p-8 text-center shadow-xl">
+            <h3 className="text-lg font-medium text-surface-100">Create your German story</h3>
             <p className="mx-auto mt-2 max-w-prose text-sm text-surface-400">
-              Pick a subject and we'll retell a real German article at your level, using the
-              words you're studying. Tap any word to see what it means, and mark the ones
-              that didn't land.
+              Describe what kind of story you want or pick a subject. We'll generate a personalized story at your level using words you're studying.
             </p>
 
-            <TopicPicker
-              value={topic}
-              onChange={setTopic}
-              disabled={generate.isPending}
-              userInterests={user?.interests}
-            />
+            <div className="mt-6 text-left">
+              <div className="flex items-center justify-between mb-2">
+                <label
+                  htmlFor="story-custom-prompt"
+                  className="text-xs font-semibold uppercase tracking-wider text-surface-400"
+                >
+                  Describe your story idea <span className="font-normal text-surface-500">(optional)</span>
+                </label>
+                {customPrompt.length > 0 && (
+                  <span className="text-xs tabular-nums text-surface-500">
+                    {500 - customPrompt.length} chars left
+                  </span>
+                )}
+              </div>
+              <textarea
+                id="story-custom-prompt"
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value.slice(0, 500))}
+                disabled={generate.isPending}
+                rows={3}
+                placeholder="e.g. A mystery at a Leipzig train station, ordering pastries in a Munich café, a sci-fi adventure..."
+                className="w-full rounded-2xl border border-surface-700 bg-surface-950 px-4 py-3 text-sm text-surface-100 placeholder:text-surface-600 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
+              />
+            </div>
+
+            <div className="mt-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-surface-400 text-left">
+                Or pick a quick topic:
+              </p>
+              <TopicPicker
+                value={topic}
+                onChange={setTopic}
+                disabled={generate.isPending}
+                userInterests={user?.interests}
+              />
+            </div>
 
             <button
               type="button"
-              onClick={() => generate.mutate(topic)}
+              onClick={() => generate.mutate({ topic, prompt: customPrompt })}
               disabled={generate.isPending}
               className={`mt-6 ${PRIMARY_BUTTON}`}
             >
               {generate.isPending
                 ? 'Starting…'
-                : topic
-                  ? `Read about ${topicLabel(topic)?.toLowerCase()}`
-                  : 'Find me something to read'}
+                : customPrompt.trim()
+                  ? 'Write story from idea'
+                  : topic
+                    ? `Read about ${topicLabel(topic)?.toLowerCase()}`
+                    : 'Find me something to read'}
             </button>
           </div>
         )}
@@ -569,7 +607,7 @@ export function StoryPage() {
               type="button"
               onClick={() => {
                 startOver();
-                generate.mutate(story.topic ?? null);
+                generate.mutate({ topic: story.topic ?? null, prompt: story.prompt ?? undefined });
               }}
               className={`mt-4 ${PRIMARY_BUTTON}`}
             >
@@ -588,6 +626,13 @@ export function StoryPage() {
                   <p className="mb-2 text-xs font-medium uppercase tracking-wide text-indigo-300">
                     Today's read
                   </p>
+                )}
+
+                {story.prompt && (
+                  <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/10 px-3 py-1 text-xs text-indigo-300">
+                    <Sparkles className="size-3.5 shrink-0 text-indigo-400" aria-hidden="true" />
+                    <span className="truncate max-w-sm sm:max-w-md">Idea: &ldquo;{story.prompt}&rdquo;</span>
+                  </div>
                 )}
 
                 {story.title && (

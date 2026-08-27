@@ -391,11 +391,14 @@ export async function bulkMarkKnownWords(dictionaryEntryIds: string[]): Promise<
 /**
  * Starts generation and returns the story in PENDING; poll fetchStory until
  * READY. Omitting the topic lets the server pick from the learner's interests.
+ * An optional prompt lets the learner describe what kind of story they want.
  */
-export async function createStory(topic?: string) {
+export async function createStory(params: { topic?: string; prompt?: string } = {}) {
+  const { topic, prompt } = params;
   const { data } = await api.post('/stories', {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     ...(topic ? { topic } : {}),
+    ...(prompt ? { prompt } : {}),
   });
   return storyResponseSchema.parse(data).story;
 }

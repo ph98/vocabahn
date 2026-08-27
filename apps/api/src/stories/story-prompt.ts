@@ -1,8 +1,19 @@
+export interface PreviousStoryContext {
+  title: string | null;
+  topic?: string | null;
+  prompt?: string | null;
+  summary: string;
+}
+
 export interface StoryPromptInput {
   words: { word: string; translation: string | null }[];
   cefrLevel: string;
   /** Human-readable topic label, e.g. "Football". Null for no topic. */
   topic: string | null;
+  /** Custom user prompt / instructions describing what kind of story the learner wants. */
+  userPrompt?: string | null;
+  /** Brief context from previous stories to enable gentle continuity. */
+  previousStories?: PreviousStoryContext[] | null;
   /** The real article to retell. Null generates fiction instead. */
   source: { title: string; summary: string; sourceName: string } | null;
 }
@@ -12,8 +23,11 @@ export interface StoryPromptInput {
  * grounding rules — the part that decides whether a learner is told something
  * true — are readable and testable without a network call.
  *
- * Three shapes, in descending order of what the learner gets out of it:
- * a real item retold, a topical invention, or an untethered story.
+ * Four shapes:
+ * - A custom user-prompted story (with optional topic and continuity)
+ * - A real news item retold
+ * - A topical invention
+ * - An untethered story
  */
 export function buildStoryPrompt(input: StoryPromptInput): string {
   const wordList = input.words
@@ -22,7 +36,19 @@ export function buildStoryPrompt(input: StoryPromptInput): string {
 
   const lines: string[] = [];
 
-  if (input.source) {
+  if (input.userPrompt && input.userPrompt.trim().length > 0) {
+    lines.push(
+      'You write short German stories for vocabulary learners. The learner is',
+      'studying the words below and needs to meet them in natural context.',
+      '',
+      'The learner explicitly requested this story idea / scenario:',
+      `"${input.userPrompt.trim()}"`,
+      ...(input.topic ? [`General theme/category: ${input.topic}.`] : []),
+      '',
+      'Make the narrative, characters, and setting center directly around what the learner asked for.',
+      'Invented characters and creative scenes are encouraged. Do not present invented events as real news.',
+    );
+  } else if (input.source) {
     lines.push(
       'You retell real German news for language learners. Below is a genuine news',
       `item published by ${input.source.sourceName}.`,
@@ -55,6 +81,26 @@ export function buildStoryPrompt(input: StoryPromptInput): string {
     lines.push(
       'You write short German stories for vocabulary learners. The learner is',
       'studying the words below and needs to meet them in natural context.',
+    );
+  }
+
+  if (input.previousStories && input.previousStories.length > 0) {
+    lines.push(
+      '',
+      'CONTEXT FROM PREVIOUS STORIES (FOR GENTLE CONTINUITY):',
+      'Here is brief context from recent stories this learner has read:',
+    );
+    for (const [idx, prev] of input.previousStories.entries()) {
+      const parts: string[] = [];
+      if (prev.title) parts.push(`Title: "${prev.title}"`);
+      if (prev.topic) parts.push(`Topic: ${prev.topic}`);
+      if (prev.prompt) parts.push(`Prompt: "${prev.prompt}"`);
+      const prefix = parts.length > 0 ? parts.join(', ') : `Story #${idx + 1}`;
+      lines.push(`- ${prefix} — ${prev.summary}`);
+    }
+    lines.push(
+      '',
+      'Continuity guideline: You may subtly include a gentle callback, recurring motif, familiar place, or character detail from previous stories if appropriate, giving a connected world feel. However, this new story MUST be completely self-contained and clear on its own.',
     );
   }
 

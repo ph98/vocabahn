@@ -45,7 +45,7 @@ export class StoriesController {
     @CurrentUserId() userId: string,
     @Body(new ZodValidationPipe(createStoryBodySchema)) body: CreateStoryBody,
   ): Promise<StoryResponse> {
-    return { story: await this.stories.create(userId, body.timezone, body.topic) };
+    return { story: await this.stories.create(userId, body.timezone, body.topic, 'ON_DEMAND', body.prompt) };
   }
 
   @Get(':id')

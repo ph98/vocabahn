@@ -38,7 +38,11 @@ const JOB = {
 
 describe('StoryProcessor', () => {
   let prisma: {
-    story: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> };
+    story: {
+      findUnique: ReturnType<typeof vi.fn>;
+      findMany: ReturnType<typeof vi.fn>;
+      update: ReturnType<typeof vi.fn>;
+    };
     storyTarget: { deleteMany: ReturnType<typeof vi.fn> };
     storyQuizQuestion: { deleteMany: ReturnType<typeof vi.fn> };
     $transaction: ReturnType<typeof vi.fn>;
@@ -61,8 +65,10 @@ describe('StoryProcessor', () => {
       story: {
         findUnique: vi.fn().mockResolvedValue({
           id: 'story-1',
+          userId: 'user-1',
           cefrLevel: 'A2.1',
           topic: 'everyday',
+          prompt: 'A detective looking for a cat',
           sourceTitle: null,
           sourceUrl: null,
           sourceName: null,
@@ -73,6 +79,14 @@ describe('StoryProcessor', () => {
             { dictionaryEntry: { id: 'e3', word: 'Haus', translation: 'house' } },
           ],
         }),
+        findMany: vi.fn().mockResolvedValue([
+          {
+            title: 'Vorige Geschichte',
+            topic: 'travel',
+            prompt: 'An adventure in Berlin',
+            text: 'Das war ein spannender Tag in Berlin.',
+          },
+        ]),
         // Returns the argument so the transaction's promises resolve to
         // something inspectable.
         update: vi.fn().mockImplementation((args: unknown) => Promise.resolve(args)),
@@ -170,5 +184,23 @@ describe('StoryProcessor', () => {
 
     await expect(processor.process(JOB)).resolves.toBeUndefined();
     expect(writtenStory()).toMatchObject({ status: 'READY', audioUrl: null, imageUrl: null });
+  });
+
+  it('passes userPrompt and previousStories context to storyProvider', async () => {
+    await processor.process(JOB);
+
+    expect(storyProvider.generate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userPrompt: 'A detective looking for a cat',
+        previousStories: [
+          {
+            title: 'Vorige Geschichte',
+            topic: 'Travel & Places',
+            prompt: 'An adventure in Berlin',
+            summary: 'Das war ein spannender Tag in Berlin.',
+          },
+        ],
+      }),
+    );
   });
 });
