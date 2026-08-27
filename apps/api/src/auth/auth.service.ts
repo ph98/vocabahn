@@ -126,6 +126,17 @@ export class AuthService {
     };
   }
 
+  /** Verifies an access token and returns the user if valid. */
+  async verifyAccessToken(accessToken: string): Promise<User | null> {
+    try {
+      const payload = await this.jwt.verifyAsync<JwtPayload>(accessToken);
+      if (payload.type !== 'access') return null;
+      return this.getUserById(payload.sub);
+    } catch {
+      return null;
+    }
+  }
+
   /** Verify a refresh token and rotate the pair. */
   async refresh(refreshToken: string): Promise<{
     accessToken: string;

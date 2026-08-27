@@ -64,7 +64,7 @@ the query instead of in the return value: see **Shell** in `web-client.md`.
 ## Rate limiting and quotas
 
 - Global: `ThrottlerGuard` as an `APP_GUARD`, 1000 requests / 60 s.
-- Auth controller: 10 requests / 60 s.
+- Auth controller: 30 requests / 60 s.
 - Enrichment: 50 new-word enrichments per user per UTC day, enforced by a Redis
   `INCR` with a 24 h TTL on `enrich:cap:<userId>:<YYYY-MM-DD>`
   (`enrichment.service.ts`). Configurable via `ENRICHMENT_DAILY_CAP`.
