@@ -50,6 +50,8 @@ const READY: Story = {
   origin: 'ON_DEMAND',
   topic: 'football',
   prompt: null,
+  format: 'TEXT',
+  segments: [],
   source: {
     title: 'PSG schafft den Supercup-Doppelpack',
     url: 'https://www.kicker.de/psg-1242244/artikel',
@@ -487,7 +489,11 @@ describe('StoryPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Read about technology' }));
 
       await waitFor(() =>
-        expect(createStory).toHaveBeenCalledWith({ topic: 'technology', prompt: undefined }),
+        expect(createStory).toHaveBeenCalledWith({
+          topic: 'technology',
+          prompt: undefined,
+          format: 'TEXT',
+        }),
       );
     });
 
@@ -499,7 +505,11 @@ describe('StoryPage', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Find me something to read' }));
 
       await waitFor(() =>
-        expect(createStory).toHaveBeenCalledWith({ topic: undefined, prompt: undefined }),
+        expect(createStory).toHaveBeenCalledWith({
+          topic: undefined,
+          prompt: undefined,
+          format: 'TEXT',
+        }),
       );
     });
 
@@ -524,6 +534,7 @@ describe('StoryPage', () => {
         expect(createStory).toHaveBeenCalledWith({
           topic: undefined,
           prompt: 'A detective in Berlin searching for a mysterious book',
+          format: 'TEXT',
         }),
       );
     });

@@ -41,3 +41,47 @@ export const STORY_CONTENT_POS = ['noun', 'verb', 'adj', 'adv'];
 
 // Per-user/day cap on story generation (each story is one paid Gemini call).
 export const STORY_DAILY_CAP = Number(process.env.STORY_DAILY_CAP ?? 10);
+
+// ── Podcasts ────────────────────────────────────────────────────────────────
+
+/**
+ * German words in a five-minute episode. Spoken German runs around 130 words a
+ * minute, and the hosts are deliberately slower than that.
+ */
+export const PODCAST_TARGET_WORD_COUNT = Number(process.env.PODCAST_TARGET_WORD_COUNT ?? 650);
+
+/** New words per episode — the "few he doesn't know" half of the brief. */
+export const PODCAST_NEW_WORD_COUNT = Number(process.env.PODCAST_NEW_WORD_COUNT ?? 4);
+
+/** Due words woven in without explanation. */
+export const PODCAST_REVIEW_WORD_COUNT = Number(process.env.PODCAST_REVIEW_WORD_COUNT ?? 6);
+
+/**
+ * How many banked words are handed to the model as "the listener knows these".
+ * A sample, not the whole set: the list is there to steer the register, and a
+ * thousand words of prompt would cost more than it steers.
+ */
+export const PODCAST_KNOWN_WORD_SAMPLE = Number(process.env.PODCAST_KNOWN_WORD_SAMPLE ?? 80);
+
+/**
+ * An episode is roughly six times a story's narration in characters, and text
+ * to speech is billed per character, so podcasts get their own, smaller cap.
+ */
+export const PODCAST_DAILY_CAP = Number(process.env.PODCAST_DAILY_CAP ?? 2);
+
+/**
+ * Below this many turns the model has not written a conversation, whatever it
+ * returned. The job throws so BullMQ regenerates.
+ */
+export const PODCAST_MIN_SEGMENTS = 6;
+
+/**
+ * Google's neural German voices, one per host. Podcasts default to Google
+ * rather than ElevenLabs: at ~4,500 characters an episode, per-character
+ * pricing is the dominant cost of the feature, and Google's neural voices are
+ * an order of magnitude cheaper. Set PODCAST_TTS_PROVIDER=elevenlabs to trade
+ * that back for the better voice.
+ */
+export const PODCAST_TTS_PROVIDER = process.env.PODCAST_TTS_PROVIDER ?? 'google';
+export const PODCAST_VOICE_A = process.env.PODCAST_VOICE_A ?? 'de-DE-Neural2-B';
+export const PODCAST_VOICE_B = process.env.PODCAST_VOICE_B ?? 'de-DE-Neural2-C';

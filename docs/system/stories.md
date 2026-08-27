@@ -394,3 +394,45 @@ would read as a bug.
   changing answers on one story.
 - `/story` is still reached through the More menu. The dashboard's "Today's read"
   card is the practical entry point; the nav was left alone.
+
+## Podcast episodes
+
+`Story.format` is `TEXT` (the micro-story above) or `PODCAST`. An episode is the
+same row — same targets, same quiz, same quota machinery — with its script
+stored as ordered `StorySegment` turns.
+
+**Why the same model.** Everything after generation is identical: target
+verification, the illustration, word resolution, the quiz, completion. The
+episode is flattened into one German `text` before any of that runs, so the
+transcript is a story as far as the rest of the pipeline is concerned, and the
+turns ride alongside for narration and display.
+
+**The word mix is the feature.** A story is a review exercise and draws purely
+from due cards. An episode is a listening one, so `selectPodcastWords` inverts
+it: a sample of banked words (`AUTO_KNOWN`/`USER_KNOWN`) is what makes five
+minutes of German followable by ear, a few due words are heard in passing, and
+`PODCAST_NEW_WORD_COUNT` genuinely new words get a `VOCAB` turn each where one
+host stops and explains. The processor re-derives which word is in which role
+from the learner's cards rather than trusting row order, so a retry days later
+still sorts them correctly.
+
+**Two hosts, two voices.** `buildPodcastPrompt` fixes the running order —
+INTRO, TOPIC turns with VOCAB asides where each new word first appears, RECAP —
+because a model asked for "a podcast" writes a monologue with names in front of
+it. `HOST_A` leads, `HOST_B` asks what a learner would ask.
+
+**One file per turn.** A five-minute script is ~4,500 characters, far past what
+a synthesis request accepts, so each turn is synthesized separately. That is
+also what lets the two hosts use two voices, and what lets the transcript follow
+the audio with no timing data at all: the player advances on `ended` and
+highlights the next turn, because the turn *is* the unit of playback. A turn
+that fails to synthesize is skipped by the audio and still readable.
+
+**Cost.** Text-to-speech is billed per character and an episode is roughly six
+times a story's narration, which makes the engine the dominant cost of the
+feature rather than a detail. Podcasts therefore default to Google's neural
+German voices via `PODCAST_TTS_PROVIDER=google` regardless of whether an
+ElevenLabs key is set, and have their own smaller daily cap
+(`PODCAST_DAILY_CAP`, keyed separately in Redis so episodes cannot eat a day of
+stories). Set `PODCAST_TTS_PROVIDER=elevenlabs` to trade the cost back for the
+better voice.

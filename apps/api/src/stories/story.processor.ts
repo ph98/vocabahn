@@ -6,8 +6,23 @@ import { DictionaryService } from '../dictionary/dictionary.service';
 import { UnsplashProvider } from '../images/unsplash.provider';
 import { PrismaService } from '../prisma/prisma.service';
 import { TtsProvider } from '../tts/tts.provider';
+import type { GeneratedStory, RawPodcastSegment } from './providers/story.provider';
+
+/** A generated episode: a story's shape, plus the turns it was built from. */
+type GeneratedEpisode = GeneratedStory & { segments: RawPodcastSegment[] };
 import { StoryProvider } from './providers/story.provider';
-import { STORY_MIN_TARGETS, STORY_QUEUE, type StoryJobData } from './stories.constants';
+import {
+  PODCAST_MIN_SEGMENTS,
+  PODCAST_NEW_WORD_COUNT,
+  PODCAST_REVIEW_WORD_COUNT,
+  PODCAST_TARGET_WORD_COUNT,
+  PODCAST_TTS_PROVIDER,
+  PODCAST_VOICE_A,
+  PODCAST_VOICE_B,
+  STORY_MIN_TARGETS,
+  STORY_QUEUE,
+  type StoryJobData,
+} from './stories.constants';
 import { buildStoryQuizQuestions } from './story-quiz';
 import { validateTargets } from './story-targets';
 
@@ -96,24 +111,35 @@ export class StoryProcessor extends WorkerHost {
       };
     });
 
+    const isPodcast = story.format === 'PODCAST';
+
     // A real API failure throws → the job retries with backoff.
-    const generated = await this.storyProvider.generate({
-      words: entries.map((e) => ({ word: e.word, translation: e.translation })),
-      cefrLevel: story.cefrLevel ?? 'A2.1',
-      topic: topicLabel(story.topic),
-      userPrompt: story.prompt,
-      previousStories: previousStories.length > 0 ? previousStories : undefined,
-      source: useSource
-        ? {
-            title: story.sourceTitle!,
-            summary: story.sourceItem?.summary ?? '',
-            sourceName: story.sourceName ?? 'a German news outlet',
-          }
-        : null,
-    });
+    //
+    // An episode comes back as turns rather than prose, but it is flattened into
+    // the same shape a story has — one German `text`, one translation, claimed
+    // targets, a quiz — so target verification, the illustration, word
+    // resolution and persistence below are the same code for both formats. The
+    // turns ride along in `segments` for the narration step and the transcript.
+    const generated = isPodcast
+      ? await this.generateEpisode(story, entries, previousStories)
+      : await this.storyProvider.generate({
+          words: entries.map((e) => ({ word: e.word, translation: e.translation })),
+          cefrLevel: story.cefrLevel ?? 'A2.1',
+          topic: topicLabel(story.topic),
+          userPrompt: story.prompt,
+          previousStories: previousStories.length > 0 ? previousStories : undefined,
+          source: useSource
+            ? {
+                title: story.sourceTitle!,
+                summary: story.sourceItem?.summary ?? '',
+                sourceName: story.sourceName ?? 'a German news outlet',
+              }
+            : null,
+        });
     if (!generated) {
       throw new Error('Story generation is not configured (GEMINI_API_KEY missing)');
     }
+    const segments: RawPodcastSegment[] = isPodcast ? (generated as GeneratedEpisode).segments : [];
 
     const verified = validateTargets(generated.text, generated.targets, entries);
     if (verified.length < STORY_MIN_TARGETS) {
@@ -140,9 +166,14 @@ export class StoryProcessor extends WorkerHost {
     // Narration is polish, not the product — a TTS outage must not cost the
     // learner the story (or their quota), so failure just means no audio.
     await this.prisma.story.update({ where: { id: storyId }, data: { stage: 'NARRATING' } });
-    const audioUrl = await this.safe(() =>
-      this.tts.synthesize(`story-${storyId}`, generated.text),
-    );
+    // An episode is synthesized a turn at a time: one request per turn keeps
+    // each well inside what the engines accept, lets the two hosts use two
+    // voices, and gives the transcript something to follow without any timing
+    // data. A story is one file, as before.
+    const segmentAudio = isPodcast ? await this.narrateEpisode(storyId, segments) : [];
+    const audioUrl = isPodcast
+      ? null
+      : await this.safe(() => this.tts.synthesize(`story-${storyId}`, generated.text));
 
     // Resolve dictionary entries for all words in the story so every word is interactive
     const allWords = [...new Set(generated.text.match(/[\p{L}ÄÖÜäöüß-]+/gu) || [])];
@@ -184,6 +215,7 @@ export class StoryProcessor extends WorkerHost {
       // Drop the placeholders; keep verified words, all story words, and quiz questions.
       this.prisma.storyTarget.deleteMany({ where: { storyId } }),
       this.prisma.storyQuizQuestion.deleteMany({ where: { storyId } }),
+      this.prisma.storySegment.deleteMany({ where: { storyId } }),
       this.prisma.story.update({
         where: { id: storyId },
         data: {
@@ -219,6 +251,19 @@ export class StoryProcessor extends WorkerHost {
               surfaceForm: t.surfaceForm,
             })),
           },
+          segments: {
+            create: segments.map((seg, i) => ({
+              order: i,
+              speaker: seg.speaker === 'HOST_B' ? ('HOST_B' as const) : ('HOST_A' as const),
+              kind: (['INTRO', 'TOPIC', 'VOCAB', 'RECAP'].includes(seg.kind)
+                ? seg.kind
+                : 'TOPIC') as 'INTRO' | 'TOPIC' | 'VOCAB' | 'RECAP',
+              text: seg.text,
+              translation: seg.translation,
+              focusWord: seg.focusWord,
+              audioUrl: segmentAudio[i] ?? null,
+            })),
+          },
           quizQuestions: {
             create: quizQuestionsToCreate.map((q) => ({
               dictionaryEntryId: q.dictionaryEntryId,
@@ -235,8 +280,11 @@ export class StoryProcessor extends WorkerHost {
     ]);
 
     this.logger.log(
-      `generated story ${storyId} with ${verified.length} target words` +
-        `${audioUrl ? ' and narration' : ''}`,
+      isPodcast
+        ? `generated episode ${storyId}: ${segments.length} turns, ` +
+            `${segmentAudio.filter(Boolean).length} narrated, ${verified.length} target words`
+        : `generated story ${storyId} with ${verified.length} target words` +
+            `${audioUrl ? ' and narration' : ''}`,
     );
   }
 
@@ -250,6 +298,107 @@ export class StoryProcessor extends WorkerHost {
       );
       return null;
     }
+  }
+
+  /**
+   * Generates one episode and flattens it into the shape the rest of `process`
+   * expects, with the turns carried alongside.
+   *
+   * The three word roles the prompt needs are re-derived from the learner's
+   * cards rather than threaded through the Story row: `knownState` and `state`
+   * already say exactly which words are banked, which are due and which have
+   * never been seen, and reading them here keeps the roles correct even on a
+   * retry days after the row was written.
+   */
+  private async generateEpisode(
+    story: { id: string; userId: string; cefrLevel: string | null; topic: string | null; prompt: string | null },
+    entries: { id: string; word: string; translation: string | null }[],
+    previousStories: { title: string | null; topic: string | null; prompt: string | null; summary: string }[],
+  ): Promise<GeneratedEpisode | null> {
+    const cards = await this.prisma.card.findMany({
+      where: { userId: story.userId, dictionaryEntryId: { in: entries.map((e) => e.id) } },
+      select: { dictionaryEntryId: true, knownState: true, state: true },
+    });
+    const byEntry = new Map(cards.map((c) => [c.dictionaryEntryId, c]));
+
+    const known: { word: string; translation: string | null }[] = [];
+    const review: { word: string; translation: string | null }[] = [];
+    const fresh: { word: string; translation: string | null }[] = [];
+    for (const entry of entries) {
+      const card = byEntry.get(entry.id);
+      const word = { word: entry.word, translation: entry.translation };
+      if (card && (card.knownState === 'AUTO_KNOWN' || card.knownState === 'USER_KNOWN')) {
+        known.push(word);
+      } else if (card?.state === 'NEW') {
+        fresh.push(word);
+      } else {
+        review.push(word);
+      }
+    }
+
+    const generated = await this.storyProvider.generatePodcast({
+      knownWords: known,
+      reviewWords: review.slice(0, PODCAST_REVIEW_WORD_COUNT),
+      newWords: fresh.slice(0, PODCAST_NEW_WORD_COUNT),
+      cefrLevel: story.cefrLevel ?? 'A2.1',
+      topic: topicLabel(story.topic),
+      userPrompt: story.prompt,
+      previousStories: previousStories.length > 0 ? previousStories : undefined,
+      targetWordCount: PODCAST_TARGET_WORD_COUNT,
+    });
+    if (!generated) return null;
+
+    if (generated.segments.length < PODCAST_MIN_SEGMENTS) {
+      // Too few turns to be a conversation. Throwing sends this back through the
+      // queue rather than shipping a monologue with two names on it.
+      throw new Error(
+        `episode came back with only ${generated.segments.length} turns (minimum ${PODCAST_MIN_SEGMENTS})`,
+      );
+    }
+
+    // The flattened transcript is what target verification, word resolution and
+    // the reader all work from, so the joined text is the episode as spoken.
+    return {
+      title: generated.title,
+      text: generated.segments.map((seg) => seg.text).join('\n\n'),
+      translation: generated.segments
+        .map((seg) => seg.translation)
+        .filter(Boolean)
+        .join('\n\n') || null,
+      imageQuery: generated.imageQuery,
+      targets: generated.targets,
+      quiz: generated.quiz,
+      segments: generated.segments,
+    };
+  }
+
+  /**
+   * Synthesizes one file per turn, alternating voices so the two hosts sound
+   * like two people. Returns a URL per turn, positionally — a null is a turn
+   * that failed to synthesize, which costs the listener that turn's audio and
+   * nothing else, exactly as a failed story narration does.
+   *
+   * Sequential rather than parallel: a five-minute episode is around twenty
+   * requests, and firing them at once is the fastest way to be rate limited by
+   * the speech API for no gain the learner can perceive.
+   */
+  private async narrateEpisode(
+    storyId: string,
+    segments: RawPodcastSegment[],
+  ): Promise<(string | null)[]> {
+    const provider = PODCAST_TTS_PROVIDER === 'elevenlabs' ? 'elevenlabs' : 'google';
+    const urls: (string | null)[] = [];
+
+    for (const [i, seg] of segments.entries()) {
+      const url = await this.safe(() =>
+        this.tts.synthesize(`story-${storyId}-s${i}`, seg.text, {
+          provider,
+          voice: seg.speaker === 'HOST_B' ? PODCAST_VOICE_B : PODCAST_VOICE_A,
+        }),
+      );
+      urls.push(url ?? null);
+    }
+    return urls;
   }
 
   @OnWorkerEvent('failed')

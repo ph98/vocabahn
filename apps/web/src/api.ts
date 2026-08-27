@@ -38,6 +38,7 @@ import {
   type DiagnosticProbeItem,
   type ImportWordsResponse,
   type NotificationSettings,
+  type StoryFormat,
   type PushSubscriptionBody,
   type ReviewRating,
   type StoryInteractAction,
@@ -393,12 +394,15 @@ export async function bulkMarkKnownWords(dictionaryEntryIds: string[]): Promise<
  * READY. Omitting the topic lets the server pick from the learner's interests.
  * An optional prompt lets the learner describe what kind of story they want.
  */
-export async function createStory(params: { topic?: string; prompt?: string } = {}) {
-  const { topic, prompt } = params;
+export async function createStory(
+  params: { topic?: string; prompt?: string; format?: StoryFormat } = {},
+) {
+  const { topic, prompt, format } = params;
   const { data } = await api.post('/stories', {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     ...(topic ? { topic } : {}),
     ...(prompt ? { prompt } : {}),
+    ...(format ? { format } : {}),
   });
   return storyResponseSchema.parse(data).story;
 }
@@ -448,9 +452,9 @@ export async function completeStory(
   return completeStoryResponseSchema.parse(data);
 }
 
-export async function fetchStoryQuota() {
+export async function fetchStoryQuota(format: StoryFormat = 'TEXT') {
   const { data } = await api.get('/stories/quota', {
-    params: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    params: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, format },
   });
   return storyQuotaSchema.parse(data);
 }

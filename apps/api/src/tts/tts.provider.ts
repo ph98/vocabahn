@@ -24,14 +24,27 @@ export class TtsProvider {
   /**
    * Synthesizes German audio for `text` to `<key>.mp3` and returns its public URL
    * path, or null if unconfigured. `key` is the headword entry id, or
-   * `<entryId>-ex<n>` for an example sentence.
+   * `<entryId>-ex<n>` for an example sentence, or `story-<id>-s<n>` for one turn
+   * of a podcast episode.
+   *
+   * `opts.provider` pins the engine rather than taking the usual
+   * ElevenLabs-then-Google order. Podcasts use it: an episode is ~4,500
+   * characters against a headword's twenty, and per-character pricing makes the
+   * choice of engine the dominant cost of the feature rather than a detail.
+   * `opts.voice` picks the voice within whichever engine runs — a Google voice
+   * name, or an ElevenLabs voice id — so two hosts can sound like two people.
    */
-  async synthesize(key: string, text: string): Promise<string | null> {
+  async synthesize(
+    key: string,
+    text: string,
+    opts: { provider?: 'google' | 'elevenlabs'; voice?: string } = {},
+  ): Promise<string | null> {
     const elevenlabsApiKey = process.env.ELEVENLABS_API_KEY;
+    const allowElevenLabs = opts.provider !== 'google';
 
-    if (elevenlabsApiKey && elevenlabsApiKey.trim() !== '') {
+    if (allowElevenLabs && elevenlabsApiKey && elevenlabsApiKey.trim() !== '') {
       try {
-        const audioContent = await this.synthesizeElevenLabs(elevenlabsApiKey, text);
+        const audioContent = await this.synthesizeElevenLabs(elevenlabsApiKey, text, opts.voice);
         if (audioContent) {
           await mkdir(AUDIO_DIR, { recursive: true });
           await writeFile(join(AUDIO_DIR, `${key}.mp3`), audioContent);
@@ -56,7 +69,9 @@ export class TtsProvider {
 
     const [response] = await this.googleClient.synthesizeSpeech({
       input: { text },
-      voice: { languageCode: 'de-DE', ssmlGender: 'NEUTRAL' },
+      voice: opts.voice
+        ? { languageCode: 'de-DE', name: opts.voice }
+        : { languageCode: 'de-DE', ssmlGender: 'NEUTRAL' },
       audioConfig: { audioEncoding: 'MP3' },
     });
     if (!response.audioContent) {
@@ -68,8 +83,12 @@ export class TtsProvider {
     return `/api/static/audio/${key}.mp3`;
   }
 
-  private async synthesizeElevenLabs(apiKey: string, text: string): Promise<Buffer | null> {
-    const voiceId = process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM';
+  private async synthesizeElevenLabs(
+    apiKey: string,
+    text: string,
+    voice?: string,
+  ): Promise<Buffer | null> {
+    const voiceId = voice || process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM';
     const modelId = process.env.ELEVENLABS_MODEL_ID || 'eleven_multilingual_v2';
     const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`;
 

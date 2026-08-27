@@ -17,6 +17,7 @@ import {
   type Story as SharedStory,
   type StoryInteractBody,
   type StoryInteractResponse,
+  type StoryFormat,
   type StoryOrigin,
   type StoryQuizResultItem,
 } from '@vocabahn/shared';
@@ -36,6 +37,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { REDIS } from '../redis/redis.module';
 import { SourcesService } from '../sources/sources.service';
 import {
+  PODCAST_DAILY_CAP,
+  PODCAST_KNOWN_WORD_SAMPLE,
+  PODCAST_NEW_WORD_COUNT,
+  PODCAST_REVIEW_WORD_COUNT,
   STORY_CONTENT_POS,
   STORY_DAILY_CAP,
   STORY_FALLBACK_LEVEL,
@@ -102,6 +107,9 @@ const storyInclude = {
   quizQuestions: {
     orderBy: { order: 'asc' as const },
   },
+  segments: {
+    orderBy: { order: 'asc' as const },
+  },
 };
 
 type StoryRow = Prisma.StoryGetPayload<{ include: typeof storyInclude }>;
@@ -133,12 +141,13 @@ export class StoriesService {
     requestedTopic?: string,
     origin: StoryOrigin = 'ON_DEMAND',
     prompt?: string,
+    format: StoryFormat = 'TEXT',
   ): Promise<SharedStory> {
     if (origin === 'ON_DEMAND') {
-      const quota = await this.getQuota(userId, timeZone);
+      const quota = await this.getQuota(userId, timeZone, format);
       if (quota.used >= quota.cap) {
         throw new ForbiddenException(
-          `Daily story limit reached (${quota.used}/${quota.cap}). Try again tomorrow.`,
+          `Daily ${format === 'PODCAST' ? 'episode' : 'story'} limit reached (${quota.used}/${quota.cap}). Try again tomorrow.`,
         );
       }
     }
@@ -149,7 +158,13 @@ export class StoriesService {
     });
     const cefrLevel = user?.cefrLevel ?? STORY_FALLBACK_LEVEL;
 
-    const words = await this.selectWords(userId, user?.cefrLevel ?? null);
+    // A podcast is built to be *listened* to, so its word mix is the inverse of
+    // a story's: mostly ground the learner already holds, with a few new words
+    // the hosts stop and explain. A story picks purely from what is due.
+    const words =
+      format === 'PODCAST'
+        ? await this.selectPodcastWords(userId, user?.cefrLevel ?? null)
+        : await this.selectWords(userId, user?.cefrLevel ?? null);
     if (words.length === 0) {
       throw new BadRequestException(
         'No words to build a story from yet — enroll in a course or add a deck first.',
@@ -162,7 +177,10 @@ export class StoriesService {
     // article rather than silently swapping it under a learner mid-generation.
     // A learner-written idea outranks the news: retelling an unrelated article
     // would ignore what they actually asked for, so no source is picked at all.
-    const sourceItem = topic && !userPrompt ? await this.sources.pickForUser(userId, topic) : null;
+    const sourceItem =
+      topic && !userPrompt && format === 'TEXT'
+        ? await this.sources.pickForUser(userId, topic)
+        : null;
 
     // The selected words are pinned as targets up front, with a placeholder
     // surfaceForm. The processor rewrites them once the text exists and each
@@ -172,6 +190,7 @@ export class StoriesService {
         userId,
         cefrLevel,
         origin,
+        format,
         topic,
         prompt: userPrompt,
         stage: 'WRITING',
@@ -189,7 +208,7 @@ export class StoriesService {
     });
 
     if (origin === 'ON_DEMAND') {
-      await this.consumeDailyQuota(userId, timeZone);
+      await this.consumeDailyQuota(userId, timeZone, format);
     }
 
     await this.queue.add(
@@ -528,10 +547,22 @@ export class StoriesService {
     return this.toStory(story);
   }
 
-  /** Current story usage for today, without incrementing. */
-  async getQuota(userId: string, timeZone = 'UTC'): Promise<{ used: number; cap: number }> {
-    const raw = await this.redis.get(this.quotaKey(userId, timeZone));
-    return { used: raw ? Number(raw) : 0, cap: STORY_DAILY_CAP };
+  /**
+   * Current usage for today, without incrementing. Podcasts count against their
+   * own, smaller allowance: an episode is roughly six times a story's narration
+   * in synthesized characters, so one budget for both would let a couple of
+   * episodes eat a day of stories.
+   */
+  async getQuota(
+    userId: string,
+    timeZone = 'UTC',
+    format: StoryFormat = 'TEXT',
+  ): Promise<{ used: number; cap: number }> {
+    const raw = await this.redis.get(this.quotaKey(userId, timeZone, format));
+    return {
+      used: raw ? Number(raw) : 0,
+      cap: format === 'PODCAST' ? PODCAST_DAILY_CAP : STORY_DAILY_CAP,
+    };
   }
 
   /**
@@ -553,6 +584,53 @@ export class StoriesService {
     // superset, but compare anyway rather than assume it.
     const anyWords = await this.selectWordsWithPos(...args, null);
     return anyWords.length > contentWords.length ? anyWords : contentWords;
+  }
+
+  /**
+   * The words an episode is built from, in three roles.
+   *
+   * A story picks purely from what is due — it is a review exercise. A podcast
+   * is a listening one, so it inverts the mix: mostly words the learner has
+   * already banked, which is what makes five minutes of German followable by
+   * ear, plus a handful due for review heard in passing, plus the few genuinely
+   * new words the hosts stop and explain.
+   *
+   * The three roles are returned as one flat list because that is what a
+   * story's targets are; `partitionPodcastWords` splits them again for the
+   * prompt. Known words come first so that a learner with almost nothing banked
+   * still gets an episode rather than an error.
+   */
+  private async selectPodcastWords(userId: string, userCefrLevel: string | null) {
+    const known = await this.prisma.card.findMany({
+      where: { userId, knownState: { in: ['AUTO_KNOWN', 'USER_KNOWN'] } },
+      orderBy: { updatedAt: 'desc' },
+      take: PODCAST_KNOWN_WORD_SAMPLE,
+      select: entrySelect,
+    });
+
+    const review = await this.selectWords(userId, userCefrLevel, PODCAST_REVIEW_WORD_COUNT);
+    const seen = new Set([...known.map((c) => c.dictionaryEntry.id), ...review.map((w) => w.id)]);
+
+    // The new words are the point of the episode, so they are drawn the same way
+    // a review session introduces one: unseen cards ranked by the knowledge
+    // prior, least likely to be known first.
+    const fresh = await this.prisma.card.findMany({
+      where: {
+        userId,
+        knownState: 'ACTIVE' as const,
+        state: 'NEW' as const,
+        dictionaryEntryId: { notIn: [...seen] },
+        dictionaryEntry: { lexiconEntry: { pos: { in: STORY_CONTENT_POS } } },
+      },
+      take: Math.max(PODCAST_NEW_WORD_COUNT * 4, PODCAST_NEW_WORD_COUNT),
+      select: entrySelect,
+    });
+    const newWords = this.knowledge
+      .orderByPrior(userCefrLevel, fresh)
+      .slice(0, PODCAST_NEW_WORD_COUNT)
+      .map((c) => c.dictionaryEntry);
+
+    return [...known.map((c) => c.dictionaryEntry), ...review, ...newWords];
   }
 
   private async selectWordsWithPos(
@@ -603,6 +681,7 @@ export class StoriesService {
       // Only meaningful mid-generation; a finished story reports no stage.
       stage: story.status === 'PENDING' || story.status === 'GENERATING' ? story.stage : null,
       origin: story.origin,
+      format: story.format,
       topic: story.topic,
       prompt: story.prompt,
       // A story either has full attribution or none — a link without a title
@@ -636,6 +715,15 @@ export class StoriesService {
       createdAt: story.createdAt.toISOString(),
       // Placeholder targets exist before generation finishes; only surface the
       // ones the processor has verified against the text.
+      segments: story.segments.map((seg) => ({
+        order: seg.order,
+        speaker: seg.speaker,
+        kind: seg.kind,
+        text: seg.text,
+        translation: seg.translation,
+        focusWord: seg.focusWord,
+        audioUrl: seg.audioUrl,
+      })),
       targets: story.targets
         .filter((t) => t.surfaceForm !== '')
         .map((t) => {
@@ -677,13 +765,19 @@ export class StoriesService {
     };
   }
 
-  private quotaKey(userId: string, timeZone: string): string {
-    return `story:cap:${userId}:${getDateKey(new Date(), timeZone)}`;
+  private quotaKey(userId: string, timeZone: string, format: StoryFormat = 'TEXT'): string {
+    // TEXT keeps the original key so today's counts survive the deploy.
+    const prefix = format === 'PODCAST' ? 'podcast' : 'story';
+    return `${prefix}:cap:${userId}:${getDateKey(new Date(), timeZone)}`;
   }
 
   /** Atomic INCR with a rolling 24h TTL. */
-  private async consumeDailyQuota(userId: string, timeZone: string): Promise<void> {
-    const key = this.quotaKey(userId, timeZone);
+  private async consumeDailyQuota(
+    userId: string,
+    timeZone: string,
+    format: StoryFormat = 'TEXT',
+  ): Promise<void> {
+    const key = this.quotaKey(userId, timeZone, format);
     const count = await this.redis.incr(key);
     if (count === 1) await this.redis.expire(key, 86_400);
   }
