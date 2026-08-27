@@ -19,6 +19,43 @@ export type StoryStage = z.infer<typeof storyStageSchema>;
 export const storyOriginSchema = z.enum(['ON_DEMAND', 'DAILY']);
 export type StoryOrigin = z.infer<typeof storyOriginSchema>;
 
+// TEXT is the original micro-story: one block of German to read. PODCAST is the
+// same episode idea delivered as a two-host dialogue, split into segments so it
+// can be synthesized, streamed and followed a turn at a time.
+export const storyFormatSchema = z.enum(['TEXT', 'PODCAST']);
+export type StoryFormat = z.infer<typeof storyFormatSchema>;
+
+// Two hosts, so the dialogue has someone to ask "und was heißt das?" — the
+// question a learner is already thinking, voiced by the show rather than left
+// to a popover.
+export const podcastSpeakerSchema = z.enum(['HOST_A', 'HOST_B']);
+export type PodcastSpeaker = z.infer<typeof podcastSpeakerSchema>;
+
+// INTRO hooks and names the subject, TOPIC carries the substance, VOCAB is an
+// aside where one host explains a word the learner has not met, RECAP repeats
+// those words once more before signing off.
+export const podcastSegmentKindSchema = z.enum(['INTRO', 'TOPIC', 'VOCAB', 'RECAP']);
+export type PodcastSegmentKind = z.infer<typeof podcastSegmentKindSchema>;
+
+/**
+ * One spoken turn. Segments are the unit of synthesis as well as of display:
+ * a whole episode is far past what a single text-to-speech request accepts, and
+ * one file per turn also gives the transcript something to highlight without
+ * any timing data.
+ */
+export const podcastSegmentSchema = z.object({
+  order: z.number(),
+  speaker: podcastSpeakerSchema,
+  kind: podcastSegmentKindSchema,
+  // German, except on a VOCAB turn's English gloss line.
+  text: z.string(),
+  translation: z.string().nullable(),
+  // The word this turn exists to explain, on VOCAB turns.
+  focusWord: z.string().nullable(),
+  audioUrl: z.string().nullable(),
+});
+export type PodcastSegment = z.infer<typeof podcastSegmentSchema>;
+
 // One example sentence for a target, shown in its popover. Only the two lines
 // the popover renders — the full entry is a click away.
 export const storyTargetExampleSchema = z.object({
@@ -98,6 +135,9 @@ export const storySchema = z.object({
   status: storyStatusSchema,
   stage: storyStageSchema.nullable(),
   origin: storyOriginSchema,
+  // Defaulted rather than required: stories written before episodes existed, and
+  // any response cached by a client from before this shipped, are TEXT.
+  format: storyFormatSchema.default('TEXT'),
   // Topic slug from STORY_TOPICS; null for stories written before topics existed
   topic: z.string().nullable(),
   // User-provided prompt/description for what kind of story they want
@@ -116,6 +156,8 @@ export const storySchema = z.object({
   createdAt: z.string(),
   targets: z.array(storyTargetSchema),
   quiz: z.array(storyQuizQuestionSchema).optional(),
+  // Empty for a TEXT story; the spoken turns, in order, for a PODCAST.
+  segments: z.array(podcastSegmentSchema).default([]),
 });
 export type Story = z.infer<typeof storySchema>;
 
@@ -135,6 +177,8 @@ export const createStoryBodySchema = z.object({
   // Omitted means "surprise me": the server picks from the learner's interests.
   topic: z.string().optional(),
   prompt: z.string().max(500).optional(),
+  // Omitted means the original readable micro-story.
+  format: storyFormatSchema.optional(),
 });
 export type CreateStoryBody = z.infer<typeof createStoryBodySchema>;
 
@@ -174,6 +218,17 @@ export const completeStoryResponseSchema = z.object({
     .optional(),
 });
 export type CompleteStoryResponse = z.infer<typeof completeStoryResponseSchema>;
+
+/**
+ * Whether podcast episodes are available to this learner yet, and how far off
+ * they are if not. Sent even once unlocked so the client never has to guess.
+ */
+export const podcastAccessSchema = z.object({
+  unlocked: z.boolean(),
+  knownWords: z.number(),
+  required: z.number(),
+});
+export type PodcastAccess = z.infer<typeof podcastAccessSchema>;
 
 export const storyQuotaSchema = z.object({
   used: z.number(),

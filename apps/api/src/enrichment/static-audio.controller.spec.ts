@@ -9,6 +9,8 @@ type MockPrisma = {
   dictionaryEntry: {
     findUnique: ReturnType<typeof vi.fn>;
   };
+  story: { findUnique: ReturnType<typeof vi.fn> };
+  storySegment: { findUnique: ReturnType<typeof vi.fn> };
 };
 
 type MockTts = {
@@ -27,6 +29,8 @@ describe('StaticAudioController', () => {
       dictionaryEntry: {
         findUnique: vi.fn(),
       },
+      story: { findUnique: vi.fn().mockResolvedValue(null) },
+      storySegment: { findUnique: vi.fn().mockResolvedValue(null) },
     };
 
     mockTts = {
@@ -73,7 +77,7 @@ describe('StaticAudioController', () => {
       where: { id: 'entry-123' },
       select: { id: true, word: true },
     });
-    expect(mockTts.synthesize).toHaveBeenCalledWith('entry-123', 'Haus');
+    expect(mockTts.synthesize).toHaveBeenCalledWith('entry-123', 'Haus', {});
   });
 
   it('attempts TTS synthesis for example sentence when missing from disk', async () => {
@@ -87,6 +91,64 @@ describe('StaticAudioController', () => {
       controller.getAudioFile('entry-123-ex0.mp3', mockResponse as Response),
     ).rejects.toThrow(NotFoundException);
 
-    expect(mockTts.synthesize).toHaveBeenCalledWith('entry-123-ex0', 'Das Haus ist groß.');
+    expect(mockTts.synthesize).toHaveBeenCalledWith('entry-123-ex0', 'Das Haus ist groß.', {});
+  });
+
+  describe('podcast turn recovery', () => {
+    // `static/audio` is container-local, so a redeploy wipes it. Stories
+    // re-synthesize from the database; before this, a turn keyed
+    // `story-<id>-s3` was read as a story with id "<id>-s3", found nothing, and
+    // 404'd — so every episode went permanently silent while stories healed.
+    it('re-synthesizes a missing turn from its segment row', async () => {
+      mockPrisma.storySegment.findUnique.mockResolvedValue({
+        text: 'Hallo und willkommen!',
+        speaker: 'HOST_A',
+      });
+      mockTts.synthesize.mockResolvedValue(null);
+
+      await expect(
+        controller.getAudioFile('story-abc123-s3.mp3', mockResponse as Response),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockPrisma.storySegment.findUnique).toHaveBeenCalledWith({
+        where: { storyId_order: { storyId: 'abc123', order: 3 } },
+        select: { text: true, speaker: true },
+      });
+      expect(mockPrisma.story.findUnique).not.toHaveBeenCalled();
+    });
+
+    // A healed turn in the other host's voice is worse than a silent one.
+    it('recovers a turn in the voice it was recorded in', async () => {
+      mockPrisma.storySegment.findUnique.mockResolvedValue({
+        text: 'Schön, dass du da bist.',
+        speaker: 'HOST_B',
+      });
+      mockTts.synthesize.mockResolvedValue(null);
+
+      await expect(
+        controller.getAudioFile('story-abc123-s1.mp3', mockResponse as Response),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockTts.synthesize).toHaveBeenCalledWith(
+        'story-abc123-s1',
+        'Schön, dass du da bist.',
+        expect.objectContaining({ provider: 'google', voice: 'de-DE-Neural2-C' }),
+      );
+    });
+
+    it('still treats a plain story key as a whole story', async () => {
+      mockPrisma.story.findUnique.mockResolvedValue({ text: 'Das Haus ist grün.' });
+      mockTts.synthesize.mockResolvedValue(null);
+
+      await expect(
+        controller.getAudioFile('story-abc123.mp3', mockResponse as Response),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockPrisma.story.findUnique).toHaveBeenCalledWith({
+        where: { id: 'abc123' },
+        select: { text: true },
+      });
+      expect(mockPrisma.storySegment.findUnique).not.toHaveBeenCalled();
+    });
   });
 });

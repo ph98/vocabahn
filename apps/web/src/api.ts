@@ -21,6 +21,7 @@ import {
   knownWordsResponseSchema,
   latestStoryResponseSchema,
   notificationSettingsSchema,
+  podcastAccessSchema,
   quizAttemptResultSchema,
   quizReportSchema,
   storyInteractResponseSchema,
@@ -38,6 +39,7 @@ import {
   type DiagnosticProbeItem,
   type ImportWordsResponse,
   type NotificationSettings,
+  type StoryFormat,
   type PushSubscriptionBody,
   type ReviewRating,
   type StoryInteractAction,
@@ -393,12 +395,15 @@ export async function bulkMarkKnownWords(dictionaryEntryIds: string[]): Promise<
  * READY. Omitting the topic lets the server pick from the learner's interests.
  * An optional prompt lets the learner describe what kind of story they want.
  */
-export async function createStory(params: { topic?: string; prompt?: string } = {}) {
-  const { topic, prompt } = params;
+export async function createStory(
+  params: { topic?: string; prompt?: string; format?: StoryFormat } = {},
+) {
+  const { topic, prompt, format } = params;
   const { data } = await api.post('/stories', {
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     ...(topic ? { topic } : {}),
     ...(prompt ? { prompt } : {}),
+    ...(format ? { format } : {}),
   });
   return storyResponseSchema.parse(data).story;
 }
@@ -407,8 +412,8 @@ export async function createStory(params: { topic?: string; prompt?: string } = 
  * The learner's most recent unfinished story, or null. This is how a story the
  * scheduler wrote overnight is found on a device that never saw it created.
  */
-export async function fetchLatestStory() {
-  const { data } = await api.get('/stories/latest');
+export async function fetchLatestStory(format: StoryFormat = 'TEXT') {
+  const { data } = await api.get('/stories/latest', { params: { format } });
   return latestStoryResponseSchema.parse(data).story;
 }
 
@@ -448,9 +453,15 @@ export async function completeStory(
   return completeStoryResponseSchema.parse(data);
 }
 
-export async function fetchStoryQuota() {
+/** Whether episodes are unlocked yet, and the progress towards it. */
+export async function fetchPodcastAccess() {
+  const { data } = await api.get('/stories/podcast-access');
+  return podcastAccessSchema.parse(data);
+}
+
+export async function fetchStoryQuota(format: StoryFormat = 'TEXT') {
   const { data } = await api.get('/stories/quota', {
-    params: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+    params: { timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, format },
   });
   return storyQuotaSchema.parse(data);
 }

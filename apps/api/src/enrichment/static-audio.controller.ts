@@ -3,6 +3,11 @@ import type { Response } from 'express';
 import { createReadStream, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  PODCAST_TTS_PROVIDER,
+  PODCAST_VOICE_A,
+  PODCAST_VOICE_B,
+} from '../stories/stories.constants';
 import { AUDIO_DIR, TtsProvider } from '../tts/tts.provider';
 
 @Controller('static/audio')
@@ -33,10 +38,33 @@ export class StaticAudioController {
     // 2. Parse key from filename (strip .mp3)
     const key = safeFilename.slice(0, -4);
     let textToSynthesize: string | null = null;
+    // Podcast turns must come back in the voice they were recorded in — a
+    // healed turn in the other host's voice is worse than a silent one.
+    let ttsOpts: { provider?: 'google' | 'elevenlabs'; voice?: string } = {};
 
+    // `static/audio` is container-local, so anything not on disk has to be
+    // re-derivable from the database or a redeploy silences it permanently.
+    // A podcast turn is keyed `story-<id>-s<n>` and must be matched before the
+    // plain story pattern, which would otherwise swallow the whole tail as an id
+    // and find nothing.
+    const segmentMatch = key.match(/^story-(.+)-s(\d+)$/);
     const storyMatch = key.match(/^story-(.+)$/);
     const exampleMatch = key.match(/^(.+)-ex(\d+)$/);
-    if (storyMatch) {
+    if (segmentMatch) {
+      const segment = await this.prisma.storySegment.findUnique({
+        where: {
+          storyId_order: { storyId: segmentMatch[1]!, order: parseInt(segmentMatch[2]!, 10) },
+        },
+        select: { text: true, speaker: true },
+      });
+      if (segment?.text) {
+        textToSynthesize = segment.text;
+        ttsOpts = {
+          provider: PODCAST_TTS_PROVIDER === 'elevenlabs' ? 'elevenlabs' : 'google',
+          voice: segment.speaker === 'HOST_B' ? PODCAST_VOICE_B : PODCAST_VOICE_A,
+        };
+      }
+    } else if (storyMatch) {
       const story = await this.prisma.story.findUnique({
         where: { id: storyMatch[1]! },
         select: { text: true },
@@ -69,7 +97,7 @@ export class StaticAudioController {
     // 3. Attempt on-demand synthesis if text exists and TTS provider is configured
     if (textToSynthesize && this.tts.enabled) {
       this.logger.log(`Attempting on-demand TTS recovery for key "${key}" ("${textToSynthesize}")`);
-      const generatedUrl = await this.tts.synthesize(key, textToSynthesize);
+      const generatedUrl = await this.tts.synthesize(key, textToSynthesize, ttsOpts);
       if (generatedUrl && existsSync(filePath)) {
         res.setHeader('Content-Type', 'audio/mpeg');
         createReadStream(filePath).pipe(res);

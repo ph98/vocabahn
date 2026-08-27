@@ -394,3 +394,67 @@ would read as a bug.
   changing answers on one story.
 - `/story` is still reached through the More menu. The dashboard's "Today's read"
   card is the practical entry point; the nav was left alone.
+
+## Podcast episodes
+
+`Story.format` is `TEXT` (the micro-story above) or `PODCAST`. An episode is the
+same row — same targets, same quiz, same quota machinery — with its script
+stored as ordered `StorySegment` turns.
+
+**Why the same model.** Everything after generation is identical: target
+verification, the illustration, word resolution, the quiz, completion. The
+episode is flattened into one German `text` before any of that runs, so the
+transcript is a story as far as the rest of the pipeline is concerned, and the
+turns ride alongside for narration and display.
+
+**The word mix is the feature.** A story is a review exercise and draws purely
+from due cards. An episode is a listening one, so `selectPodcastWords` inverts
+it: a sample of banked words (`AUTO_KNOWN`/`USER_KNOWN`) is what makes five
+minutes of German followable by ear, a few due words are heard in passing, and
+`PODCAST_NEW_WORD_COUNT` genuinely new words get a `VOCAB` turn each where one
+host stops and explains. The processor re-derives which word is in which role
+from the learner's cards rather than trusting row order, so a retry days later
+still sorts them correctly.
+
+**Two hosts, two voices.** `buildPodcastPrompt` fixes the running order —
+INTRO, TOPIC turns with VOCAB asides where each new word first appears, RECAP —
+because a model asked for "a podcast" writes a monologue with names in front of
+it. `HOST_A` leads, `HOST_B` asks what a learner would ask.
+
+**One file per turn.** A five-minute script is ~4,500 characters, far past what
+a synthesis request accepts, so each turn is synthesized separately. That is
+also what lets the two hosts use two voices, and what lets the transcript follow
+the audio with no timing data at all: the player advances on `ended` and
+highlights the next turn, because the turn *is* the unit of playback. A turn
+that fails to synthesize is skipped by the audio and still readable.
+
+**Unlocked, not given.** Episodes stay locked until the learner has
+`PODCAST_UNLOCK_KNOWN_WORDS` (300) banked words, counted from `AUTO_KNOWN` and
+`USER_KNOWN` cards. The threshold is pedagogical rather than arbitrary: five
+minutes of German with nothing to read along to only works once enough of it is
+automatic, and a learner who bounces off an episode concludes the feature is
+broken rather than early. `getPodcastAccess` returns the count and the target so
+the chooser can render the distance as progress — the lock reads as a goal, not
+a wall — and `create` enforces it server-side, because hiding the button is a
+presentation choice and the gate is a rule.
+
+**Format scoping.** `latest()` takes a format, so a half-listened episode and a
+half-read story never compete for the one "continue where you left off" slot,
+and the dashboard's "Today's read" card asks for `TEXT` explicitly. Anything
+else querying `Story` and meaning "story" needs the same filter.
+
+**Recovery.** `static/audio` is container-local, so a redeploy wipes it and the
+static-audio controller re-synthesizes from the database on a miss. Podcast
+turns are keyed `story-<id>-s<n>` and are matched *before* the plain story
+pattern, which would otherwise read the whole tail as a story id and 404 — which
+would leave every episode permanently silent while stories healed. The recovered
+turn is re-synthesized with its own speaker's voice.
+
+**Cost.** Text-to-speech is billed per character and an episode is roughly six
+times a story's narration, which makes the engine the dominant cost of the
+feature rather than a detail. Podcasts therefore default to Google's neural
+German voices via `PODCAST_TTS_PROVIDER=google` regardless of whether an
+ElevenLabs key is set, and have their own smaller daily cap
+(`PODCAST_DAILY_CAP`, keyed separately in Redis so episodes cannot eat a day of
+stories). Set `PODCAST_TTS_PROVIDER=elevenlabs` to trade the cost back for the
+better voice.

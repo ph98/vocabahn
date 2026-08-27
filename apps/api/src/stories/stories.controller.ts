@@ -9,6 +9,7 @@ import {
   type LatestStoryResponse,
   type StoryInteractBody,
   type StoryInteractResponse,
+  type PodcastAccess,
   type StoryQuota,
   type StoryResponse,
 } from '@vocabahn/shared';
@@ -26,8 +27,16 @@ export class StoriesController {
   getQuota(
     @CurrentUserId() userId: string,
     @Query('timezone') timezone?: string,
+    @Query('format') format?: string,
   ): Promise<StoryQuota> {
-    return this.stories.getQuota(userId, timezone);
+    // Episodes have their own, smaller allowance — see `getQuota`.
+    return this.stories.getQuota(userId, timezone, format === 'PODCAST' ? 'PODCAST' : 'TEXT');
+  }
+
+  // Declared before `:id`, like `quota`.
+  @Get('podcast-access')
+  getPodcastAccess(@CurrentUserId() userId: string): Promise<PodcastAccess> {
+    return this.stories.getPodcastAccess(userId);
   }
 
   /**
@@ -36,8 +45,13 @@ export class StoriesController {
    * remembered its id was closed at the time.
    */
   @Get('latest')
-  async latest(@CurrentUserId() userId: string): Promise<LatestStoryResponse> {
-    return { story: await this.stories.latest(userId) };
+  async latest(
+    @CurrentUserId() userId: string,
+    @Query('format') format?: string,
+  ): Promise<LatestStoryResponse> {
+    return {
+      story: await this.stories.latest(userId, format === 'PODCAST' ? 'PODCAST' : 'TEXT'),
+    };
   }
 
   @Post()
@@ -45,7 +59,16 @@ export class StoriesController {
     @CurrentUserId() userId: string,
     @Body(new ZodValidationPipe(createStoryBodySchema)) body: CreateStoryBody,
   ): Promise<StoryResponse> {
-    return { story: await this.stories.create(userId, body.timezone, body.topic, 'ON_DEMAND', body.prompt) };
+    return {
+      story: await this.stories.create(
+        userId,
+        body.timezone,
+        body.topic,
+        'ON_DEMAND',
+        body.prompt,
+        body.format ?? 'TEXT',
+      ),
+    };
   }
 
   @Get(':id')

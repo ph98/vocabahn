@@ -55,9 +55,11 @@ function StatCard({
  * every morning never sees a stale card.
  */
 function TodaysReadCard() {
+  // Explicitly TEXT: this card says "Today's read", and an unfinished podcast
+  // episode is not a read.
   const { data: story } = useQuery({
-    queryKey: ['story-latest'],
-    queryFn: fetchLatestStory,
+    queryKey: ['story-latest', 'TEXT'],
+    queryFn: () => fetchLatestStory('TEXT'),
   });
 
   if (!story) return null;

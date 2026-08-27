@@ -87,8 +87,13 @@ test.describe('Micro-story', () => {
       route.fulfill(json({ status: 'ok', services: { database: 'up', redis: 'up' } })),
     );
     await page.route('**/api/v1/stories/quota**', (route) => route.fulfill(json({ used: 2, cap: 10 })));
+    // Episodes unlocked, so the chooser renders its normal state.
+    await page.route('**/api/v1/stories/podcast-access**', (route) =>
+      route.fulfill(json({ unlocked: true, knownWords: 500, required: 300 })),
+    );
     // Nothing waiting by default; the "today's read" test overrides this.
-    await page.route('**/api/v1/stories/latest', (route) => route.fulfill(json({ story: null })));
+    // The trailing ** matters: the request carries a ?format= query.
+    await page.route('**/api/v1/stories/latest**', (route) => route.fulfill(json({ story: null })));
   });
 
   test('offers a subject to read about and shows the remaining daily allowance', async ({ page }) => {
@@ -125,7 +130,7 @@ test.describe('Micro-story', () => {
 
   test("picks up a story the scheduler wrote, with no id in this browser", async ({ page }) => {
     const daily = { ...READY_STORY, origin: 'DAILY' };
-    await page.route('**/api/v1/stories/latest', (route) => route.fulfill(json({ story: daily })));
+    await page.route('**/api/v1/stories/latest**', (route) => route.fulfill(json({ story: daily })));
     await page.route('**/api/v1/stories/story-1', (route) => route.fulfill(json({ story: daily })));
 
     await page.goto('/story');

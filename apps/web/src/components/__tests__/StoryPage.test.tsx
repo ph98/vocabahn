@@ -8,6 +8,7 @@ import { StoryPage } from '../StoryPage';
 
 vi.mock('../../api', () => ({
   createStory: vi.fn(),
+  fetchPodcastAccess: vi.fn().mockResolvedValue({ unlocked: true, knownWords: 500, required: 300 }),
   fetchStory: vi.fn(),
   fetchLatestStory: vi.fn(),
   completeStory: vi.fn(),
@@ -33,6 +34,7 @@ const {
   fetchLatestStory,
   completeStory,
   interactStoryWord,
+  fetchPodcastAccess,
   fetchStoryQuota,
   fetchDictionaryEntry,
 } = await import('../../api');
@@ -50,6 +52,8 @@ const READY: Story = {
   origin: 'ON_DEMAND',
   topic: 'football',
   prompt: null,
+  format: 'TEXT',
+  segments: [],
   source: {
     title: 'PSG schafft den Supercup-Doppelpack',
     url: 'https://www.kicker.de/psg-1242244/artikel',
@@ -108,6 +112,11 @@ describe('StoryPage', () => {
     // Call history only — implementations set below survive this.
     vi.clearAllMocks();
     vi.mocked(fetchStoryQuota).mockResolvedValue({ used: 1, cap: 10 });
+    vi.mocked(fetchPodcastAccess).mockResolvedValue({
+      unlocked: true,
+      knownWords: 500,
+      required: 300,
+    });
     vi.mocked(fetchLatestStory).mockResolvedValue(null);
   });
 
@@ -474,6 +483,74 @@ describe('StoryPage', () => {
     });
   });
 
+  describe('podcast unlock', () => {
+    async function chooseListen() {
+      renderWithProviders(<StoryPage />);
+      const listen = await screen.findByRole('radio', { name: /Listen/ });
+      fireEvent.click(listen);
+      return listen;
+    }
+
+    it('shows how far off episodes are, not just that they are locked', async () => {
+      vi.mocked(fetchPodcastAccess).mockResolvedValue({
+        unlocked: false,
+        knownWords: 214,
+        required: 300,
+      });
+
+      await chooseListen();
+
+      expect(await screen.findByText(/86 more known words to unlock episodes/)).toBeInTheDocument();
+      expect(screen.getByText('214 of 300 words known')).toBeInTheDocument();
+      expect(
+        screen.getByRole('progressbar', { name: 'Progress towards unlocking episodes' }),
+      ).toBeInTheDocument();
+    });
+
+    it('offers the way forward rather than a dead end', async () => {
+      vi.mocked(fetchPodcastAccess).mockResolvedValue({
+        unlocked: false,
+        knownWords: 10,
+        required: 300,
+      });
+
+      await chooseListen();
+
+      expect(await screen.findByRole('link', { name: 'Keep reviewing' })).toHaveAttribute(
+        'href',
+        '/review',
+      );
+      // No way to spend a generation on something they cannot have.
+      expect(screen.queryByRole('button', { name: /Make me an episode/ })).not.toBeInTheDocument();
+    });
+
+    it('reads as a goal, not a wall, on the last word', async () => {
+      vi.mocked(fetchPodcastAccess).mockResolvedValue({
+        unlocked: false,
+        knownWords: 299,
+        required: 300,
+      });
+
+      await chooseListen();
+
+      expect(await screen.findByText(/1 more known word to unlock episodes/)).toBeInTheDocument();
+    });
+
+    it('lets an unlocked learner ask for an episode', async () => {
+      vi.mocked(createStory).mockResolvedValue({ ...READY, status: 'PENDING', text: null });
+
+      await chooseListen();
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Make me an episode' }));
+
+      await waitFor(() =>
+        expect(createStory).toHaveBeenCalledWith(
+          expect.objectContaining({ format: 'PODCAST' }),
+        ),
+      );
+    });
+  });
+
   describe('topics and custom prompt', () => {
     it('sends the chosen subject to the server', async () => {
       vi.mocked(createStory).mockResolvedValue({ ...READY, status: 'PENDING', text: null });
@@ -487,7 +564,11 @@ describe('StoryPage', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Read about technology' }));
 
       await waitFor(() =>
-        expect(createStory).toHaveBeenCalledWith({ topic: 'technology', prompt: undefined }),
+        expect(createStory).toHaveBeenCalledWith({
+          topic: 'technology',
+          prompt: undefined,
+          format: 'TEXT',
+        }),
       );
     });
 
@@ -499,7 +580,11 @@ describe('StoryPage', () => {
       fireEvent.click(await screen.findByRole('button', { name: 'Find me something to read' }));
 
       await waitFor(() =>
-        expect(createStory).toHaveBeenCalledWith({ topic: undefined, prompt: undefined }),
+        expect(createStory).toHaveBeenCalledWith({
+          topic: undefined,
+          prompt: undefined,
+          format: 'TEXT',
+        }),
       );
     });
 
@@ -524,6 +609,7 @@ describe('StoryPage', () => {
         expect(createStory).toHaveBeenCalledWith({
           topic: undefined,
           prompt: 'A detective in Berlin searching for a mysterious book',
+          format: 'TEXT',
         }),
       );
     });

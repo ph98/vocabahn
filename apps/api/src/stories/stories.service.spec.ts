@@ -53,7 +53,7 @@ function respondWith(
 describe('StoriesService', () => {
   let service: StoriesService;
   let prisma: {
-    card: { findMany: ReturnType<typeof vi.fn> };
+    card: { count: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> };
     user: { findUnique: ReturnType<typeof vi.fn> };
     story: {
       create: ReturnType<typeof vi.fn>;
@@ -75,6 +75,7 @@ describe('StoriesService', () => {
   beforeEach(() => {
     prisma = {
       card: {
+        count: vi.fn().mockResolvedValue(1000),
         findMany: vi.fn().mockResolvedValue([]),
         findUnique: vi.fn().mockResolvedValue({
           id: 'card-1',
@@ -187,9 +188,51 @@ describe('StoriesService', () => {
         targetRow('e2', 'grün', 'green'),
       ],
       quizQuestions: [],
+      segments: [],
+      format: 'TEXT',
       ...overrides,
     };
   }
+
+  describe('podcast unlock', () => {
+    it('reports progress towards the gate', async () => {
+      prisma.card.count.mockResolvedValue(120);
+
+      const access = await service.getPodcastAccess('user-1');
+
+      expect(access).toEqual({ unlocked: false, knownWords: 120, required: 300 });
+      // Counted from banked words, which is what an episode actually needs.
+      expect(prisma.card.count).toHaveBeenCalledWith({
+        where: { userId: 'user-1', knownState: { in: ['AUTO_KNOWN', 'USER_KNOWN'] } },
+      });
+    });
+
+    it('unlocks once the learner reaches the threshold', async () => {
+      prisma.card.count.mockResolvedValue(300);
+
+      expect(await service.getPodcastAccess('user-1')).toMatchObject({ unlocked: true });
+    });
+
+    // The gate is a rule, not a presentation choice — hiding the button in the
+    // UI must not be the only thing enforcing it.
+    it('refuses an episode below the threshold, naming the distance', async () => {
+      prisma.card.count.mockResolvedValue(41);
+
+      await expect(
+        service.create('user-1', 'Europe/Berlin', undefined, 'ON_DEMAND', undefined, 'PODCAST'),
+      ).rejects.toThrow('Episodes unlock at 300 known words — you have 41.');
+    });
+
+    it('does not gate ordinary stories', async () => {
+      prisma.card.count.mockResolvedValue(0);
+      respondWith(prisma.card.findMany, {
+        due: [entryCard('e1', 'Katze', 'A1.1', 100)],
+      });
+      prisma.story.create.mockResolvedValue(readyStory({ status: 'PENDING' }));
+
+      await expect(service.create('user-1', 'Europe/Berlin')).resolves.toBeDefined();
+    });
+  });
 
   describe('create', () => {
     it('refuses once the daily cap is spent', async () => {

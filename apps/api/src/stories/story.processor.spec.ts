@@ -30,6 +30,35 @@ const PHOTO = {
   sourceUrl: 'https://unsplash.com/photos/abc',
 };
 
+/**
+ * A minimal episode: enough turns to clear PODCAST_MIN_SEGMENTS, both hosts,
+ * and one VOCAB turn carrying a focus word.
+ */
+const EPISODE = {
+  title: 'Der Bahnhof',
+  imageQuery: 'train station platform morning',
+  segments: [
+    { speaker: 'HOST_A', kind: 'INTRO', text: 'Hallo und willkommen!', translation: 'Hello and welcome!', focusWord: null },
+    { speaker: 'HOST_B', kind: 'INTRO', text: 'Schön, dass du da bist.', translation: 'Good to have you.', focusWord: null },
+    { speaker: 'HOST_A', kind: 'TOPIC', text: 'Heute geht es um den Bahnhof.', translation: 'Today is about the station.', focusWord: null },
+    { speaker: 'HOST_B', kind: 'VOCAB', text: 'Was bedeutet Bahnhof?', translation: 'What does Bahnhof mean?', focusWord: 'Bahnhof' },
+    { speaker: 'HOST_A', kind: 'TOPIC', text: 'Das Haus ist grün.', translation: 'The house is green.', focusWord: null },
+    { speaker: 'HOST_B', kind: 'RECAP', text: 'Bis zum nächsten Mal!', translation: 'Until next time!', focusWord: null },
+  ],
+  targets: [
+    { word: 'Bahnhof', surfaceForm: 'Bahnhof' },
+    { word: 'Haus', surfaceForm: 'Haus' },
+    { word: 'grün', surfaceForm: 'grün' },
+  ],
+  quiz: [],
+};
+
+const PODCAST_JOB = {
+  data: { storyId: 'story-1' },
+  attemptsMade: 0,
+  opts: { attempts: 3 },
+} as unknown as Job<StoryJobData>;
+
 const JOB = {
   data: { storyId: 'story-1' },
   attemptsMade: 0,
@@ -45,9 +74,14 @@ describe('StoryProcessor', () => {
     };
     storyTarget: { deleteMany: ReturnType<typeof vi.fn> };
     storyQuizQuestion: { deleteMany: ReturnType<typeof vi.fn> };
+    storySegment: { deleteMany: ReturnType<typeof vi.fn> };
+    card: { findMany: ReturnType<typeof vi.fn> };
     $transaction: ReturnType<typeof vi.fn>;
   };
-  let storyProvider: { generate: ReturnType<typeof vi.fn> };
+  let storyProvider: {
+    generate: ReturnType<typeof vi.fn>;
+    generatePodcast: ReturnType<typeof vi.fn>;
+  };
   let tts: { synthesize: ReturnType<typeof vi.fn> };
   let unsplash: { search: ReturnType<typeof vi.fn> };
   let processor: StoryProcessor;
@@ -93,9 +127,14 @@ describe('StoryProcessor', () => {
       },
       storyTarget: { deleteMany: vi.fn() },
       storyQuizQuestion: { deleteMany: vi.fn() },
+      storySegment: { deleteMany: vi.fn() },
+      card: { findMany: vi.fn().mockResolvedValue([]) },
       $transaction: vi.fn().mockResolvedValue([]),
     };
-    storyProvider = { generate: vi.fn().mockResolvedValue(GENERATED) };
+    storyProvider = {
+      generate: vi.fn().mockResolvedValue(GENERATED),
+      generatePodcast: vi.fn().mockResolvedValue(EPISODE),
+    };
     tts = { synthesize: vi.fn().mockResolvedValue('/api/static/audio/story-story-1.mp3') };
     unsplash = { search: vi.fn().mockResolvedValue(PHOTO) };
     const dictionary = { resolveWordsToEntries: vi.fn().mockResolvedValue(new Map()) };
@@ -184,6 +223,133 @@ describe('StoryProcessor', () => {
 
     await expect(processor.process(JOB)).resolves.toBeUndefined();
     expect(writtenStory()).toMatchObject({ status: 'READY', audioUrl: null, imageUrl: null });
+  });
+
+  describe('podcast episodes', () => {
+    /** Puts the loaded story into PODCAST format, keeping everything else. */
+    function asPodcast(overrides: Record<string, unknown> = {}) {
+      prisma.story.findUnique.mockResolvedValue({
+        id: 'story-1',
+        userId: 'user-1',
+        cefrLevel: 'A2.1',
+        topic: 'everyday',
+        prompt: null,
+        format: 'PODCAST',
+        sourceTitle: null,
+        sourceUrl: null,
+        sourceName: null,
+        sourceItem: null,
+        targets: [
+          { dictionaryEntry: { id: 'e1', word: 'Bahnhof', translation: 'station' } },
+          { dictionaryEntry: { id: 'e2', word: 'grün', translation: 'green' } },
+          { dictionaryEntry: { id: 'e3', word: 'Haus', translation: 'house' } },
+        ],
+        ...overrides,
+      });
+    }
+
+    it('generates an episode rather than a story', async () => {
+      asPodcast();
+
+      await processor.process(PODCAST_JOB);
+
+      expect(storyProvider.generatePodcast).toHaveBeenCalled();
+      expect(storyProvider.generate).not.toHaveBeenCalled();
+    });
+
+    // The learner's cards say which words are banked, due and unseen; the
+    // episode's three roles are read back off them rather than from row order.
+    it('sorts the words into known, review and new from the learner\'s cards', async () => {
+      asPodcast();
+      prisma.card.findMany.mockResolvedValue([
+        { dictionaryEntryId: 'e1', knownState: 'USER_KNOWN', state: 'REVIEW' },
+        { dictionaryEntryId: 'e2', knownState: 'ACTIVE', state: 'NEW' },
+        { dictionaryEntryId: 'e3', knownState: 'ACTIVE', state: 'REVIEW' },
+      ]);
+
+      await processor.process(PODCAST_JOB);
+
+      expect(storyProvider.generatePodcast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          knownWords: [{ word: 'Bahnhof', translation: 'station' }],
+          newWords: [{ word: 'grün', translation: 'green' }],
+          reviewWords: [{ word: 'Haus', translation: 'house' }],
+        }),
+      );
+    });
+
+    it('synthesizes one file per turn, alternating the two host voices', async () => {
+      asPodcast();
+
+      await processor.process(PODCAST_JOB);
+
+      expect(tts.synthesize).toHaveBeenCalledTimes(EPISODE.segments.length);
+      expect(tts.synthesize).toHaveBeenNthCalledWith(
+        1,
+        'story-story-1-s0',
+        'Hallo und willkommen!',
+        expect.objectContaining({ provider: 'google', voice: 'de-DE-Neural2-B' }),
+      );
+      expect(tts.synthesize).toHaveBeenNthCalledWith(
+        2,
+        'story-story-1-s1',
+        'Schön, dass du da bist.',
+        expect.objectContaining({ voice: 'de-DE-Neural2-C' }),
+      );
+    });
+
+    it('stores the turns in order with their audio, and no whole-episode file', async () => {
+      asPodcast();
+      tts.synthesize.mockImplementation((key: string) => Promise.resolve(`/audio/${key}.mp3`));
+
+      await processor.process(PODCAST_JOB);
+
+      const written = writtenStory();
+      expect(written.audioUrl).toBeNull();
+      const created = (written.segments as { create: Record<string, unknown>[] }).create;
+      expect(created).toHaveLength(6);
+      expect(created[0]).toMatchObject({
+        order: 0,
+        speaker: 'HOST_A',
+        kind: 'INTRO',
+        text: 'Hallo und willkommen!',
+        audioUrl: '/audio/story-story-1-s0.mp3',
+      });
+      expect(created[3]).toMatchObject({ kind: 'VOCAB', focusWord: 'Bahnhof' });
+    });
+
+    // A turn whose synthesis failed costs the listener that turn's audio and
+    // nothing else — the transcript is still there, as with a story.
+    it('ships the episode when a turn fails to synthesize', async () => {
+      asPodcast();
+      tts.synthesize.mockRejectedValueOnce(new Error('TTS down'));
+
+      await processor.process(PODCAST_JOB);
+
+      const created = (writtenStory().segments as { create: Record<string, unknown>[] }).create;
+      expect(created[0].audioUrl).toBeNull();
+      expect(writtenStory()).toMatchObject({ status: 'READY' });
+    });
+
+    it('rejects a script too short to be a conversation', async () => {
+      asPodcast();
+      storyProvider.generatePodcast.mockResolvedValue({
+        ...EPISODE,
+        segments: EPISODE.segments.slice(0, 2),
+      });
+
+      await expect(processor.process(PODCAST_JOB)).rejects.toThrow(/only 2 turns/);
+    });
+
+    it('joins the turns into one transcript so the words stay tappable', async () => {
+      asPodcast();
+
+      await processor.process(PODCAST_JOB);
+
+      const text = writtenStory().text as string;
+      expect(text).toContain('Hallo und willkommen!');
+      expect(text).toContain('Das Haus ist grün.');
+    });
   });
 
   it('passes userPrompt and previousStories context to storyProvider', async () => {

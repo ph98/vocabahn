@@ -88,6 +88,8 @@ describe('DashboardPage', () => {
       completedAt: null,
       createdAt: '2026-08-12T05:00:00.000Z',
       targets: [],
+      format: 'TEXT' as const,
+      segments: [],
     };
 
     it('links to a scheduled story so the learner can find it', async () => {
