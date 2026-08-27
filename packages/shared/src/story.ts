@@ -135,7 +135,9 @@ export const storySchema = z.object({
   status: storyStatusSchema,
   stage: storyStageSchema.nullable(),
   origin: storyOriginSchema,
-  format: storyFormatSchema,
+  // Defaulted rather than required: stories written before episodes existed, and
+  // any response cached by a client from before this shipped, are TEXT.
+  format: storyFormatSchema.default('TEXT'),
   // Topic slug from STORY_TOPICS; null for stories written before topics existed
   topic: z.string().nullable(),
   // User-provided prompt/description for what kind of story they want
