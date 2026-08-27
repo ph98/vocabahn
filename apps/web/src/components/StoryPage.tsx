@@ -4,12 +4,13 @@ import {
   isPresetTopic,
   topicLabel,
   type Story,
+  type StoryFormat,
   type StoryQuizResultItem,
   type StoryTarget,
   type SubmitStoryQuizAnswer,
 } from '@vocabahn/shared';
 import { isAxiosError } from 'axios';
-import { ExternalLink, Pause, Play, Sparkles } from 'lucide-react';
+import { ExternalLink, Headphones, Pause, Play, Sparkles } from 'lucide-react';
 import { MotionConfig } from 'motion/react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -26,6 +27,7 @@ import { useFadeIn } from '../lib/motion-gsap';
 import { segmentStory } from '../lib/story-text';
 import { trackEvent } from '../lib/telemetry';
 import { IllustrationEmptyQueue } from './Illustrations';
+import { PodcastPlayer } from './PodcastPlayer';
 import { StoryQuizResultsView, StoryQuizStepper } from './StoryQuiz';
 import { StoryWord } from './StoryWord';
 import { UnsplashCredit } from './UnsplashCredit';
@@ -299,6 +301,9 @@ export function StoryPage() {
   // the server's "most recent unfinished story" doesn't pull them back into it.
   const [choosing, setChoosing] = useState(false);
   const [topic, setTopic] = useState<string | null>(null);
+  // Which kind of episode the chooser is about to ask for. A story already in
+  // progress renders in its own format regardless — this is the next one.
+  const [format, setFormat] = useState<StoryFormat>('TEXT');
   const [customPrompt, setCustomPrompt] = useState('');
   const [notUnderstood, setNotUnderstood] = useState<Set<string>>(new Set());
   // Which occurrence has its popover open — a word appearing twice is two
@@ -317,8 +322,8 @@ export function StoryPage() {
   });
 
   const { data: quota } = useQuery({
-    queryKey: ['story-quota'],
-    queryFn: fetchStoryQuota,
+    queryKey: ['story-quota', format],
+    queryFn: () => fetchStoryQuota(format),
     staleTime: 30_000,
   });
 
@@ -350,9 +355,10 @@ export function StoryPage() {
   });
 
   const generate = useMutation({
-    mutationFn: (vars: { topic?: string | null; prompt?: string }) =>
+    mutationFn: (vars: { topic?: string | null; prompt?: string; format?: StoryFormat }) =>
       createStory({
         topic: vars.topic ?? undefined,
+        format: vars.format,
         // An empty or whitespace-only box means "no idea given", not an empty
         // prompt — the server reads absent as "write from the topic instead".
         prompt: vars.prompt?.trim() || undefined,
@@ -431,6 +437,32 @@ export function StoryPage() {
       setAnnouncement("Your story couldn't be written.");
     }
   }, [story?.status, story?.stage, story?.targets.length]);
+
+  /**
+   * German with the studied words made tappable. Extracted so a podcast
+   * transcript's turns and a story's single paragraph go through exactly the
+   * same popover wiring — the words behave the same either way.
+   */
+  const renderGerman = (text: string, keyPrefix: string) =>
+    segmentStory(text, story?.targets ?? []).map((part, i) => {
+      const key = `${keyPrefix}-${i}`;
+      return part.target ? (
+        <StoryWord
+          key={key}
+          target={part.target}
+          text={part.text}
+          open={openWord === key}
+          onOpenChange={(next) => setOpenWord(next ? key : null)}
+          onWordClick={handleWordClick}
+          marked={notUnderstood.has(part.target.entryId)}
+          onToggleMark={() => toggleMark(part.target!)}
+          markable={!isCompleted}
+          markedNoteId={markedNoteId}
+        />
+      ) : (
+        <span key={key}>{part.text}</span>
+      );
+    });
 
   const segments = useMemo(
     () => (story?.text ? segmentStory(story.text, story.targets) : []),
@@ -523,10 +555,41 @@ export function StoryPage() {
             isn't hidden behind a chooser for a frame. */}
         {!storyId && !noWords && !isLoadingLatest && (
           <div className="rounded-3xl border border-surface-800 bg-surface-900 p-6 sm:p-8 text-center shadow-xl">
-            <h3 className="text-lg font-medium text-surface-100">Create your German story</h3>
+            <h3 className="text-lg font-medium text-surface-100">
+              {format === 'PODCAST' ? 'Create your German episode' : 'Create your German story'}
+            </h3>
             <p className="mx-auto mt-2 max-w-prose text-sm text-surface-400">
-              Describe what kind of story you want or pick a subject. We'll generate a personalized story at your level using words you're studying.
+              {format === 'PODCAST'
+                ? "Two hosts talk for about five minutes at your level \u2014 mostly words you already know, with a few new ones they stop and explain."
+                : "Describe what kind of story you want or pick a subject. We'll generate a personalized story at your level using words you're studying."}
             </p>
+
+            {/* A segmented control rather than a toggle: both are things you can
+                ask for, and neither is a modifier of the other. */}
+            <div
+              role="radiogroup"
+              aria-label="What to generate"
+              className="mx-auto mt-5 inline-flex rounded-xl border border-surface-700 bg-surface-950 p-1"
+            >
+              {(['TEXT', 'PODCAST'] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="radio"
+                  aria-checked={format === option}
+                  onClick={() => setFormat(option)}
+                  disabled={generate.isPending}
+                  className={`inline-flex min-h-9 items-center gap-1.5 rounded-lg px-4 text-sm font-medium transition-colors disabled:opacity-50 ${
+                    format === option
+                      ? 'bg-indigo-500 text-white'
+                      : 'text-surface-400 hover:text-surface-200'
+                  }`}
+                >
+                  {option === 'PODCAST' && <Headphones className="size-4" aria-hidden="true" />}
+                  {option === 'TEXT' ? 'Read' : 'Listen'}
+                </button>
+              ))}
+            </div>
 
             <div className="mt-6 text-left">
               <div className="flex items-center justify-between mb-2">
@@ -534,7 +597,8 @@ export function StoryPage() {
                   htmlFor="story-custom-prompt"
                   className="text-xs font-semibold uppercase tracking-wider text-surface-400"
                 >
-                  Describe your story idea <span className="font-normal text-surface-500">(optional)</span>
+                  {format === 'PODCAST' ? 'Describe your episode idea' : 'Describe your story idea'}{' '}
+                  <span className="font-normal text-surface-500">(optional)</span>
                 </label>
                 {customPrompt.length > 0 && (
                   <span className="text-xs tabular-nums text-surface-500">
@@ -567,17 +631,23 @@ export function StoryPage() {
 
             <button
               type="button"
-              onClick={() => generate.mutate({ topic, prompt: customPrompt })}
+              onClick={() => generate.mutate({ topic, prompt: customPrompt, format })}
               disabled={generate.isPending}
               className={`mt-6 ${PRIMARY_BUTTON}`}
             >
               {generate.isPending
                 ? 'Starting…'
-                : customPrompt.trim()
-                  ? 'Write story from idea'
-                  : topic
-                    ? `Read about ${topicLabel(topic)?.toLowerCase()}`
-                    : 'Find me something to read'}
+                : format === 'PODCAST'
+                  ? customPrompt.trim()
+                    ? 'Make an episode from my idea'
+                    : topic
+                      ? `Make an episode about ${topicLabel(topic)?.toLowerCase()}`
+                      : 'Make me an episode'
+                  : customPrompt.trim()
+                    ? 'Write story from idea'
+                    : topic
+                      ? `Read about ${topicLabel(topic)?.toLowerCase()}`
+                      : 'Find me something to read'}
             </button>
           </div>
         )}
@@ -607,7 +677,11 @@ export function StoryPage() {
               type="button"
               onClick={() => {
                 startOver();
-                generate.mutate({ topic: story.topic ?? null, prompt: story.prompt ?? undefined });
+                generate.mutate({
+                  topic: story.topic ?? null,
+                  prompt: story.prompt ?? undefined,
+                  format: story.format,
+                });
               }}
               className={`mt-4 ${PRIMARY_BUTTON}`}
             >
@@ -657,26 +731,36 @@ export function StoryPage() {
                   </div>
                 )}
 
-                <p lang="de" className="mt-4 text-lg leading-relaxed">
-                  {segments.map((segment, i) =>
-                    segment.target ? (
-                      <StoryWord
-                        key={i}
-                        target={segment.target}
-                        text={segment.text}
-                        open={openWord === String(i)}
-                        onOpenChange={(next) => setOpenWord(next ? String(i) : null)}
-                        onWordClick={handleWordClick}
-                        marked={notUnderstood.has(segment.target.entryId)}
-                        onToggleMark={() => toggleMark(segment.target!)}
-                        markable={!isCompleted}
-                        markedNoteId={markedNoteId}
-                      />
-                    ) : (
-                      <span key={i}>{segment.text}</span>
-                    ),
-                  )}
-                </p>
+                {story.format === 'PODCAST' && story.segments.length > 0 ? (
+                  <div className="mt-4">
+                    <PodcastPlayer
+                      segments={story.segments}
+                      renderText={renderGerman}
+                      showEnglish={showEnglish}
+                    />
+                  </div>
+                ) : (
+                  <p lang="de" className="mt-4 text-lg leading-relaxed">
+                    {segments.map((segment, i) =>
+                      segment.target ? (
+                        <StoryWord
+                          key={i}
+                          target={segment.target}
+                          text={segment.text}
+                          open={openWord === String(i)}
+                          onOpenChange={(next) => setOpenWord(next ? String(i) : null)}
+                          onWordClick={handleWordClick}
+                          marked={notUnderstood.has(segment.target.entryId)}
+                          onToggleMark={() => toggleMark(segment.target!)}
+                          markable={!isCompleted}
+                          markedNoteId={markedNoteId}
+                        />
+                      ) : (
+                        <span key={i}>{segment.text}</span>
+                      ),
+                    )}
+                  </p>
+                )}
                 {/* Described, not named: the word's accessible name has to stay
                     the German surface form. One node, shared by every marked
                     trigger, and outside the lang="de" paragraph. */}

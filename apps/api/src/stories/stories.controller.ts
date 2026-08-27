@@ -26,8 +26,10 @@ export class StoriesController {
   getQuota(
     @CurrentUserId() userId: string,
     @Query('timezone') timezone?: string,
+    @Query('format') format?: string,
   ): Promise<StoryQuota> {
-    return this.stories.getQuota(userId, timezone);
+    // Episodes have their own, smaller allowance — see `getQuota`.
+    return this.stories.getQuota(userId, timezone, format === 'PODCAST' ? 'PODCAST' : 'TEXT');
   }
 
   /**
@@ -45,7 +47,16 @@ export class StoriesController {
     @CurrentUserId() userId: string,
     @Body(new ZodValidationPipe(createStoryBodySchema)) body: CreateStoryBody,
   ): Promise<StoryResponse> {
-    return { story: await this.stories.create(userId, body.timezone, body.topic, 'ON_DEMAND', body.prompt) };
+    return {
+      story: await this.stories.create(
+        userId,
+        body.timezone,
+        body.topic,
+        'ON_DEMAND',
+        body.prompt,
+        body.format ?? 'TEXT',
+      ),
+    };
   }
 
   @Get(':id')

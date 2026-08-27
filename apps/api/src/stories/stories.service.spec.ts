@@ -187,6 +187,8 @@ describe('StoriesService', () => {
         targetRow('e2', 'grün', 'green'),
       ],
       quizQuestions: [],
+      segments: [],
+      format: 'TEXT',
       ...overrides,
     };
   }

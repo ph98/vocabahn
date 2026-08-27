@@ -10,27 +10,27 @@ datasource db {
 // ── Users ────────────────────────────────────────────────────────────────────
 
 model User {
-  id        String   @id @default(cuid())
-  googleId  String   @unique
-  email     String   @unique
-  name      String?
-  avatarUrl String?
-  timezone  String?
+  id              String   @id @default(cuid())
+  googleId        String   @unique
+  email           String   @unique
+  name            String?
+  avatarUrl       String?
+  timezone        String?
   // Inferred CEFR level for the knowledge model; null until inferred
-  cefrLevel String?
+  cefrLevel       String?
   // Topic slugs from STORY_TOPICS the learner wants to read about. Empty means
   // no preference stated, which the story picker reads as "any topic".
-  interests String[] @default([])
+  interests       String[] @default([])
   // ── Daily study reminder (notifications.md) ──
   // Server-side by necessity: the sender is the server, so a localStorage flag
   // could not switch it off. Default false — nobody is opted in by upgrading.
-  reminderEnabled Boolean @default(false)
+  reminderEnabled Boolean  @default(false)
   // Learner-local wall clock the reminder aims at. Interpreted in `timezone`,
   // falling back to UTC when that has never been sent.
-  reminderHour    Int     @default(19)
-  reminderMinute  Int     @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  reminderHour    Int      @default(19)
+  reminderMinute  Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   cards             Card[]
   reviewLogs        ReviewLog[]
@@ -55,10 +55,10 @@ model User {
 model PushSubscription {
   id String @id @default(cuid())
 
-  userId String
+  userId     String
   /// The push service URL. Globally unique — it is the subscription's identity,
   /// and re-subscribing the same browser must update the row, not add a second.
-  endpoint   String  @unique
+  endpoint   String    @unique
   /// Client public key and auth secret from `PushSubscription.toJSON().keys`.
   p256dh     String
   auth       String
@@ -166,13 +166,13 @@ model DictionaryEntry {
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  lexiconEntry  LexiconEntry        @relation(fields: [lexiconEntryId], references: [id])
-  examples      DictionaryExample[]
-  imageCredit   ImageCredit?
-  cards         Card[]
-  courseWords   CourseWord[]
-  deckWords     UserDeckWord[]
-  feedback      EntryFeedback[]
+  lexiconEntry       LexiconEntry        @relation(fields: [lexiconEntryId], references: [id])
+  examples           DictionaryExample[]
+  imageCredit        ImageCredit?
+  cards              Card[]
+  courseWords        CourseWord[]
+  deckWords          UserDeckWord[]
+  feedback           EntryFeedback[]
   storyTargets       StoryTarget[]
   storyQuizQuestions StoryQuizQuestion[]
   quizQuestions      EntryQuizQuestion[]
@@ -547,6 +547,25 @@ enum StoryOrigin {
   DAILY
 }
 
+// TEXT is the micro-story a learner reads. PODCAST is a two-host dialogue,
+// stored as ordered StorySegment turns and synthesized one turn at a time.
+enum StoryFormat {
+  TEXT
+  PODCAST
+}
+
+enum PodcastSpeaker {
+  HOST_A
+  HOST_B
+}
+
+enum PodcastSegmentKind {
+  INTRO
+  TOPIC
+  VOCAB
+  RECAP
+}
+
 model Story {
   id              String      @id @default(cuid())
   userId          String
@@ -559,6 +578,7 @@ model Story {
   topic           String?
   // Custom prompt/description provided by the learner (optional)
   prompt          String?
+  format          StoryFormat @default(TEXT)
   // The real article this was retold from, when there was one. The relation is
   // for analytics and per-user dedup; the three snapshot fields below are what
   // the UI renders, so attribution survives SourceItem pruning.
@@ -600,10 +620,40 @@ model Story {
   targets       StoryTarget[]
   quizQuestions StoryQuizQuestion[]
   quizAttempts  StoryQuizAttempt[]
+  segments      StorySegment[]
 
   @@index([userId, createdAt])
   // Drives "has this learner already read this article?"
   @@index([userId, sourceItemId])
+}
+
+/**
+ * One spoken turn of a podcast episode. The unit of synthesis as well as of
+ * display: a five-minute script is far past what one text-to-speech request
+ * accepts, and a file per turn lets the transcript follow the audio without any
+ * timing data — the player advances on `ended` and highlights the next turn.
+ */
+model StorySegment {
+  id          String             @id @default(cuid())
+  storyId     String
+  order       Int
+  speaker     PodcastSpeaker
+  kind        PodcastSegmentKind
+  // German, except a VOCAB turn's English gloss line.
+  text        String
+  translation String?
+  // The word this turn exists to explain, on VOCAB turns.
+  focusWord   String?
+  // Cached .mp3 keyed `story-<storyId>-s<order>`; null when synthesis is
+  // unconfigured or failed. Audio never blocks an episode shipping — the
+  // transcript is still readable.
+  audioUrl    String?
+  createdAt   DateTime           @default(now())
+
+  story Story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, order])
+  @@index([storyId])
 }
 
 // ── Source material ──────────────────────────────────────────────────────────
