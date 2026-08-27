@@ -21,6 +21,7 @@ type MockPrisma = {
   };
   reviewLog: {
     findMany: ReturnType<typeof vi.fn>;
+    count: ReturnType<typeof vi.fn>;
   };
   user: {
     findUnique: ReturnType<typeof vi.fn>;
@@ -51,6 +52,7 @@ describe('KnowledgeService', () => {
       },
       reviewLog: {
         findMany: vi.fn(),
+        count: vi.fn().mockResolvedValue(0),
       },
       user: {
         findUnique: vi.fn(),
@@ -199,7 +201,11 @@ describe('KnowledgeService', () => {
 
       expect(prismaMock.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { cefrLevel: 'B1.1' },
+        data: {
+          cefrLevel: 'B1.1',
+          cefrLevelSource: 'MANUAL',
+          cefrLevelSetAt: expect.any(Date),
+        },
         select: expect.any(Object),
       });
 
@@ -321,9 +327,135 @@ describe('KnowledgeService', () => {
       expect(result.breakdown.length).toBe(12);
       expect(prismaMock.user.update).toHaveBeenCalledWith({
         where: { id: 'user-1' },
-        data: { cefrLevel: 'B1.2' },
+        data: {
+          cefrLevel: 'B1.2',
+          cefrLevelSource: 'CALIBRATED',
+          cefrLevelSetAt: expect.any(Date),
+        },
         select: expect.any(Object),
       });
+    });
+  });
+
+  describe('CEFR level inference', () => {
+    /** A review log row at `level` with `rating`, as the inference reads them. */
+    const logs = (level: string, rating: string, n: number) =>
+      Array(n).fill({ rating, card: { dictionaryEntry: { cefrLevel: level } } });
+
+    const reviewing = (userLevel: string | null, extra: Record<string, unknown> = {}) => {
+      prismaMock.card.findUnique.mockResolvedValue({
+        id: 'card-1',
+        dictionaryEntryId: 'entry-1',
+        knownState: 'ACTIVE',
+        reps: 1,
+        dictionaryEntry: { word: 'test', cefrLevel: 'A1.1', lexiconEntry: { frequencyRank: 100 } },
+        reviewLogs: [{ rating: 'GOOD' }],
+        user: { cefrLevel: userLevel },
+      });
+      prismaMock.user.findUnique.mockResolvedValue({
+        cefrLevel: userLevel,
+        cefrLevelSource: null,
+        cefrLevelSetAt: null,
+        ...extra,
+      });
+      prismaMock.card.findMany.mockResolvedValue([]);
+      prismaMock.user.update.mockResolvedValue({ cefrLevel: userLevel });
+    };
+
+    const writtenLevel = () =>
+      prismaMock.user.update.mock.calls.length === 0
+        ? null
+        : (prismaMock.user.update.mock.calls[0][0].data.cefrLevel as string);
+
+    // The regression this whole rule exists for: a handful of trivial words
+    // mis-tagged B2.1 by enrichment must not read as B2 competence when the
+    // learner is visibly failing A2.
+    it('does not credit a high level while a lower one with real evidence is failing', async () => {
+      reviewing('A2.1');
+      prismaMock.reviewLog.findMany.mockResolvedValue([
+        ...logs('A1.1', 'GOOD', 26),
+        ...logs('A2', 'HARD', 21),
+        ...logs('B2.1', 'EASY', 9),
+      ]);
+
+      await service.recomputeAfterReview('user-1', 'card-1');
+
+      expect(writtenLevel()).not.toBe('B2.1');
+    });
+
+    it('still promotes when every level below is passing', async () => {
+      reviewing('A1.1');
+      prismaMock.reviewLog.findMany.mockResolvedValue([
+        ...logs('A1.1', 'EASY', 8),
+        ...logs('A1.2', 'EASY', 8),
+        ...logs('A2.1', 'EASY', 8),
+      ]);
+
+      await service.recomputeAfterReview('user-1', 'card-1');
+
+      expect(writtenLevel()).toBe('A2.1');
+      expect(prismaMock.user.update.mock.calls[0][0].data.cefrLevelSource).toBe('INFERRED');
+    });
+
+    it('lowers the level when a failing level has a full sample behind it', async () => {
+      reviewing('A2.1');
+      prismaMock.reviewLog.findMany.mockResolvedValue([
+        ...logs('A1.1', 'EASY', 10),
+        ...logs('A2.1', 'AGAIN', 20),
+      ]);
+
+      await service.recomputeAfterReview('user-1', 'card-1');
+
+      expect(writtenLevel()).toBe('A1.1');
+    });
+
+    it('does not lower the level on a thin bad run', async () => {
+      reviewing('A2.1');
+      prismaMock.reviewLog.findMany.mockResolvedValue([
+        ...logs('A1.1', 'EASY', 10),
+        ...logs('A2.1', 'AGAIN', 6),
+      ]);
+
+      await service.recomputeAfterReview('user-1', 'card-1');
+
+      expect(prismaMock.user.update).not.toHaveBeenCalled();
+    });
+
+    it('leaves a learner-set level alone inside the grace window', async () => {
+      reviewing('A2.1', { cefrLevelSource: 'MANUAL', cefrLevelSetAt: new Date('2026-08-01') });
+      prismaMock.reviewLog.count.mockResolvedValue(12);
+      prismaMock.reviewLog.findMany.mockResolvedValue(logs('B1.1', 'EASY', 30));
+
+      await service.recomputeAfterReview('user-1', 'card-1');
+
+      expect(prismaMock.user.update).not.toHaveBeenCalled();
+      // The window is spent in reviews, not in wall-clock time.
+      expect(prismaMock.reviewLog.count).toHaveBeenCalledWith({
+        where: { userId: 'user-1', reviewedAt: { gt: new Date('2026-08-01') } },
+      });
+    });
+
+    it('resumes inferring once the learner has reviewed past the grace window', async () => {
+      reviewing('A1.1', { cefrLevelSource: 'MANUAL', cefrLevelSetAt: new Date('2026-08-01') });
+      prismaMock.reviewLog.count.mockResolvedValue(150);
+      prismaMock.reviewLog.findMany.mockResolvedValue([
+        ...logs('A1.1', 'EASY', 8),
+        ...logs('A1.2', 'EASY', 8),
+      ]);
+
+      await service.recomputeAfterReview('user-1', 'card-1');
+
+      expect(writtenLevel()).toBe('A1.2');
+    });
+
+    it('leaves a calibrated level alone inside the grace window too', async () => {
+      reviewing('B1.1', { cefrLevelSource: 'CALIBRATED', cefrLevelSetAt: new Date('2026-08-01') });
+      prismaMock.reviewLog.count.mockResolvedValue(3);
+      prismaMock.reviewLog.findMany.mockResolvedValue(logs('A1.1', 'AGAIN', 40));
+
+      await service.recomputeAfterReview('user-1', 'card-1');
+
+      expect(prismaMock.user.update).not.toHaveBeenCalled();
     });
   });
 });

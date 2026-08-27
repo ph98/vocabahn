@@ -30,6 +30,27 @@ export const LEVEL_INFERENCE_MIN_SAMPLES = 5;
 export const LEVEL_INFERENCE_MIN_AVG = 0.7;
 export const LEVEL_INFERENCE_LOOKBACK = 100;
 
+// Dropping someone a level is a worse error than leaving them a level high, so
+// a failing level only pulls the inference down on a fuller sample than the one
+// that lets a level count at all.
+export const LEVEL_DEMOTION_MIN_SAMPLES = 15;
+
+// Reviews a learner must complete after setting their own level before the
+// inference is allowed to move it again. Counted in reviews rather than days so
+// the window cannot be waited out by not studying.
+export const MANUAL_LEVEL_GRACE_REVIEWS = 100;
+
+// Provenance values for `User.cefrLevelSource`.
+export const CEFR_SOURCE_MANUAL = 'MANUAL';
+export const CEFR_SOURCE_CALIBRATED = 'CALIBRATED';
+export const CEFR_SOURCE_INFERRED = 'INFERRED';
+
+/** Levels the learner chose or measured, which the inference must not trample. */
+export const LEARNER_SET_CEFR_SOURCES: readonly string[] = [
+  CEFR_SOURCE_MANUAL,
+  CEFR_SOURCE_CALIBRATED,
+];
+
 export function farFutureDate(): Date {
   return new Date(Date.now() + KNOWN_CARD_DUE_DAYS * 24 * 60 * 60 * 1000);
 }

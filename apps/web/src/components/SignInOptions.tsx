@@ -39,7 +39,6 @@ export function SignInOptions() {
         onClick={() => {
           trackEvent('landing_cta_click', { cta: 'google' });
           markPendingLogin('google');
-          window.location.href = '/api/v1/auth/google';
         }}
         className="vb-rise-in flex min-h-11 w-full items-center justify-center gap-2.5 rounded-xl border border-surface-700 bg-surface-900 px-4 text-sm font-semibold text-surface-100 shadow-sm transition-all hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo active:scale-[0.98]"
       >
