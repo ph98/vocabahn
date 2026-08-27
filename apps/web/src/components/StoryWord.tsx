@@ -37,7 +37,7 @@ const CLOSE_DELAY_MS = 150;
 const VIEWPORT_MARGIN = 8;
 
 const POPOVER_ACTION =
-  'inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
+  'inline-flex min-h-11 items-center justify-center rounded-lg border px-3 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo';
 
 export function StoryWord({
   target,
@@ -234,10 +234,10 @@ export function StoryWord({
             onWordClick(target);
           }
         }}
-        className={`rounded px-1 py-0.5 underline decoration-dotted underline-offset-4 cursor-pointer transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+        className={`rounded px-1 py-0.5 underline decoration-dotted underline-offset-4 cursor-pointer transition-all duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo ${
           marked
             ? 'bg-accent-amber/20 text-accent-amber decoration-accent-amber font-medium'
-            : 'decoration-surface-500 hover:bg-indigo-500/20 hover:text-indigo-200 hover:decoration-indigo-400 dark:hover:bg-indigo-500/25'
+            : 'decoration-surface-500 hover:bg-indigo-500/20 hover:text-indigo-600 dark:hover:text-indigo-200 hover:decoration-indigo-400 dark:hover:bg-indigo-500/25'
         }`}
       >
         {text}
@@ -259,10 +259,10 @@ export function StoryWord({
         >
           {/* The outer span owns the positioning transform; this one owns the
               entrance animation, so the two never fight. */}
-          <span className="vb-word-popover block overflow-hidden rounded-xl border border-surface-700 bg-surface-950 p-3 text-left text-surface-200 shadow-2xl">
+          <span className="vb-word-popover block overflow-hidden rounded-xl border border-surface-700 bg-surface-900 p-3 text-left text-surface-200 shadow-2xl">
             <span className="flex items-center gap-2">
               {target.emoji && <span aria-hidden="true">{target.emoji}</span>}
-              <span lang="de" className="flex-1 font-medium">
+              <span lang="de" className="flex-1 font-medium text-surface-100">
                 {target.word}
               </span>
               {target.audioUrl && (
@@ -281,20 +281,20 @@ export function StoryWord({
               </span>
             )}
 
-            {meaning && <span className="mt-2 block text-sm break-words">{meaning}</span>}
+            {meaning && <span className="mt-2 block text-sm break-words text-surface-200">{meaning}</span>}
             {extraGloss && (
               <span className="mt-0.5 block text-xs text-surface-400 break-words">{extraGloss}</span>
             )}
 
             {target.compound && (
-              <div className="mt-2.5 rounded-lg border border-surface-800 bg-surface-900/90 p-2.5 text-xs">
+              <div className="mt-2.5 rounded-lg border border-surface-800 bg-surface-800/60 p-2.5 text-xs">
                 <span className="mb-1.5 block font-medium text-surface-400">
                   🧩 Compound word
                 </span>
                 <div className="flex flex-wrap items-center gap-1.5 text-surface-200">
                   <Link
                     to={`/word/${encodeURIComponent(target.compound.left.word)}${target.compound.left.pos ? `?pos=${encodeURIComponent(target.compound.left.pos)}` : ''}`}
-                    className="inline-flex max-w-full items-center rounded bg-surface-800 px-2 py-1 text-accent-indigo hover:bg-surface-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                    className="inline-flex max-w-full items-center rounded bg-surface-800 px-2 py-1 text-accent-indigo hover:bg-surface-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo"
                   >
                     <span lang="de" className="font-semibold shrink-0">{target.compound.left.word}</span>
                     {(target.compound.left.translation || target.compound.left.gloss) && (
@@ -308,7 +308,7 @@ export function StoryWord({
                   </span>
                   <Link
                     to={`/word/${encodeURIComponent(target.compound.right.word)}${target.compound.right.pos ? `?pos=${encodeURIComponent(target.compound.right.pos)}` : ''}`}
-                    className="inline-flex max-w-full items-center rounded bg-surface-800 px-2 py-1 text-accent-indigo hover:bg-surface-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+                    className="inline-flex max-w-full items-center rounded bg-surface-800 px-2 py-1 text-accent-indigo hover:bg-surface-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent-indigo"
                   >
                     <span lang="de" className="font-semibold shrink-0">{target.compound.right.word}</span>
                     {(target.compound.right.translation || target.compound.right.gloss) && (

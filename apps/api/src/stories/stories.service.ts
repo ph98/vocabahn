@@ -10,6 +10,7 @@ import {
 import { Prisma, ReviewRating } from '@prisma/client';
 import {
   STORY_TOPIC_SLUGS,
+  compoundDecompositionSchema,
   type CompleteStoryBody,
   type CompleteStoryResponse,
   type CompoundDecomposition,
@@ -284,7 +285,7 @@ export class StoriesService {
         selectedIndex: answer.selectedIndex,
         correctIndex: q.correctIndex,
         correct: isCorrect,
-        explanation: q.explanation,
+        explanation: q.explanation ?? null,
       });
 
       txOps.push(
@@ -295,7 +296,7 @@ export class StoriesService {
             userId,
             selectedIndex: answer.selectedIndex,
             correct: isCorrect,
-            latencyMs: answer.latencyMs,
+            latencyMs: answer.latencyMs ?? null,
             createdAt: now,
           },
         }),
@@ -329,7 +330,7 @@ export class StoriesService {
             cardId: card.id,
             userId,
             rating,
-            latencyMs: answer.latencyMs,
+            latencyMs: answer.latencyMs ?? null,
             ...buildReviewLogSnapshot(updated, now),
           },
         }),
@@ -635,6 +636,7 @@ export class StoriesService {
           const entry = t.dictionaryEntry;
           const example = entry?.examples?.[0];
           const raw = entry?.lexiconEntry?.raw as { compound?: CompoundDecomposition } | undefined;
+          const compoundParsed = compoundDecompositionSchema.safeParse(raw?.compound);
           return {
             entryId: t.dictionaryEntryId,
             word: entry?.word ?? t.surfaceForm,
@@ -648,7 +650,7 @@ export class StoriesService {
             gloss: entry?.lexiconEntry?.senses?.[0]?.glosses?.[0] ?? null,
             audioUrl: entry?.audioUrl ?? null,
             example: example ? { de: example.de, en: example.en } : null,
-            compound: raw?.compound ?? null,
+            compound: compoundParsed.success ? compoundParsed.data : null,
             understood: t.understood,
           };
         }),
@@ -662,7 +664,7 @@ export class StoriesService {
         ...(story.completedAt
           ? {
               correctIndex: q.correctIndex,
-              explanation: q.explanation,
+              explanation: q.explanation ?? null,
             }
           : {}),
       })),

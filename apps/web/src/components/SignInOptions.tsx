@@ -40,7 +40,7 @@ export function SignInOptions() {
           trackEvent('landing_cta_click', { cta: 'google' });
           markPendingLogin('google');
         }}
-        className="vb-rise-in flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-medium text-surface-900 transition-all hover:bg-surface-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.98]"
+        className="vb-rise-in flex min-h-11 w-full items-center justify-center gap-2.5 rounded-xl border border-surface-700 bg-surface-900 px-4 text-sm font-semibold text-surface-100 shadow-sm transition-all hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo active:scale-[0.98]"
       >
         <svg className="size-4" viewBox="0 0 24 24">
           <path
@@ -75,9 +75,9 @@ export function SignInOptions() {
       </div>
 
       {sent ? (
-        <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-300">
-          <ShieldCheck className="size-4 shrink-0 text-emerald-400" />
-          <span>Check your inbox! We sent a sign-in link to <strong className="font-semibold text-emerald-200">{email}</strong>.</span>
+        <div className="flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs text-emerald-600 dark:text-emerald-300">
+          <ShieldCheck className="size-4 shrink-0 text-emerald-500 dark:text-emerald-400" />
+          <span>Check your inbox! We sent a sign-in link to <strong className="font-semibold text-emerald-700 dark:text-emerald-200">{email}</strong>.</span>
         </div>
       ) : (
         <form
@@ -96,13 +96,13 @@ export function SignInOptions() {
               placeholder="name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-surface-800 bg-surface-950/50 py-2.5 pl-10 pr-4 text-sm text-white placeholder-surface-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              className="w-full rounded-xl border border-surface-700 bg-surface-900 py-2.5 pl-10 pr-4 text-sm text-surface-100 placeholder-surface-500 transition-colors focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
           <button
             type="submit"
             disabled={emailMutation.isPending || !email.trim()}
-            className="w-full rounded-xl border border-surface-700 bg-surface-800 py-2.5 text-xs font-medium text-surface-200 transition-all hover:bg-surface-700 hover:text-white disabled:opacity-50"
+            className="w-full rounded-xl border border-surface-700 bg-surface-800 py-2.5 text-xs font-semibold text-surface-200 transition-all hover:bg-surface-700 hover:text-surface-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-50"
           >
             {emailMutation.isPending ? 'Sending...' : 'Send Magic Link'}
           </button>

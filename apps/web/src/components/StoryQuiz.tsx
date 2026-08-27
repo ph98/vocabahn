@@ -11,9 +11,9 @@ import { Link } from 'react-router-dom';
 const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 const PRIMARY_BUTTON =
-  'min-h-11 rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60';
+  'min-h-11 rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-60';
 const SECONDARY_BUTTON =
-  'min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
+  'min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-semibold text-surface-200 transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo';
 
 interface StoryQuizStepperProps {
   questions: StoryQuizQuestion[];
@@ -66,7 +66,7 @@ export function StoryQuizStepper({
   if (!currentQuestion) return null;
 
   const selectOption = (optionIndex: number) => {
-    const latencyMs = Math.max(0, Date.now() - shownAt.current);
+    const latencyMs = Math.round(Math.max(0, Date.now() - shownAt.current));
     setSelectedAnswers((prev) => {
       const next = new Map(prev);
       next.set(currentQuestion.id, { selectedIndex: optionIndex, latencyMs });
@@ -152,10 +152,10 @@ export function StoryQuizStepper({
                 onClick={() => selectOption(idx)}
                 aria-pressed={isSelected}
                 disabled={isSubmitting}
-                className={`flex min-h-12 w-full items-center gap-3.5 rounded-2xl border px-4 py-3 text-left text-sm font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white ${
+                className={`flex min-h-12 w-full items-center gap-3.5 rounded-2xl border px-4 py-3 text-left text-sm font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo ${
                   isSelected
-                    ? 'border-indigo-400 bg-indigo-500/15 text-indigo-100 shadow-sm shadow-indigo-950/40 ring-1 ring-indigo-400'
-                    : 'border-surface-700 bg-surface-950/60 text-surface-200 hover:border-surface-600 hover:bg-surface-800'
+                    ? 'border-indigo-500/60 bg-indigo-500/15 text-indigo-800 dark:text-indigo-100 shadow-sm ring-1 ring-indigo-500/40 font-semibold'
+                    : 'border-surface-700 bg-surface-900/60 text-surface-200 hover:border-surface-600 hover:bg-surface-800'
                 }`}
               >
                 <span
@@ -170,7 +170,7 @@ export function StoryQuizStepper({
                 </span>
                 <span className="flex-1">{option}</span>
                 {isSelected && (
-                  <span className="shrink-0 text-xs font-semibold text-indigo-300">Selected</span>
+                  <span className="shrink-0 text-xs font-semibold text-indigo-600 dark:text-indigo-300">Selected</span>
                 )}
               </button>
             );

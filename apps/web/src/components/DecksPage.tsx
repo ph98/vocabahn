@@ -86,7 +86,7 @@ function CreateDeckModal({ onClose }: { onClose: () => void }) {
               rows={2}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-xl border border-surface-700 bg-surface-950 px-4 py-2 text-sm placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="w-full rounded-xl border border-surface-700 bg-surface-900 px-4 py-2 text-sm text-surface-100 placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
               placeholder="A few words about this deck…"
             />
           </div>
@@ -103,14 +103,14 @@ function CreateDeckModal({ onClose }: { onClose: () => void }) {
             <button
               type="button"
               onClick={onClose}
-              className="min-h-11 flex-1 rounded-xl border border-surface-700 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="min-h-11 flex-1 rounded-xl border border-surface-700 text-sm font-semibold text-surface-300 transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!title.trim() || mutation.isPending}
-              className="min-h-11 flex-1 rounded-xl bg-indigo-500 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60"
+              className="min-h-11 flex-1 rounded-xl bg-indigo-500 text-sm font-semibold text-white shadow-sm shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-60"
             >
               {mutation.isPending ? 'Creating…' : 'Create'}
             </button>
@@ -133,13 +133,13 @@ function DeckCard({ deck }: { deck: DeckSummary }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   return (
-    <li className="rounded-2xl border border-surface-800 bg-surface-900 p-5 shadow-lg shadow-black/20 transition-colors hover:border-surface-700">
+    <li className="rounded-2xl border border-surface-800 bg-surface-900 p-5 shadow-xl transition-colors hover:border-surface-700">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-medium">{deck.title}</h3>
+            <h3 className="font-semibold text-surface-100">{deck.title}</h3>
             {deck.isPublic ? (
-              <span className="rounded-full border border-indigo-400/40 px-2 py-0.5 text-xs text-accent-indigo">
+              <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-accent-indigo">
                 Public
               </span>
             ) : (
@@ -164,14 +164,14 @@ function DeckCard({ deck }: { deck: DeckSummary }) {
         {deck.wordCount > 0 && (
           <Link
             to={`/review?deckId=${deck.id}`}
-            className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
           >
             Review
           </Link>
         )}
         <Link
           to={`/decks/${deck.id}`}
-          className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-semibold text-surface-200 transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
         >
           View words
         </Link>
@@ -179,7 +179,7 @@ function DeckCard({ deck }: { deck: DeckSummary }) {
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
-            className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm transition-colors hover:border-red-400/60 hover:bg-red-950/30 hover:text-accent-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-semibold transition-colors hover:border-red-400/60 hover:bg-red-500/10 hover:text-accent-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
           >
             Delete
           </button>
@@ -190,14 +190,14 @@ function DeckCard({ deck }: { deck: DeckSummary }) {
               type="button"
               onClick={() => deleteMutation.mutate()}
               disabled={deleteMutation.isPending}
-              className="min-h-11 rounded-xl border border-red-400/60 bg-red-950/30 px-4 py-2.5 text-sm text-accent-red transition-colors hover:bg-red-950/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"
+              className="min-h-11 rounded-xl border border-red-400/60 bg-red-500/10 dark:bg-red-950/30 px-4 py-2.5 text-sm font-semibold text-accent-red transition-colors hover:bg-red-500/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-50"
             >
               {deleteMutation.isPending ? 'Deleting…' : 'Confirm delete'}
             </button>
             <button
               type="button"
               onClick={() => setConfirmDelete(false)}
-              className="min-h-11 rounded-xl border border-surface-700 px-3 py-2.5 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="min-h-11 rounded-xl border border-surface-700 px-3 py-2.5 text-sm font-semibold text-surface-300 transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
             >
               Cancel
             </button>
@@ -225,7 +225,7 @@ export function DecksPage() {
         <button
           type="button"
           onClick={() => setShowCreate(true)}
-          className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
         >
           + New deck
         </button>
@@ -321,21 +321,21 @@ function ImportModal({ deckId, onClose }: { deckId: string; onClose: () => void 
               rows={8}
               value={wordsText}
               onChange={(e) => setWordsText(e.target.value)}
-              className="w-full rounded-xl border border-surface-700 bg-surface-950 px-4 py-2 text-sm transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="w-full rounded-xl border border-surface-700 bg-surface-900 px-4 py-2 text-sm text-surface-100 placeholder:text-surface-500 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button
               type="button"
               onClick={onClose}
-              className="min-h-11 rounded-xl px-4 text-sm font-medium transition-colors hover:bg-surface-800"
+              className="min-h-11 rounded-xl px-4 text-sm font-semibold text-surface-300 transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={mutation.isPending || !wordsText.trim()}
-              className="min-h-11 rounded-xl bg-indigo-500 px-6 text-sm font-medium text-white transition-colors hover:bg-indigo-400 disabled:opacity-60"
+              className="min-h-11 rounded-xl bg-indigo-500 px-6 text-sm font-semibold text-white transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-60"
             >
               {mutation.isPending ? 'Importing…' : 'Import'}
             </button>
@@ -408,7 +408,7 @@ export function DeckDetailPage() {
       <button
         type="button"
         onClick={() => navigate('/decks')}
-        className="mb-2 min-h-11 rounded-xl border border-surface-700 px-4 text-sm transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        className="mb-2 min-h-11 rounded-xl border border-surface-700 px-4 text-sm font-semibold text-surface-200 transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
       >
         ← Back to decks
       </button>
@@ -416,7 +416,7 @@ export function DeckDetailPage() {
       {editing ? (
         <form
           onSubmit={(e) => { e.preventDefault(); updateMutation.mutate(); }}
-          className="space-y-3 rounded-2xl border border-surface-800 bg-surface-900 p-5"
+          className="space-y-3 rounded-2xl border border-surface-800 bg-surface-900 p-5 shadow-xl"
         >
           <input
             type="text"
@@ -424,14 +424,14 @@ export function DeckDetailPage() {
             maxLength={80}
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
-            className="min-h-11 w-full rounded-xl border border-surface-700 bg-surface-950 px-4 text-sm transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="min-h-11 w-full rounded-xl border border-surface-700 bg-surface-900 px-4 text-sm text-surface-100 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
           />
           <textarea
             maxLength={300}
             rows={2}
             value={editDescription}
             onChange={(e) => setEditDescription(e.target.value)}
-            className="w-full rounded-xl border border-surface-700 bg-surface-950 px-4 py-2 text-sm transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            className="w-full rounded-xl border border-surface-700 bg-surface-900 px-4 py-2 text-sm text-surface-100 transition-colors focus:border-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
           />
           <label className="flex cursor-pointer items-center gap-3 select-none">
             <input
@@ -446,27 +446,27 @@ export function DeckDetailPage() {
             <button
               type="button"
               onClick={() => setEditing(false)}
-              className="min-h-11 flex-1 rounded-xl border border-surface-700 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="min-h-11 flex-1 rounded-xl border border-surface-700 text-sm font-semibold text-surface-300 transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={updateMutation.isPending}
-              className="min-h-11 flex-1 rounded-xl bg-indigo-500 text-sm font-medium text-white transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60"
+              className="min-h-11 flex-1 rounded-xl bg-indigo-500 text-sm font-semibold text-white transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-60"
             >
               {updateMutation.isPending ? 'Saving…' : 'Save'}
             </button>
           </div>
         </form>
       ) : (
-        <div className="rounded-2xl border border-surface-800 bg-surface-900 p-5">
+        <div className="rounded-2xl border border-surface-800 bg-surface-900 p-5 shadow-xl">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-xl font-semibold">{deck.title}</h2>
+                <h2 className="text-xl font-bold text-surface-100">{deck.title}</h2>
                 {deck.isPublic ? (
-                  <span className="rounded-full border border-indigo-400/40 px-2 py-0.5 text-xs text-accent-indigo">
+                  <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-accent-indigo">
                     Public
                   </span>
                 ) : (
@@ -485,7 +485,7 @@ export function DeckDetailPage() {
               {deck.words.length > 0 && (
                 <Link
                   to={`/review?deckId=${deck.id}`}
-                  className="min-h-11 shrink-0 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="min-h-11 shrink-0 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
                 >
                   Start review
                 </Link>
@@ -495,14 +495,14 @@ export function DeckDetailPage() {
                   <button
                     type="button"
                     onClick={() => setShowImport(true)}
-                    className="min-h-11 shrink-0 rounded-xl border border-surface-700 px-3 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    className="min-h-11 shrink-0 rounded-xl border border-surface-700 px-3 text-sm font-semibold text-surface-200 transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
                   >
                     Import
                   </button>
                   <button
                     type="button"
                     onClick={startEditing}
-                    className="min-h-11 shrink-0 rounded-xl border border-surface-700 px-3 text-sm transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                    className="min-h-11 shrink-0 rounded-xl border border-surface-700 px-3 text-sm font-semibold text-surface-200 transition-colors hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
                   >
                     Edit
                   </button>
@@ -516,7 +516,7 @@ export function DeckDetailPage() {
       {deck.words.length === 0 ? (
         <p className="text-sm text-surface-400">
           No words yet. Browse the{' '}
-          <Link to="/" className="underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+          <Link to="/" className="underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo">
             dictionary
           </Link>{' '}
           and add words from each entry.
@@ -526,14 +526,14 @@ export function DeckDetailPage() {
           {deck.words.map((w) => (
             <li
               key={w.dictionaryEntryId}
-              className="flex items-center gap-3 rounded-2xl border border-surface-800 bg-surface-900 p-4"
+              className="flex items-center gap-3 rounded-2xl border border-surface-800 bg-surface-900 p-4 shadow-sm"
             >
               {w.emoji && <span className="shrink-0 text-2xl" aria-hidden="true">{w.emoji}</span>}
               <div className="min-w-0 flex-1">
                 <Link
                   to={`/word/${encodeURIComponent(w.word)}${w.pos ? `?pos=${encodeURIComponent(w.pos)}` : ''}`}
                   lang="de"
-                  className="font-medium hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="font-semibold text-surface-100 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo"
                 >
                   {w.word}
                 </Link>
@@ -545,7 +545,7 @@ export function DeckDetailPage() {
                   onClick={() => removeWordMutation.mutate(w.dictionaryEntryId)}
                   disabled={removeWordMutation.isPending}
                   aria-label={`Remove ${w.word} from deck`}
-                  className="min-h-11 min-w-11 shrink-0 rounded-xl border border-surface-700 text-sm transition-colors hover:border-red-400/60 hover:bg-red-950/30 hover:text-accent-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-50"
+                  className="min-h-11 min-w-11 shrink-0 rounded-xl border border-surface-700 text-sm transition-colors hover:border-red-400/60 hover:bg-red-500/10 hover:text-accent-red focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-50"
                 >
                   ✕
                 </button>

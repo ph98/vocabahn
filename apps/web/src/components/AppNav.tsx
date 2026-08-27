@@ -262,7 +262,7 @@ function ProfileMenu({
             <Icon aria-hidden className="size-4" />
           </div>
           <div className="flex-1 min-w-0">
-            <span className="block text-sm font-bold text-surface-100 group-hover:text-white leading-tight">
+            <span className="block text-sm font-bold text-surface-100 group-hover:text-surface-100 leading-tight">
               {label}
             </span>
             <span className="block text-xs text-surface-400 leading-snug mt-0.5">
@@ -282,7 +282,7 @@ function ProfileMenu({
       tabIndex={-1}
       aria-label="Profile and quick navigation menu"
       onKeyDown={handleKeyDown}
-      className="fixed z-50 w-72 sm:w-80 max-w-[calc(100vw-24px)] flex flex-col gap-2 rounded-2xl border border-surface-700/80 bg-surface-900/95 p-2.5 shadow-2xl shadow-black/60 backdrop-blur-xl max-h-[80vh] overflow-y-auto"
+      className="fixed z-50 w-72 sm:w-80 max-w-[calc(100vw-24px)] flex flex-col gap-2 rounded-2xl border border-surface-700/80 bg-surface-900/95 p-2.5 shadow-2xl backdrop-blur-xl max-h-[80vh] overflow-y-auto"
       style={style}
     >
       {/* User Info Header */}
@@ -307,7 +307,7 @@ function ProfileMenu({
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="truncate text-sm font-bold text-surface-100 group-hover:text-white">
+              <span className="truncate text-sm font-bold text-surface-100 group-hover:text-surface-100">
                 {user.name ?? 'Learner'}
               </span>
               {user.cefrLevel && <CEFRBadge level={user.cefrLevel} size="sm" />}

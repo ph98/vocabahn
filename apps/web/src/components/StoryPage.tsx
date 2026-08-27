@@ -37,9 +37,9 @@ import { UnsplashCredit } from './UnsplashCredit';
 const STORY_ID_KEY = 'vocabahn-story-id';
 
 const PRIMARY_BUTTON =
-  'min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-medium text-white shadow-sm shadow-indigo-950/50 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:opacity-60';
+  'min-h-11 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm shadow-indigo-500/25 transition-colors hover:bg-indigo-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo disabled:opacity-60';
 const SECONDARY_BUTTON =
-  'min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-medium transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white';
+  'min-h-11 rounded-xl border border-surface-700 px-4 py-2.5 text-sm font-semibold text-surface-200 transition-colors hover:border-surface-600 hover:bg-surface-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-indigo';
 
 /**
  * Narration of the whole story. Unlike the dictionary's one-shot `AudioButton`,

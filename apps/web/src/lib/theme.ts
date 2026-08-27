@@ -4,7 +4,7 @@ export type Theme = 'light' | 'dark' | 'system';
 
 const STORAGE_KEY = 'vocabahn-theme';
 const THEME_COLORS: Record<'light' | 'dark', string> = {
-  light: '#fafafa',
+  light: '#FBFBFA',
   dark: '#0a0a0a',
 };
 
