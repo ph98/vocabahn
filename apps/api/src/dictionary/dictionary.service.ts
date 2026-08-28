@@ -18,6 +18,28 @@ import { compareLexiconCandidates, isLemma } from './lexicon-ranking';
 // A sense tagged with any of these is a pointer to another word, not a meaning.
 const FORM_TAGS = ['form-of', 'alt-of'];
 
+/**
+ * The only shape the search index is built from — one definition so the bulk
+ * `rebuildIndex` sweep and the single-entry refresh cannot drift apart.
+ *
+ * `lexiconEntry.raw` must never appear here. It is the full Wiktextract record
+ * (~937 MB across the table), and selecting it for all ~25k entries makes the
+ * Prisma query engine buffer gigabytes *off-heap* — invisible to
+ * `--max-old-space-size`, so it arrives as a bare SIGKILL from the host OOM
+ * killer rather than a JS error. That shipped once and took the API down in a
+ * boot loop; `dictionary.service.spec.ts` guards this select against it.
+ * Search results don't render the compound breakdown anyway — the word page
+ * fetches the single entry it needs for that.
+ */
+export const SEARCH_INDEX_SELECT = {
+  word: true,
+  translation: true,
+  emoji: true,
+  cefrLevel: true,
+  enrichmentStatus: true,
+  lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true } },
+} as const;
+
 @Injectable()
 export class DictionaryService implements OnModuleInit {
   private readonly logger = new Logger(DictionaryService.name);
@@ -41,18 +63,7 @@ export class DictionaryService implements OnModuleInit {
 
   async rebuildIndex() {
     const entries = await this.prisma.dictionaryEntry.findMany({
-      // `raw` is deliberately absent: it is the full Wiktionary payload, and
-      // pulling it for every entry to build the index costs hundreds of MB.
-      // Search results don't render the compound breakdown — the word page
-      // fetches the entry itself for that.
-      select: {
-        word: true,
-        translation: true,
-        emoji: true,
-        cefrLevel: true,
-        enrichmentStatus: true,
-        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true } },
-      },
+      select: SEARCH_INDEX_SELECT,
     });
     this.fuse.setCollection(entries.map((e) => this.toSearchResult(e)));
     this.logger.log(
@@ -63,14 +74,7 @@ export class DictionaryService implements OnModuleInit {
   async updateSearchIndex(id: string): Promise<void> {
     const entry = await this.prisma.dictionaryEntry.findUnique({
       where: { id },
-      select: {
-        word: true,
-        translation: true,
-        emoji: true,
-        cefrLevel: true,
-        enrichmentStatus: true,
-        lexiconEntry: { select: { pos: true, gender: true, frequencyRank: true } },
-      },
+      select: SEARCH_INDEX_SELECT,
     });
     if (!entry) return;
 
@@ -206,19 +210,21 @@ export class DictionaryService implements OnModuleInit {
               select: { id: true, word: true },
             });
             this.fuse.add(
-              this.toSearchResult({
-                word: trimmed,
-                translation: trans,
-                emoji: '🧩',
-                cefrLevel: null,
-                enrichmentStatus: 'PENDING',
-                lexiconEntry: {
-                  pos: decomp.pos,
-                  gender: decomp.gender,
-                  frequencyRank: null,
-                  raw: { compound: decomp },
+              this.toSearchResult(
+                {
+                  word: trimmed,
+                  translation: trans,
+                  emoji: '🧩',
+                  cefrLevel: null,
+                  enrichmentStatus: 'PENDING',
+                  lexiconEntry: {
+                    pos: decomp.pos,
+                    gender: decomp.gender,
+                    frequencyRank: null,
+                  },
                 },
-              }),
+                decomp,
+              ),
             );
             this.logger.log(`promoted compound "${trimmed}" (${decomp.pos}) to active dictionary`);
           } catch {
@@ -380,7 +386,7 @@ export class DictionaryService implements OnModuleInit {
             data: { lexiconEntryId: best.id, word: best.word },
             include,
           });
-          this.fuse.add(this.toSearchResult(entry));
+          this.fuse.add(this.toSearchResult(entry, compoundFromRaw(entry.lexiconEntry.raw)));
           this.logger.log(`promoted "${best.word}" (${best.pos}) to active dictionary (pending enrichment)`);
         } catch (err: unknown) {
           if (
@@ -625,21 +631,29 @@ export class DictionaryService implements OnModuleInit {
     }));
   }
 
-  private toSearchResult(e: {
-    word: string;
-    translation: string | null;
-    emoji: string | null;
-    cefrLevel: string | null;
-    enrichmentStatus: DictionarySearchResult['enrichmentStatus'];
-    lexiconEntry: {
-      pos: string;
-      gender: string | null;
-      frequencyRank: number | null;
-      raw?: unknown;
-    };
-  }): DictionarySearchResult {
-    const raw = e.lexiconEntry.raw as { isCompound?: boolean; compound?: CompoundDecomposition } | undefined;
-    const compoundParsed = compoundDecompositionSchema.safeParse(raw?.compound);
+  /**
+   * Builds a search-index row. `compound` is passed in rather than read off
+   * `lexiconEntry.raw`, and that is load-bearing: `raw` is the full Wiktextract
+   * payload, and a bulk select that reaches for it buffers gigabytes in the
+   * Prisma engine (see `rebuildIndex`). Taking it as a parameter means the only
+   * way to fill `compound` is to already hold it — a bulk caller cannot get
+   * there by widening its `select`, because this function never reads `raw`.
+   */
+  private toSearchResult(
+    e: {
+      word: string;
+      translation: string | null;
+      emoji: string | null;
+      cefrLevel: string | null;
+      enrichmentStatus: DictionarySearchResult['enrichmentStatus'];
+      lexiconEntry: {
+        pos: string;
+        gender: string | null;
+        frequencyRank: number | null;
+      };
+    },
+    compound: CompoundDecomposition | null = null,
+  ): DictionarySearchResult {
     return {
       word: e.word,
       pos: e.lexiconEntry.pos,
@@ -649,7 +663,19 @@ export class DictionaryService implements OnModuleInit {
       cefrLevel: e.cefrLevel,
       frequencyRank: e.lexiconEntry.frequencyRank,
       enrichmentStatus: e.enrichmentStatus,
-      compound: compoundParsed.success ? compoundParsed.data : null,
+      compound,
     };
   }
+}
+
+/**
+ * Pulls a stored compound breakdown out of a Wiktextract payload. Only for
+ * callers that already hold a single entry's `raw` — never map this over a
+ * bulk query result.
+ */
+function compoundFromRaw(raw: unknown): CompoundDecomposition | null {
+  const parsed = compoundDecompositionSchema.safeParse(
+    (raw as { compound?: unknown } | null)?.compound,
+  );
+  return parsed.success ? parsed.data : null;
 }

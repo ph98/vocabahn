@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DictionaryService } from './dictionary.service';
+import { DictionaryService, SEARCH_INDEX_SELECT } from './dictionary.service';
 import type { PrismaService } from '../prisma/prisma.service';
 import type { EnrichmentService } from '../enrichment/enrichment.service';
 
@@ -226,6 +226,27 @@ describe('DictionaryService', () => {
           lexiconEntry: { pos: 'verb' },
         },
         include: expect.anything(),
+      });
+    });
+  });
+
+  describe('SEARCH_INDEX_SELECT', () => {
+    // Regression guard for the 2026-08-27 outage. `LexiconEntry.raw` is the full
+    // Wiktextract record; selecting it for every entry made the Prisma engine
+    // buffer >2 GB off-heap and the host OOM killer SIGKILL the API on boot, in a
+    // loop. The JS heap stayed flat throughout, so no heap limit or V8 error
+    // catches this — only not asking for the column does.
+    it('never selects lexiconEntry.raw', () => {
+      expect(SEARCH_INDEX_SELECT.lexiconEntry.select).not.toHaveProperty('raw');
+    });
+
+    it('is the select the bulk index sweep actually issues', async () => {
+      mockPrisma.dictionaryEntry.findMany.mockResolvedValue([]);
+
+      await service.rebuildIndex();
+
+      expect(mockPrisma.dictionaryEntry.findMany).toHaveBeenCalledWith({
+        select: SEARCH_INDEX_SELECT,
       });
     });
   });

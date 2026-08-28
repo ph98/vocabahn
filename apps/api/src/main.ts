@@ -39,7 +39,11 @@ async function bootstrap() {
 
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);
-  console.log(`API listening on http://localhost:${port}/api/v1`);
+  // The build stamp goes in the boot line so a stale image is visible in the
+  // logs, not just in a deploy that happens to check.
+  console.log(
+    `API listening on http://localhost:${port}/api/v1 (build ${process.env.GIT_SHA ?? 'unknown'})`,
+  );
 }
 
 void bootstrap();
