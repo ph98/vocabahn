@@ -86,8 +86,27 @@ else
   log "Deploying the revision already checked out: $(git rev-parse --short HEAD)"
 fi
 
-log "Building images..."
+# Exported so compose can stamp it into the API image (see docker-compose.prod.yml).
+export GIT_SHA="$(git rev-parse HEAD)"
+
+log "Building images (revision ${GIT_SHA:0:12})..."
 $COMPOSE build --pull
+
+# A build can report success and still ship an image compiled from older source
+# — a cached layer did exactly that on 2026-08-27 and cost ~3.5h of downtime,
+# with the running API silently two PRs behind a clean checkout. Nothing about
+# the image's age is visible from outside, so read the stamp back and refuse to
+# deploy an artifact that disagrees with the revision we are deploying.
+built_sha() {
+  docker run --rm --entrypoint sh vocabahn-api -c 'printf %s "${GIT_SHA:-}"' 2>/dev/null || true
+}
+if [[ "$(built_sha)" != "$GIT_SHA" ]]; then
+  log "API image reports '$(built_sha)', expected '${GIT_SHA:0:12}' — rebuilding without cache."
+  $COMPOSE build --no-cache api
+  [[ "$(built_sha)" == "$GIT_SHA" ]] \
+    || err "API image still reports '$(built_sha)' after a --no-cache rebuild, expected '$GIT_SHA'. Refusing to deploy a stale build."
+fi
+ok "API image built from ${GIT_SHA:0:12}"
 
 log "Taking a pre-deploy database backup..."
 bash "$REPO_DIR/scripts/backup.sh" pre-deploy || log "Warning: pre-deploy backup failed (continuing)"

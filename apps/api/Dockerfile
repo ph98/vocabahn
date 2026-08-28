@@ -17,6 +17,13 @@ RUN pnpm --filter @vocabahn/shared build \
  && pnpm --filter @vocabahn/api exec prisma generate \
  && pnpm --filter @vocabahn/api build
 
+# Stamped last so a new revision does not bust the install/build layers above.
+# `deploy.sh` reads this back out of the built image and refuses to deploy when
+# it does not match the checked-out revision — a cached layer once shipped an
+# image compiled from older source, which is not otherwise visible from outside.
+ARG GIT_SHA=unknown
+ENV GIT_SHA=$GIT_SHA
+
 ENV NODE_ENV=production
 WORKDIR /repo/apps/api
 EXPOSE 3000
